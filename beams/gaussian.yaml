@@ -1,0 +1,44 @@
+n_particle: 1000
+output:
+  file: rad.gaussian.out.txt
+  type: gpt
+r_dist:
+  sigma_xy:
+    units: mm
+    value: 10
+  type: radial_gaussian
+random_type: hammersley
+px_dist:
+  sigma_px:
+    units: MeV/c
+    value: 0.001
+  type: gaussian
+py_dist:
+  sigma_py:
+    units: MeV/c
+    value: 0.001
+  type: gaussian
+pz_dist:
+  avg_pz:
+    units: MeV/c
+    value: 1.0
+  sigma_pz:
+    units: MeV/c
+    value: 0.00001
+  type: gaussian
+start:
+  tstart:
+    units: sec
+    value: 0
+  type: time
+t_dist:
+  max_t:
+    units: ps
+    value: 2
+  min_t:
+    units: ps
+    value: -2
+  type: uniform
+total_charge:
+  units: pC
+  value: 10
