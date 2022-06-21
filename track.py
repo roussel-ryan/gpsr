@@ -3,6 +3,9 @@ import sys
 from collections import namedtuple
 
 # Named tuples for elements and particles
+import torch
+from torch import nn
+
 Drift = namedtuple("Drift", "L")
 Quadrupole = namedtuple(
     "Quadrupole", "L K1 NUM_STEPS X_OFFSET Y_OFFSET", defaults=(None, None, 1, 0, 0)
@@ -36,8 +39,8 @@ def make_track_a_drift(lib):
         Py = py / P  # Particle's 'y' momentum over p0
         Pxy2 = Px ** 2 + Py ** 2  # Particle's transverse mometum^2 over p0^2
 
-        if any(Pxy2 > 1.0):
-            raise RuntimeError("Erronious particle")
+        # if any(Pxy2 > 1.0):
+        #    raise RuntimeError("Erronious particle")
 
         Pl = sqrt(1 - Pxy2)  # Particle's longitudinal momentum over p0
 
@@ -234,6 +237,31 @@ def make_track_a_quadrupole(lib):
         return Particle(x, px, y, py, z, pz, s, p0c, mc2)
 
     return track_a_quadrupole
+
+
+def make_functions(lib):
+    return {
+        "Drift": make_track_a_drift(lib),
+        "Quadrupole": make_track_a_quadrupole(lib),
+    }
+
+
+class Lattice(nn.Module):
+    def __init__(self, elements, lib):
+        super(Lattice, self).__init__()
+        functions = make_functions(lib)
+        self.elements = elements
+        self.tracking_functions = [functions[type(ele).__name__] for ele in elements]
+        self.register_buffer("n_elements", torch.tensor(len(elements)))
+
+    def forward(self, p_in):
+        all_p = [None] * (self.n_elements + 1)
+        all_p[0] = p_in
+
+        for i in range(self.n_elements):
+            all_p[i + 1] = self.tracking_functions[i](all_p[i], self.elements[i])
+
+        return all_p
 
 
 def track_a_lattice(p_in, lattice):

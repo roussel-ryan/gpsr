@@ -1,4 +1,4 @@
-n_particle: 1000
+n_particle: 100000
 output:
   file: rad.gaussian.out.txt
   type: gpt

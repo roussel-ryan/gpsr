@@ -9,9 +9,7 @@ from track import Quadrupole, Drift, track_a_lattice
 
 
 def track_in_quad(beam, lattice):
-    start = time.time()
     result = track_a_lattice(beam, lattice)[-1]
-    print(f"tracking time: {(time.time() - start)*1e3:.2f} ms")
     return result
 
 
@@ -25,28 +23,18 @@ def final_beam_histogram(beam, k, bins, bandwidth):
     return histogram2d(p_out.x.unsqueeze(0), p_out.y.unsqueeze(0), bins, bandwidth)[0]
 
 
-def get_output_beams(beam, k_in):
-    output_beams = []
-    for ele in k_in:
-        quad = Quadrupole(torch.tensor(0.1).to(ele), K1=ele)
-        drift = Drift(L=torch.tensor(1.0).to(ele))
-        lattice = [quad, drift]
-        output_beams.append(track_in_quad(beam, lattice))
-    return output_beams
-
-
 def get_images(output_beams, bins, bandwidth):
     # get beam images
-    x = torch.cat([output_beam.x.unsqueeze(0) for output_beam in output_beams])
-    y = torch.cat([output_beam.y.unsqueeze(0) for output_beam in output_beams])
+    x = output_beams.x
+    y = output_beams.y
 
     images = histogram2d(x, y, bins, bandwidth)
     return images
 
 
 def get_mean_position(beams):
-    x = torch.cat([output_beam.x.unsqueeze(0) for output_beam in beams])
-    y = torch.cat([output_beam.y.unsqueeze(0) for output_beam in beams])
+    x = beams.x
+    y = beams.y
 
     mean_x = torch.mean(x, dim=-1)
     mean_y = torch.mean(y, dim=-1)
@@ -61,25 +49,22 @@ def zero_centroid_loss(beam):
     return torch.sum(coords.mean().pow(2))
 
 
-def image_difference_loss(test_beam, true_beam_images, k_in, bins, bandwidth,
+def image_difference_loss(test_beam, true_beam_images, lattice, bins, bandwidth,
                           plot_images=False):
-    test_output_beams = get_output_beams(test_beam, k_in)
-
-    # calculate total centroid deviation at the start and end of the beamline
-
+    test_output_beams = lattice(test_beam)[-1]
     beam1_images = get_images(test_output_beams, bins, bandwidth)
 
     loss = MSELoss(reduction="sum")
 
     if plot_images:
         # plot the first 5 images
-        n_images = min(5, len(k_in))
+        n_images = 5
         fig, ax = plt.subplots(n_images, 2, sharex="all", sharey="all")
         fig.set_size_inches(8, 8)
-        xx = torch.meshgrid(bins, bins)
+        xx = torch.meshgrid(bins.cpu(), bins.cpu())
         for i in range(n_images):
-            ax[i, 0].pcolor(*xx, beam1_images[i].detach())
-            ax[i, 1].pcolor(*xx, true_beam_images[i].detach())
+            ax[i, 0].pcolor(*xx, beam1_images[i].cpu().detach())
+            ax[i, 1].pcolor(*xx, true_beam_images[i].cpu().detach())
 
         # add titles
         ax[0, 0].set_title("Model prediction")
@@ -102,6 +87,10 @@ class NonparametricTransform(torch.nn.Module):
 
         self.linear_tanh_stack = torch.nn.Sequential(
             torch.nn.Linear(6, width),
+            torch.nn.Tanh(),
+            torch.nn.Linear(width, width),
+            torch.nn.Tanh(),
+            torch.nn.Linear(width, width),
             torch.nn.Tanh(),
             torch.nn.Linear(width, 6),
         )
