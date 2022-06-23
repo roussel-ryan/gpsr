@@ -21,6 +21,13 @@ ycos = {
     "phase": {"value": 90, "units": "deg"}
 }
 
+pycos = {
+    "type": "cosine y:py",
+    "amplitude": {"value": 0.005, "units": "MeV/c"},
+    "omega": {"value": k.magnitude, "units": str(k.units)},
+    "phase": {"value": 90, "units": "deg"}
+}
+
 twiss_x = {
     'type': 'set_twiss x',
     'beta': {'value': 10, 'units': 'm', },
@@ -40,8 +47,9 @@ particles_2 = gen.particles
 
 gen.input["transforms"] = {
     "twiss": twiss_x,
-    "cosy": ycos,
-    "order": ["twiss", "cosy"],
+    "ycos": ycos,
+    "pycos": pycos,
+    "order": ["twiss", "ycos", "pycos"],
 }
 gen.run()
 particles_3 = gen.particles
@@ -49,7 +57,10 @@ particles_3 = gen.particles
 particles = particles_1 + particles_2 + particles_3
 
 particles.plot("x", "px")
+particles.plot("y", "py")
 particles.plot("x", "y")
+
+plt.show()
 
 import torch
 
@@ -132,8 +143,6 @@ from normalizing_flow import (
 optim = torch.optim.Adam(tnf.parameters(), lr=0.01)
 n_iter = 5000
 losses = []
-image_difference_losses = []
-beam_position_losses = []
 
 start = time.time()
 for i in range(n_iter):

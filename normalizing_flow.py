@@ -29,6 +29,7 @@ def get_images(output_beams, bins, bandwidth):
     y = output_beams.y
 
     images = histogram2d(x, y, bins, bandwidth)
+
     return images
 
 
@@ -50,7 +51,7 @@ def zero_centroid_loss(beam):
 
 
 def image_difference_loss(test_beam, true_beam_images, lattice, bins, bandwidth,
-                          plot_images=False):
+                          plot_images=False, n_images=5):
     test_output_beams = lattice(test_beam)[-1]
     beam1_images = get_images(test_output_beams, bins, bandwidth)
 
@@ -58,17 +59,28 @@ def image_difference_loss(test_beam, true_beam_images, lattice, bins, bandwidth,
 
     if plot_images:
         # plot the first 5 images
-        n_images = 5
         fig, ax = plt.subplots(n_images, 2, sharex="all", sharey="all")
         fig.set_size_inches(8, 8)
         xx = torch.meshgrid(bins.cpu(), bins.cpu())
+
+        vmax = torch.max(true_beam_images)
+        vmin = 0
+
         for i in range(n_images):
-            ax[i, 0].pcolor(*xx, beam1_images[i].cpu().detach())
-            ax[i, 1].pcolor(*xx, true_beam_images[i].cpu().detach())
+            ax[i, 0].pcolor(*xx, beam1_images[i].cpu().detach(), vmin=vmin, vmax=vmax)
+            ax[i, 1].pcolor(*xx, true_beam_images[i].cpu().detach(), vmin=vmin, vmax=vmax)
+
+            print(torch.max(beam1_images[i].cpu().detach()))
+            print(torch.max(true_beam_images[i].cpu().detach()))
 
         # add titles
         ax[0, 0].set_title("Model prediction")
         ax[0, 1].set_title("Ground truth")
+        ax[-1, 0].set_xlabel("x (m)")
+        ax[-1, 1].set_xlabel("x (m)")
+
+        for i in range(n_images):
+            ax[i, 0].set_ylabel("y (m)")
 
     return loss(beam1_images, true_beam_images)
 
@@ -87,6 +99,8 @@ class NonparametricTransform(torch.nn.Module):
 
         self.linear_tanh_stack = torch.nn.Sequential(
             torch.nn.Linear(6, width),
+            torch.nn.Tanh(),
+            torch.nn.Linear(width, width),
             torch.nn.Tanh(),
             torch.nn.Linear(width, width),
             torch.nn.Tanh(),
