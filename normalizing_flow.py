@@ -89,29 +89,3 @@ def beam_position_loss(beam):
     return torch.mean(beam.x) ** 2 + torch.mean(beam.y) ** 2 + torch.mean(beam.z) ** 2
 
 
-class NonparametricTransform(torch.nn.Module):
-    def __init__(self):
-        """
-        Nonparametric transformation - NN
-        """
-        super(NonparametricTransform, self).__init__()
-        width = 200
-
-        self.linear_tanh_stack = torch.nn.Sequential(
-            torch.nn.Linear(6, width),
-            torch.nn.Tanh(),
-            torch.nn.Linear(width, width),
-            torch.nn.Tanh(),
-            torch.nn.Linear(width, width),
-            torch.nn.Tanh(),
-            torch.nn.Linear(width, width),
-            torch.nn.Tanh(),
-            torch.nn.Linear(width, 6),
-        )
-
-    def forward(self, X):
-        # scale inputs
-        X = X * 1e3
-        X = self.linear_tanh_stack(X)
-
-        return X * 1e-3
