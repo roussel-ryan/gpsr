@@ -34,11 +34,6 @@ def marginal_pdf(
     if not isinstance(sigma, torch.Tensor):
         raise TypeError(f"Input sigma type is not a torch.Tensor. Got {type(sigma)}")
 
-    if not values.dim() == 3:
-        raise ValueError(
-            "Input values must be a of the shape BxNx1." " Got {}".format(values.shape)
-        )
-
     if not bins.dim() == 1:
         raise ValueError(
             "Input bins must be a of the shape NUM_BINS" " Got {}".format(bins.shape)
@@ -49,11 +44,11 @@ def marginal_pdf(
             "Input sigma must be a of the shape 1" " Got {}".format(sigma.shape)
         )
 
-    residuals = values - bins.unsqueeze(0).unsqueeze(0)
+    residuals = values - bins.repeat(*values.shape)
     kernel_values = torch.exp(-0.5 * (residuals / sigma).pow(2))
 
-    pdf = torch.mean(kernel_values, dim=1)
-    normalization = torch.sum(pdf, dim=1).unsqueeze(1) + epsilon
+    pdf = torch.mean(kernel_values, dim=-2)
+    normalization = torch.sum(pdf, dim=-1).unsqueeze(-1) + epsilon
     pdf = pdf / normalization
 
     return pdf, kernel_values
@@ -84,26 +79,16 @@ def joint_pdf(
             f"Input kernel_values2 type is not a torch.Tensor. Got {type(kernel_values2)}"
         )
 
-    if not kernel_values1.dim() == 3:
-        raise ValueError(
-            "Input kernel_values1 must be a of the shape BxN."
-            " Got {}".format(kernel_values1.shape)
-        )
-
-    if not kernel_values2.dim() == 3:
-        raise ValueError(
-            "Input kernel_values2 must be a of the shape BxN."
-            " Got {}".format(kernel_values2.shape)
-        )
-
     if kernel_values1.shape != kernel_values2.shape:
         raise ValueError(
             "Inputs kernel_values1 and kernel_values2 must have the same shape."
             " Got {} and {}".format(kernel_values1.shape, kernel_values2.shape)
         )
 
-    joint_kernel_values = torch.matmul(kernel_values1.transpose(1, 2), kernel_values2)
-    normalization = torch.sum(joint_kernel_values, dim=(1, 2)).view(-1, 1, 1) + epsilon
+    joint_kernel_values = torch.matmul(kernel_values1.transpose(-2, -1), kernel_values2)
+    normalization = torch.sum(
+        joint_kernel_values, dim=(-2, -1)
+    ).unsqueeze(-1).unsqueeze(-1) + epsilon
     pdf = joint_kernel_values / normalization
 
     return pdf
@@ -168,8 +153,8 @@ def histogram2d(
         torch.Size([2, 128, 128])
     """
 
-    _, kernel_values1 = marginal_pdf(x1.unsqueeze(2), bins, bandwidth, epsilon)
-    _, kernel_values2 = marginal_pdf(x2.unsqueeze(2), bins, bandwidth, epsilon)
+    _, kernel_values1 = marginal_pdf(x1.unsqueeze(-1), bins, bandwidth, epsilon)
+    _, kernel_values2 = marginal_pdf(x2.unsqueeze(-1), bins, bandwidth, epsilon)
 
     pdf = joint_pdf(kernel_values1, kernel_values2)
 

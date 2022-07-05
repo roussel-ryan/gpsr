@@ -6,6 +6,16 @@ from torch.distributions import MultivariateNormal, Uniform
 from tqdm import trange
 from track import Particle
 
+class Beam(torch.nn.Module):
+    def __init__(self, input, **kwargs):
+        super(Beam, self).__init__()
+        keys = ["x", "px", "y", "py", "z", "pz"]
+
+        for i, key in enumerate(keys):
+            self.register_buffer(key, input[..., i])
+
+        for name, val in kwargs.items():
+            self.register_buffer(name, val)
 
 class NonparametricTransform(torch.nn.Module):
     def __init__(self):
