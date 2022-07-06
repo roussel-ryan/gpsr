@@ -35,7 +35,7 @@ images = histogram2d(
 
 train_images = images
 # create models
-n_models = 5
+n_models = 100
 models = []
 
 # add everything to the gpu w/correct type
@@ -46,24 +46,31 @@ train_images = train_images.cuda()
 for name, val in defaults.items():
     defaults[name] = val.to(**tkwargs)
 
+
+def init_weights(m):
+    if isinstance(m, torch.nn.Linear):
+        torch.nn.init.xavier_uniform_(m.weight, gain=20.0)
+        #torch.nn.init.xavier_uniform_(m.bias, gain=1.0)
+
+
 for _ in range(n_models):
-    models += [
-        ImagingModel(
-            NonparametricTransform(),
-            bins=bins,
-            bandwidth=bandwidth,
-            n_particles=10000,
-            defaults=defaults,
-            n_samples=5
-        )
-    ]
+    m = ImagingModel(
+        NonparametricTransform(),
+        bins=bins,
+        bandwidth=bandwidth,
+        n_particles=10000,
+        defaults=defaults,
+        n_samples=5
+    )
+    m.apply(init_weights)
+    models += [m]
 
 initial_guess_beams = [model.get_initial_beam(100000) for model in models]
 
 # if needed train the models
 fname = "checkpoint.pt"
 models = torch.nn.ModuleList(models)
-if 0:
+if 1:
     fig, ax = plt.subplots()
     for m in models:
         m.cuda()
@@ -73,7 +80,7 @@ if 0:
             m,
             train_lattice=train_lattice,
             train_images=train_images,
-            n_iter=1000,
+            n_iter=100,
             lr=0.1,
         )
         m.cpu()
@@ -98,8 +105,8 @@ fig, ax = plt.subplots(len(keys), 1)
 gt_beams = ground_truth_input_beams.to_list_of_beams()
 
 for i, val in enumerate(keys):
-    add_projection(ax[i], val, predicted_reconstruction, bins=bins/2)
-    #add_projection(ax[i], val, initial_guess_beams, bins=bins/2)
-    add_projection(ax[i], val, gt_beams, bins=bins/2)
+    add_projection(ax[i], val, predicted_reconstruction, bins=bins / 2)
+    # add_projection(ax[i], val, initial_guess_beams, bins=bins/2)
+    add_projection(ax[i], val, gt_beams, bins=bins / 2)
 
 plt.show()

@@ -23,7 +23,7 @@ pz_dist:
     units: MeV/c
     value: 1.0
   sigma_pz:
-    units: MeV/c
+    units: keV/c
     value: 0.001
   type: gaussian
 start:
