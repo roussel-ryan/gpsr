@@ -6,16 +6,6 @@ from torch.distributions import MultivariateNormal, Uniform
 from tqdm import trange
 from track import Particle
 
-class Beam(torch.nn.Module):
-    def __init__(self, input, **kwargs):
-        super(Beam, self).__init__()
-        keys = ["x", "px", "y", "py", "z", "pz"]
-
-        for i, key in enumerate(keys):
-            self.register_buffer(key, input[..., i])
-
-        for name, val in kwargs.items():
-            self.register_buffer(name, val)
 
 class NonparametricTransform(torch.nn.Module):
     def __init__(self):
@@ -44,11 +34,12 @@ class NonparametricTransform(torch.nn.Module):
 
 
 class ImagingModel(nn.Module):
-    def __init__(self, transformer, bins, bandwidth, n_particles, defaults):
+    def __init__(self, transformer, bins, bandwidth, n_particles, defaults, n_samples):
         super(ImagingModel, self).__init__()
         self.register_buffer("bins", bins)
         self.register_buffer("bandwidth", bandwidth)
-        self.register_buffer("n_particles", n_particles)
+        self.register_buffer("n_particles", torch.tensor(n_particles))
+        self.register_buffer("n_samples", torch.tensor(n_samples))
 
         for name, val in defaults.items():
             self.register_buffer(name, val)
@@ -65,7 +56,9 @@ class ImagingModel(nn.Module):
 
         # propagate beam
         output_beams = lattice(guess_dist)[-1]
-        images = histogram2d(output_beams.x, output_beams.y, self.bins, self.bandwidth)
+        images = histogram2d(
+            output_beams.x, output_beams.y, self.bins, self.bandwidth
+        ).repeat(1, self.n_samples,1,1)
 
         return images
 

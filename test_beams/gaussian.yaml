@@ -7,7 +7,7 @@ r_dist:
     units: mm
     value: 10
   type: radial_gaussian
-random_type: hammersley
+random_type: pseudo
 px_dist:
   sigma_px:
     units: MeV/c
@@ -24,7 +24,7 @@ pz_dist:
     value: 1.0
   sigma_pz:
     units: MeV/c
-    value: 0.00001
+    value: 0.001
   type: gaussian
 start:
   tstart:
