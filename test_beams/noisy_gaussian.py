@@ -1,15 +1,10 @@
-import time
-
-import numpy as np
 import torch
 from distgen import Generator
 
 # create beam
-from distgen.physical_constants import unit_registry as unit
 from torch_track import Beam
 
 # add a transformation to gen
-from track import Particle
 
 
 def generate_beam(

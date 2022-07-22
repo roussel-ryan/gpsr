@@ -5,7 +5,7 @@ output:
 r_dist:
   sigma_xy:
     units: mm
-    value: 10
+    value: 5
   type: radial_gaussian
 random_type: pseudo
 px_dist:
@@ -16,12 +16,12 @@ px_dist:
 py_dist:
   sigma_py:
     units: MeV/c
-    value: 0.001
+    value: 0.02
   type: gaussian
 pz_dist:
   avg_pz:
     units: MeV/c
-    value: 1.0
+    value: 10.0
   sigma_pz:
     units: keV/c
     value: 0.001
