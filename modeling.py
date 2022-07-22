@@ -1,28 +1,30 @@
+import matplotlib.pyplot as plt
 import torch
 
 from histogram import histogram2d
 from torch import nn
-from torch.distributions import MultivariateNormal, Uniform
 from tqdm import trange
 from track import Particle
+from torch_track import TorchQuad, TorchDrift, Beam
 
 
 class NonparametricTransform(torch.nn.Module):
-    def __init__(self):
+    def __init__(self, n_hidden, width):
         """
         Nonparametric transformation - NN
         """
         super(NonparametricTransform, self).__init__()
-        width = 100
+
+        layer_sequence = [torch.nn.Linear(6, width), torch.nn.Tanh()]
+
+        for _ in range(n_hidden):
+            layer_sequence.append(torch.nn.Linear(width, width))
+            layer_sequence.append(torch.nn.Tanh())
+
+        layer_sequence.append(torch.nn.Linear(width, 6))
 
         self.linear_tanh_stack = torch.nn.Sequential(
-            torch.nn.Linear(6, width),
-            torch.nn.Tanh(),
-            torch.nn.Linear(width, width),
-            torch.nn.Tanh(),
-            torch.nn.Linear(width, width),
-            torch.nn.Tanh(),
-            torch.nn.Linear(width, 6),
+            *layer_sequence
         )
 
     def forward(self, X):
@@ -33,75 +35,49 @@ class NonparametricTransform(torch.nn.Module):
         return X * 1e-3
 
 
-class ImagingModel(nn.Module):
-    def __init__(self, transformer, bins, bandwidth, n_particles, defaults, n_samples):
-        super(ImagingModel, self).__init__()
+class Imager(torch.nn.Module):
+    def __init__(self, bins, bandwidth):
+        super(Imager, self).__init__()
         self.register_buffer("bins", bins)
         self.register_buffer("bandwidth", bandwidth)
-        self.register_buffer("n_particles", torch.tensor(n_particles))
-        self.register_buffer("n_samples", torch.tensor(n_samples))
 
-        for name, val in defaults.items():
-            self.register_buffer(name, val)
-
-        self.transformer = transformer
-
-        self.register_buffer(
-            "normal_samples", self.generate_normal_distribution(self.n_particles)
-        )
-
-    def forward(self, lattice):
-        # calculate the initial distribution
-        guess_dist = self.get_initial_beam()
-
-        # propagate beam
-        output_beams = lattice(guess_dist)[-1]
-        images = histogram2d(
-            output_beams.x, output_beams.y, self.bins, self.bandwidth
-        ).repeat(1, self.n_samples,1,1)
-
-        return images
-
-    def get_initial_beam(self, n=-1):
-        if n < 0:
-            return Particle(*self.transformer(self.normal_samples).T, **self.defaults)
-        else:
-            return Particle(
-                *self.transformer(self.generate_normal_distribution(n)).T,
-                **self.defaults
-            )
-
-    def generate_normal_distribution(self, n):
-        # create normalized distribution
-        #normal_dist = Uniform(
-        #    -torch.ones(6), torch.ones(6)
-        #)
-        normal_dist = MultivariateNormal(torch.zeros(6), torch.eye(6))
-        return normal_dist.sample([n]).to(**self.tkwargs())
-
-    def tkwargs(self):
-        return {
-            "device": next(self.parameters()).device,
-            "dtype": next(self.parameters()).dtype,
-        }
-
-    @property
-    def defaults(self):
-        return {"s": self.s, "p0c": self.p0c, "mc2": self.mc2}
+    def forward(self, X):
+        return histogram2d(X[0], X[1], self.bins, self.bandwidth)
 
 
-def train(model, train_lattice, train_images, n_iter, lr=0.001):
-    optim = torch.optim.Adam(model.parameters(), lr=lr)
-    losses = []
+class InitialBeam(torch.nn.Module):
+    def __init__(self, n, n_hidden=2, width=100, **kwargs):
+        super(InitialBeam, self).__init__()
+        self.transformer = NonparametricTransform(n_hidden, width)
+        self.n = n
+        self.kwargs = kwargs
+        dist = torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6))
+        base_distribution_samples = dist.sample([n])
 
-    for _ in trange(n_iter):
-        optim.zero_grad(set_to_none=True)
-        loss_function = nn.MSELoss(reduction="sum")
-        loss = loss_function(model(train_lattice), train_images)
+        self.register_buffer("base_distribution_samples", base_distribution_samples)
 
-        losses += [loss.cpu().detach()]
-        loss.backward()
 
-        optim.step()
+    def forward(self, X=None):
+        if X is None:
+            X = self.base_distribution_samples
 
-    return losses
+        tX = self.transformer(X)
+        return Beam(tX, **self.kwargs)
+
+
+
+class QuadScanTransport(torch.nn.Module):
+    def __init__(self, quad_thick, drift):
+        super(QuadScanTransport, self).__init__()
+        # AWA
+        #self.quad = TorchQuad(torch.tensor(0.12), K1=torch.tensor(0.0))
+        #self.drift = TorchDrift(torch.tensor(2.84 + 0.54))
+
+        self.quad = TorchQuad(quad_thick, K1=torch.tensor(0.0))
+        self.drift = TorchDrift(drift)
+
+    def forward(self, X, K1):
+        self.quad.K1 = K1.unsqueeze(-1)
+        X = self.quad(X)
+        X = self.drift(X)
+        return X

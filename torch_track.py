@@ -39,11 +39,11 @@ class TorchQuad(Module):
     ):
         super(TorchQuad, self).__init__()
         self.register_parameter("L", Parameter(L, requires_grad=False))
-        self.register_parameter("K1", Parameter(K1, requires_grad=False))
         self.register_parameter("X_OFFSET", Parameter(X_OFFSET, requires_grad=False))
         self.register_parameter("Y_OFFSET", Parameter(Y_OFFSET, requires_grad=False))
         self.register_buffer("NUM_STEPS", torch.tensor(NUM_STEPS))
 
+        self.K1 = K1
         self.track = make_track_a_quadrupole(torch)
 
     def forward(self, X):
@@ -65,19 +65,27 @@ class TorchDrift(Module):
         return self.track(X, self)
 
 
-class Lattice(Module):
-    def __init__(self, elements):
-        super(Lattice, self).__init__()
+class TorchLattice(Module):
+    def __init__(self, elements, only_last=True):
+        super(TorchLattice, self).__init__()
         self.elements = ModuleList(elements)
+        self.only_last = only_last
 
     def forward(self, p_in):
-        all_p = [None] * (self.n_elements + 1)
-        all_p[0] = p_in
+        if self.only_last:
+            p = p_in
+            for i in range(self.n_elements):
+                p = self.elements[i](p)
 
-        for i in range(self.n_elements):
-            all_p[i + 1] = self.elements[i](all_p[i])
+            return p
+        else:
+            all_p = [None] * (self.n_elements + 1)
+            all_p[0] = p_in
 
-        return all_p
+            for i in range(self.n_elements):
+                all_p[i + 1] = self.elements[i](all_p[i])
+
+            return all_p
 
     @property
     def n_elements(self):
