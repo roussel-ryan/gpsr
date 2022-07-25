@@ -1,7 +1,7 @@
 import torch
 from torch import Tensor
 from torch.nn import Module, Parameter, ModuleList
-
+from utils import get_slopes
 from track import make_track_a_quadrupole, make_track_a_drift, Particle
 
 
@@ -9,13 +9,14 @@ class Beam(torch.nn.Module):
     def __init__(self, data, **kwargs):
         super(Beam, self).__init__()
         self.keys = ["x", "px", "y", "py", "z", "pz"]
+        self.data = data
 
         for i, key in enumerate(self.keys):
             self.register_buffer(key, data[..., i])
 
         for name, val in kwargs.items():
             self.register_buffer(name, val)
-        self._defaults = {"s": self.s, "p0c":self.p0c, "mc2":self.mc2}
+        self._defaults = {"s": self.s, "p0c": self.p0c, "mc2": self.mc2}
 
     def to_list_of_beams(self):
         beams = []
@@ -25,6 +26,15 @@ class Beam(torch.nn.Module):
             ], **self._defaults)]
 
         return beams
+
+    @property
+    def xp(self):
+        return get_slopes(self.px, self.py, self.pz)[0]
+
+    @property
+    def yp(self):
+        return get_slopes(self.px, self.py, self.pz)[1]
+
 
 
 class TorchQuad(Module):

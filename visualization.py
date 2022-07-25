@@ -172,7 +172,7 @@ def plot_log_likelihood(x, y, true_beam, model_beams, bins):
     fig.colorbar(c, ax=ax[-1])
 
 
-def add_projection(ax, key, beams, bins):
+def add_projection(ax, key, beams, bins, scale_axis=1):
     histograms = []
     for ele in beams:
         histograms += [
@@ -187,13 +187,13 @@ def add_projection(ax, key, beams, bins):
     l = np.quantile(histograms, 0.05, axis=0)
     u = np.quantile(histograms, 0.95, axis=0)
 
-    ax.plot(bins[:-1].cpu(), means, label=key)
-    ax.fill_between(bins[:-1].cpu(), l, u, alpha=0.5)
+    ax.plot(bins[:-1].cpu()*scale_axis, means, label=key)
+    ax.fill_between(bins[:-1].cpu()*scale_axis, l, u, alpha=0.5)
 
     return ax
 
 
-def add_image(ax, key1, key2, beams, bins):
+def add_image(ax, key1, key2, beams, bins, scale_axis=1):
     histograms = []
     xx = np.meshgrid(bins.cpu(), bins.cpu())
 
@@ -213,9 +213,9 @@ def add_image(ax, key1, key2, beams, bins):
     l = np.quantile(histograms, 0.05, axis=0)
     u = np.quantile(histograms, 0.95, axis=0)
 
-    ax.pcolor(*xx, means)
+    ax.pcolor(xx[0]*scale_axis,xx[1]*scale_axis, means)
 
-    return ax
+    return ax, means
 
 
 def plot_reconstructed_phase_space_projections(x, true_beam, model_beams, bins):
