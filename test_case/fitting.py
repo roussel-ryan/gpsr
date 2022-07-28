@@ -1,11 +1,11 @@
 from copy import deepcopy
 
 import torch
-from torch.nn.functional import mse_loss, kl_div
+
+from modeling import Imager, InitialBeam, InitialBeam2, QuadScanTransport
+from torch.nn.functional import kl_div, mse_loss
 from torch.utils.data import DataLoader, Dataset, random_split
 from torchensemble import VotingRegressor
-
-from modeling import Imager, InitialBeam, QuadScanTransport, InitialBeam2
 
 all_k = torch.load("kappa.pt")
 all_images = torch.load("images.pt").unsqueeze(1)
@@ -69,8 +69,13 @@ class QuadScanModel(torch.nn.Module):
 
 class CustomLoss(torch.nn.MSELoss):
     def forward(self, input, target):
-        image_loss = mse_loss(input[0], target, reduction="sum")
-        return image_loss + 1.0 * input[1]
+        # image_loss = mse_loss(input[0], target, reduction="sum")
+        # return image_loss + 1.0 * input[1]
+        eps = 1e-8
+        image_loss = torch.sum(
+            target * ((target + eps).log() - (input[0] + eps).log())
+        )
+        return image_loss + 50.0 * input[1]
 
 
 train_dset, test_dset = random_split(ImageDataset(all_k, all_images), [16, 4])
@@ -104,6 +109,6 @@ ensemble = VotingRegressor(
 criterion = CustomLoss()
 ensemble.set_criterion(criterion)
 
-ensemble.set_optimizer("Adam", lr=0.01)
+ensemble.set_optimizer("Adam", lr=0.01, weight_decay=1e-3)
 
 ensemble.fit(train_dataloader, epochs=200)

@@ -106,7 +106,7 @@ def generate_test_images():
 
     n_images = 20
     k_in = torch.linspace(-10, 10, n_images, **tkwargs).unsqueeze(1)
-    bins = torch.linspace(-50, 50, 150, **tkwargs) * 1e-3
+    bins = torch.linspace(-25, 25, 150, **tkwargs) * 1e-3
 
     # do tracking
     quad = TorchQuad(torch.tensor(0.1), K1=k_in)
