@@ -36,7 +36,6 @@ class Beam(torch.nn.Module):
         return get_slopes(self.px, self.py, self.pz)[1]
 
 
-
 class TorchQuad(Module):
 
     def __init__(

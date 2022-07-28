@@ -66,6 +66,25 @@ class InitialBeam(torch.nn.Module):
 
 
 
+class InitialBeam2(torch.nn.Module):
+    def __init__(self, n, n_hidden=2, width=100, **kwargs):
+        super(InitialBeam2, self).__init__()
+        self.n = n
+        self.kwargs = kwargs
+        dist = torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6))
+        base_distribution_samples = dist.sample([n])
+
+        self.register_parameter(
+            "base_distribution_samples",
+            torch.nn.Parameter(base_distribution_samples)
+        )
+
+
+    def forward(self, X=None):
+        X = self.base_distribution_samples*1e-2
+        return Beam(X, **self.kwargs)
+
+
 class QuadScanTransport(torch.nn.Module):
     def __init__(self, quad_thick, drift):
         super(QuadScanTransport, self).__init__()
@@ -73,7 +92,7 @@ class QuadScanTransport(torch.nn.Module):
         #self.quad = TorchQuad(torch.tensor(0.12), K1=torch.tensor(0.0))
         #self.drift = TorchDrift(torch.tensor(2.84 + 0.54))
 
-        self.quad = TorchQuad(quad_thick, K1=torch.tensor(0.0))
+        self.quad = TorchQuad(quad_thick, K1=torch.tensor(0.0),NUM_STEPS=1)
         self.drift = TorchDrift(drift)
 
     def forward(self, X, K1):

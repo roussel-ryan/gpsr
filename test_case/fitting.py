@@ -1,17 +1,11 @@
-import logging
 from copy import deepcopy
 
 import torch
-from matplotlib import pyplot as plt
-
-from modeling import Imager, InitialBeam, QuadScanTransport
-from torch.nn.functional import mse_loss
+from torch.nn.functional import mse_loss, kl_div
 from torch.utils.data import DataLoader, Dataset, random_split
-
 from torchensemble import VotingRegressor
-from tqdm import trange
 
-from visualization import compare_images
+from modeling import Imager, InitialBeam, QuadScanTransport, InitialBeam2
 
 all_k = torch.load("kappa.pt")
 all_images = torch.load("images.pt").unsqueeze(1)
@@ -29,7 +23,6 @@ print(all_images.shape)
 def init_weights(m):
     if isinstance(m, torch.nn.Linear):
         torch.nn.init.xavier_uniform_(m.weight, gain=1.0)
-        # torch.nn.init.xavier_uniform_(m.bias, gain=1.0)
 
 
 # create data loader
@@ -49,7 +42,6 @@ class QuadScanModel(torch.nn.Module):
     def __init__(self, initial_beam, transport, imager):
         super(QuadScanModel, self).__init__()
         self.beam_generator = deepcopy(initial_beam)
-        # self.beam_generator.apply(init_weights)
 
         self.lattice = transport
         self.imager = imager
@@ -78,7 +70,7 @@ class QuadScanModel(torch.nn.Module):
 class CustomLoss(torch.nn.MSELoss):
     def forward(self, input, target):
         image_loss = mse_loss(input[0], target, reduction="sum")
-        return image_loss + 1 * input[1]
+        return image_loss + 1.0 * input[1]
 
 
 train_dset, test_dset = random_split(ImageDataset(all_k, all_images), [16, 4])
@@ -104,7 +96,7 @@ module_kwargs = {
 
 
 ensemble = VotingRegressor(
-    estimator=QuadScanModel, estimator_args=module_kwargs, n_estimators=1, n_jobs=1
+    estimator=QuadScanModel, estimator_args=module_kwargs, n_estimators=5, n_jobs=1
 )
 
 
