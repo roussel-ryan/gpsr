@@ -29,7 +29,7 @@ class NonparametricTransform(torch.nn.Module):
 
     def forward(self, X):
         # scale inputs
-        X = X * 1e3
+        #X = X * 1e3
         X = self.linear_tanh_stack(X)
 
         return X * 1e-3
@@ -51,6 +51,7 @@ class InitialBeam(torch.nn.Module):
         self.transformer = NonparametricTransform(n_hidden, width)
         self.n = n
         self.kwargs = kwargs
+        #dist = torch.distributions.Uniform(-torch.ones(6), torch.ones(6))
         dist = torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6))
         base_distribution_samples = dist.sample([n])
 

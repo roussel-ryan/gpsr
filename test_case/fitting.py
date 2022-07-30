@@ -22,7 +22,7 @@ print(all_images.shape)
 
 def init_weights(m):
     if isinstance(m, torch.nn.Linear):
-        torch.nn.init.xavier_uniform_(m.weight, gain=1.0)
+        torch.nn.init.xavier_uniform_(m.weight, gain=5.0)
 
 
 # create data loader
@@ -58,24 +58,25 @@ class QuadScanModel(torch.nn.Module):
         # return output_images
 
         scalar_metric = 0
-        for key in ["x", "y", "z", "px", "py", "pz"]:
-            scalar_metric += (
-                torch.sum(getattr(output_beam, key) ** 2).sqrt()
-                / getattr(output_beam, key).shape[-1]
-            )
-
+        # calculate 6D emittance of input beam
+        # emit =
+        cov = torch.cov(initial_beam.data.T)
+        #scalar_metric = torch.norm(initial_beam.data, dim=1).pow(2).mean()
+        scalar_metric = cov.trace()
         return output_images, scalar_metric
+
+
+def det(A):
+    return A[0, 0] * A[1, 1] - A[1, 0] ** 2
 
 
 class CustomLoss(torch.nn.MSELoss):
     def forward(self, input, target):
-        # image_loss = mse_loss(input[0], target, reduction="sum")
+        #image_loss = mse_loss(input[0], target, reduction="sum")
         # return image_loss + 1.0 * input[1]
         eps = 1e-8
-        image_loss = torch.sum(
-            target * ((target + eps).log() - (input[0] + eps).log())
-        )
-        return image_loss + 50.0 * input[1]
+        image_loss = torch.sum(target * ((target + eps).log() - (input[0] + eps).log()))
+        return image_loss + 1.0e3 * input[1]
 
 
 train_dset, test_dset = random_split(ImageDataset(all_k, all_images), [16, 4])
@@ -94,21 +95,21 @@ defaults = {
 }
 
 module_kwargs = {
-    "initial_beam": InitialBeam(100000, n_hidden=2, width=200, **defaults),
+    "initial_beam": InitialBeam(100000, n_hidden=2, width=50, **defaults),
     "transport": QuadScanTransport(torch.tensor(0.1), torch.tensor(1.0)),
     "imager": Imager(bins, bandwidth),
 }
-
 
 ensemble = VotingRegressor(
     estimator=QuadScanModel, estimator_args=module_kwargs, n_estimators=5, n_jobs=1
 )
 
-
 # criterion = torch.nn.MSELoss(reduction="sum")
 criterion = CustomLoss()
 ensemble.set_criterion(criterion)
 
-ensemble.set_optimizer("Adam", lr=0.01, weight_decay=1e-3)
+n_epochs = 500
+ensemble.set_scheduler("CosineAnnealingLR", T_max=n_epochs)
+ensemble.set_optimizer("Adam", lr=0.1)#, weight_decay=0.1)
 
-ensemble.fit(train_dataloader, epochs=200)
+ensemble.fit(train_dataloader, epochs=n_epochs)
