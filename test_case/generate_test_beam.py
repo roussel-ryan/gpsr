@@ -3,13 +3,14 @@ from distgen import Generator
 from distgen.physical_constants import unit_registry as unit
 from matplotlib import pyplot as plt
 
+from histogram import histogram2d
 from torch_track import Beam, TorchDrift, TorchLattice, TorchQuad
 
 
 def generate_test_beam():
     setstdx = {"type": "set_std x", "sigma_x": {"value": 2, "units": "mm"}}
     setstdpx = {"type": "set_std px", "sigma_px": {"value": 0.01, "units": "MeV/c"}}
-    k = 2 * 3.14 / (15 * unit("mm"))
+    k = 2 * 3.14 / (20 * unit("mm"))
     ycos = {
         "type": "cosine x:y",
         "amplitude": {"value": 30, "units": "mm"},
@@ -124,9 +125,10 @@ def generate_test_images():
     # do histogramming
     images = []
     bins = bins.cpu()
+    bandwidth = torch.tensor(0.1e-3).cpu()
     for i in range(n_images):
-        hist, _ = torch.histogramdd(screen_data[i], bins=[bins] * 2, density=True)
-        images.append(hist / hist.sum())
+        hist = histogram2d(screen_data[i].T[0], screen_data[i].T[1], bins, bandwidth)
+        images.append(hist)
 
     images = torch.cat([ele.unsqueeze(0) for ele in images], dim=0)
 

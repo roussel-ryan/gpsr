@@ -11,8 +11,6 @@ all_k = torch.load("kappa.pt")
 all_images = torch.load("images.pt").unsqueeze(1)
 bins = torch.load("bins.pt")
 
-bins = (bins[:-1] + bins[1:]) / 2
-
 all_k = all_k.cuda()
 all_images = all_images.cuda()
 
@@ -95,21 +93,21 @@ defaults = {
 }
 
 module_kwargs = {
-    "initial_beam": InitialBeam(100000, n_hidden=2, width=50, **defaults),
+    "initial_beam": InitialBeam(100000, n_hidden=2, width=20, **defaults),
     "transport": QuadScanTransport(torch.tensor(0.1), torch.tensor(1.0)),
     "imager": Imager(bins, bandwidth),
 }
 
 ensemble = VotingRegressor(
-    estimator=QuadScanModel, estimator_args=module_kwargs, n_estimators=5, n_jobs=1
+    estimator=QuadScanModel, estimator_args=module_kwargs, n_estimators=1, n_jobs=1
 )
 
 # criterion = torch.nn.MSELoss(reduction="sum")
 criterion = CustomLoss()
 ensemble.set_criterion(criterion)
 
-n_epochs = 500
+n_epochs = 300
 ensemble.set_scheduler("CosineAnnealingLR", T_max=n_epochs)
-ensemble.set_optimizer("Adam", lr=0.1)#, weight_decay=0.1)
+ensemble.set_optimizer("Adam", lr=0.01, weight_decay=0.001)
 
 ensemble.fit(train_dataloader, epochs=n_epochs)
