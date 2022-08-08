@@ -1,18 +1,21 @@
 import logging
 
 import torch
+from matplotlib import pyplot as plt
 
 from modeling import Imager, InitialBeam, QuadScanTransport
 from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import trange
 
+from visualization import compare_images
+
 logging.basicConfig(level=logging.INFO)
 from image_processing import import_images
 
 location = (
-    "D:\\AWA\\phase_space_tomography_07_07_22" "\\Quadscan_data_matching_solenoid_180A"
+    "/global/homes/r/rroussel/phase_space_reconstruction/quad_scan_180A"
 )
-base_fname = location + "\\DQ7_scan1_"
+base_fname = location + "/DQ7_scan1_"
 
 # process_images(base_fname, 10)
 
@@ -56,6 +59,15 @@ class QuadScanModel(torch.nn.Module):
         output_images = self.imager(output_coords)
         return output_images
 
+def nvtx_range_push(name, enabled):
+    if enabled:
+        torch.cuda.synchronize()
+        torch.cuda.nvtx.range_push(name)
+
+def nvtx_range_pop(enabled):
+    if enabled:
+        torch.cuda.synchronize()
+        torch.cuda.nvtx.range_pop()
 
 train_dset, test_dset = random_split(ImageDataset(all_k, all_images), [17, 4])
 
@@ -83,37 +95,34 @@ if 1:
     max_epochs = 100
     optim = torch.optim.Adam(model.parameters(), lr=0.001)
     #losses = []
+    
+    enable_profiling = True
     for epoch in trange(max_epochs):
-        torch.cuda.nvtx.range_push("epoch")
-        with torch.autograd.profiler.emit_nvtx():
+        nvtx_range_push("epoch", enable_profiling)
+        with torch.autograd.profiler.emit_nvtx(enabled=enable_profiling):
             for _ in range(len(train_dataloader)):
                 optim.zero_grad()
-                torch.cuda.nvtx.range_push("step")
-                torch.cuda.nvtx.range_push("data")
+                nvtx_range_push("step", enable_profiling)
+                nvtx_range_push("data", enable_profiling)
                 local_k, local_im = next(iter(train_dataloader))
-                torch.cuda.nvtx.range_pop()
+                nvtx_range_pop(enable_profiling)
 
-                torch.cuda.nvtx.range_push("track")
+                nvtx_range_push("track", enable_profiling)
                 output_im = model(local_k)
-                torch.cuda.nvtx.range_pop()
+                nvtx_range_pop(enable_profiling)
 
                 loss = loss_function(output_im, local_im)
-                torch.cuda.nvtx.range_push("backprop")
+                nvtx_range_push("backward", enable_profiling)
                 loss.backward()
-                torch.cuda.nvtx.range_pop()
+                nvtx_range_pop(enable_profiling)
 
-                torch.cuda.nvtx.range_push("optim.step")
                 optim.step()
-                torch.cuda.nvtx.range_pop()
 
-                torch.cuda.synchronize()
-                torch.cuda.nvtx.range_pop()
+        nvtx_range_pop(enable_profiling)
 
                 #print(loss)
                 #losses += [loss.clone().cpu().detach()]
 
-        torch.cuda.synchronize()
-        torch.cuda.nvtx.range_pop()
 
     #fig, ax = plt.subplots()
     #ax.semilogy(losses)
