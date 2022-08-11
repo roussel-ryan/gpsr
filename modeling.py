@@ -36,13 +36,14 @@ class NonparametricTransform(torch.nn.Module):
         return X * 1e-2
 
 class InitialBeam(torch.nn.Module):
-    def __init__(self, n, transformer, **kwargs):
+    def __init__(self, n, transformer, base_dist, **kwargs):
         super(InitialBeam, self).__init__()
         self.transformer = transformer
         self.n = n
         self.kwargs = kwargs
         # dist = torch.distributions.Uniform(-torch.ones(6), torch.ones(6))
-        dist = torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6))
+        #dist = torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6))
+        dist = base_dist
         base_distribution_samples = dist.sample([n])
 
         self.register_buffer("base_distribution_samples", base_distribution_samples)
@@ -103,7 +104,7 @@ class QuadScanModel(torch.nn.Module):
 
 
 def beam_loss(out_beam, target_beam):
-    return torch.std(out_beam.data - target_beam * 1e-2)
+    return torch.std(out_beam.data - target_beam * 10e-3)
 
 
 def condition_initial_beam(initial_beam):
@@ -164,13 +165,13 @@ class InitialBeam2(torch.nn.Module):
 
 
 class QuadScanTransport(torch.nn.Module):
-    def __init__(self, quad_thick, drift):
+    def __init__(self, quad_thick, drift,quad_steps=1):
         super(QuadScanTransport, self).__init__()
         # AWA
         #self.quad = TorchQuad(torch.tensor(0.12), K1=torch.tensor(0.0))
         #self.drift = TorchDrift(torch.tensor(2.84 + 0.54))
 
-        self.quad = TorchQuad(quad_thick, K1=torch.tensor(0.0),NUM_STEPS=1)
+        self.quad = TorchQuad(quad_thick, K1=torch.tensor(0.0),NUM_STEPS=quad_steps)
         self.drift = TorchDrift(drift)
 
     def forward(self, X, K1):
