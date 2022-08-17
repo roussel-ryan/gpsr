@@ -3,28 +3,38 @@ import numpy as np
 import torch
 
 
-def add_image_projection(ax, image, xx, axis):
+def add_image_projection(ax, image, bins, axis, scale_x=1, c="r"):
     if axis == "x":
-        axb = ax.twinx()
-        proj = image.sum(dim=0)
-        proj = proj / proj.sum()
+        proj = image.sum(dim=-1)
+        proj = proj
+        
+        # get proj stats
+        mean_proj = torch.mean(proj, dim=0)
+        l = torch.quantile(proj, 0.05, dim=0)
+        u = torch.quantile(proj, 0.95, dim=0)
 
-        axb.plot(xx[0][0], proj, "r")
-        axb.set_ylim(0.0, 0.5)
-        axb.set_yticks([])
-        axb.set_xticks([])
+        ax.plot(bins*scale_x, mean_proj, c)
+        ax.fill_between(bins*scale_x, l, u, alpha=0.75,fc=c)
+        #axb.set_yticks([])
+        #axb.set_xticks([])
 
     elif axis == "y":
-        axb = ax.twiny()
-        proj = image.sum(dim=1)
-        proj = proj / proj.sum()
+        proj = image.sum(dim=-2)
+        proj = proj
+        
+        mean_proj = torch.mean(proj, dim=0)
+        l = torch.quantile(proj, 0.05, dim=0)
+        u = torch.quantile(proj, 0.95, dim=0)
 
-        axb.plot(proj, xx[1].T[0], "r")
-        axb.set_xlim(0.0, 0.5)
-        axb.set_yticks([])
-        axb.set_xticks([])
+        ax.plot(mean_proj,bins*scale_x, c)
+        ax.fill_betweenx(bins*scale_x, l, u, alpha=0.75,fc=c)
+
+        #axb.set_yticks([])
+        #axb.set_xticks([])
     else:
         raise RuntimeError()
+        
+    return ax
 
 
 def compare_images(xx, predicted_images, train_images):
@@ -172,7 +182,7 @@ def plot_log_likelihood(x, y, true_beam, model_beams, bins):
     fig.colorbar(c, ax=ax[-1])
 
 
-def add_projection(ax, key, beams, bins, scale_axis=1):
+def add_projection(ax, key, beams, bins, axis="x", x_scale=1, y_scale=1 ):
     histograms = []
     for ele in beams:
         histograms += [
@@ -183,26 +193,32 @@ def add_projection(ax, key, beams, bins, scale_axis=1):
 
     histograms = np.asfarray(histograms)
 
-    means = np.mean(histograms, axis=0)
-    l = np.quantile(histograms, 0.05, axis=0)
-    u = np.quantile(histograms, 0.95, axis=0)
+    means = np.mean(histograms, axis=0)*y_scale
+    l = np.quantile(histograms, 0.05, axis=0)*y_scale
+    u = np.quantile(histograms, 0.95, axis=0)*y_scale
 
-    ax.plot(bins[:-1].cpu()*scale_axis, means, label=key)
-    ax.fill_between(bins[:-1].cpu()*scale_axis, l, u, alpha=0.5)
-
+    if axis=="x":
+        ax.plot(bins[:-1].cpu()*x_scale, means, label=key)
+        ax.fill_between(bins[:-1].cpu()*x_scale, l, u, alpha=0.5)
+    elif axis=="y":
+        ax.plot(means, bins[:-1].cpu()*x_scale, label=key)
+        ax.fill_betweenx(bins[:-1].cpu()*x_scale, l, u, alpha=0.5)
+    else:
+        raise RuntimeError()
+        
     return ax
 
 
 def add_image(ax, key1, key2, beams, bins, scale_axis=1, vmax=None):
     histograms = []
-    xx = np.meshgrid(bins.cpu(), bins.cpu())
+    xx = np.meshgrid(bins[0], bins[1])
 
     for ele in beams:
         histograms += [
             np.histogram2d(
                 getattr(ele, key1).cpu().detach().numpy(),
                 getattr(ele, key2).cpu().detach().numpy(),
-                bins=bins.cpu(),
+                bins=bins,
                 density=True,
             )[0].T
         ]
