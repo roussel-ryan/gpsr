@@ -51,9 +51,10 @@ class CustomLoss(torch.nn.MSELoss):
 
 
 if __name__ == "__main__":
-    all_k = torch.load("../../test_case/kappa.pt")
-    all_images = torch.load("../../test_case/images.pt").unsqueeze(1)
-    bins = torch.load("../../test_case/bins.pt")
+    folder = "../../test_case_4/"
+    all_k = torch.load(folder + "kappa.pt")
+    all_images = torch.load(folder + "images.pt").unsqueeze(1)
+    bins = torch.load(folder + "bins.pt")
 
     #bins = (bins[:-1] + bins[1:]) / 2
 
@@ -88,7 +89,7 @@ if __name__ == "__main__":
     
     module_kwargs = {
         "initial_beam": InitialBeam(100000, transformer, base_dist, **defaults),
-        "transport": QuadScanTransport(torch.tensor(0.1), torch.tensor(1.0)),
+        "transport": QuadScanTransport(torch.tensor(0.1), torch.tensor(1.0), 5),
         "imager": Imager(bins, bandwidth),
         "condition": False
     }
