@@ -13,12 +13,6 @@ from modeling import Imager, QuadScanTransport, ImageDataset, \
 
 logging.basicConfig(level=logging.INFO)
 
-
-def init_weights(m):
-    if isinstance(m, torch.nn.Linear):
-        torch.nn.init.xavier_uniform_(m.weight, gain=5.0)
-
-
 def det(A):
     return A[0, 0] * A[1, 1] - A[1, 0] ** 2
 
@@ -41,13 +35,18 @@ class MaxEntropyQuadScan(QuadScanModel):
         return output_images, -scalar_metric.log()
 
 class CustomLoss(torch.nn.MSELoss):
+    def __init__(self):
+        super().__init__()
+        self.loss_record = []
+        
     def forward(self, input, target):
         # image_loss = mse_loss(input[0], target, reduction="sum")
         # return image_loss + 1.0 * input[1]
         eps = 1e-8
         image_loss = torch.sum(target * ((target + eps).log() - (input[0] + eps).log()))
-        #print(input[1])
-        return image_loss + 0.001*input[1]
+        entropy_loss = 0.001*input[1]
+        self.loss_record.append([image_loss.clone(), entropy_loss.clone()])
+        return image_loss + entropy_loss
 
 
 if __name__ == "__main__":
@@ -94,8 +93,9 @@ if __name__ == "__main__":
         "condition": False
     }
 
+    n_estimators = 5
     ensemble = VotingRegressor(
-        estimator=MaxEntropyQuadScan, estimator_args=module_kwargs, n_estimators=5
+        estimator=MaxEntropyQuadScan, estimator_args=module_kwargs, n_estimators=n_estimators
     )
 
     # criterion = torch.nn.MSELoss(reduction="sum")
@@ -105,10 +105,13 @@ if __name__ == "__main__":
     n_epochs = 200
     #ensemble.set_scheduler("CosineAnnealingLR", T_max=n_epochs)
     #ensemble.set_scheduler("StepLR", gamma=0.5, step_size=250, verbose=False)
-    ensemble.set_optimizer("Adam", lr=0.01, weight_decay=1e-5)
+    ensemble.set_optimizer("Adam", lr=0.01)
 
-    ensemble.fit(train_dataloader, epochs=n_epochs)#, test_loader=test_dataloader)#,
-    # lr_clip=[0.005,
-    # 0.01])
+    save_dir = "control"
+    ensemble.fit(train_dataloader, epochs=n_epochs, save_dir=save_dir)#, test_loader=test_dataloader)#,
+    torch.save(
+        torch.cat([torch.tensor(ele).unsqueeze(0) for ele in criterion.loss_record[::n_estimators]]),
+        save_dir + "/loss_record.pt",
+    )
 
 
