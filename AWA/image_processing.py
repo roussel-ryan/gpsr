@@ -20,6 +20,7 @@ def process_images(base_fname, n_samples=1, downsample=5, threshold_multiplier=1
     all_images = []
     all_charges = []
     for fname in fnames:
+        print(fname)
         w = 450
         images = []
         charges = []
@@ -57,8 +58,8 @@ def process_images(base_fname, n_samples=1, downsample=5, threshold_multiplier=1
     train_images = sorted_images[:, :n_samples]
 
     # apply filters and thresholding to training images
-    thresh = filters.threshold_triangle(train_images[0, 0])
-    t_images = np.where(train_images > thresh * threshold_multiplier, train_images, 0)
+    thresh = filters.threshold_triangle(train_images[0, 0]) * threshold_multiplier
+    t_images = np.clip(train_images - thresh, 0, None)
 
     def apply_filter(X):
         return ndimage.minimum_filter(X, size=3)
@@ -93,15 +94,14 @@ def process_images(base_fname, n_samples=1, downsample=5, threshold_multiplier=1
     px_coords = torch.arange(train_images.shape[-1]) - train_images.shape[-1] / 2
     real_coords = px_coords * 3.787493924766505e-05 * scale_factor
     xx = torch.meshgrid(real_coords, real_coords)
+    
 
-    torch.save(kappa, "kappa.pt")
-    torch.save(train_images, "train_images.pt")
-    torch.save(train_charges, "train_charges.pt")
+    torch.save(torch.tensor(kappa), "kappa.pt")
+    torch.save(torch.tensor(train_images), "train_images.pt")
+    torch.save(torch.tensor(train_charges), "train_charges.pt")
     torch.save(xx, "xx.pt")
 
 
 def import_images():
     return torch.load("kappa.pt"), torch.load("train_images.pt"), torch.load(
         "train_charges.pt"), torch.load("xx.pt")
-
-
