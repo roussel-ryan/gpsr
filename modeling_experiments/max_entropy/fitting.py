@@ -15,6 +15,10 @@ from modeling import Imager, QuadScanTransport, ImageDataset, \
 logging.basicConfig(level=logging.INFO)
 
 
+def init_weights(m):
+    if isinstance(m, torch.nn.Linear):
+        torch.nn.init.xavier_uniform_(m.weight, gain=1.0)
+
 class MaxEntropyQuadScan(QuadScanModel):
     def forward(self, K):
         initial_beam = self.beam_generator()
@@ -57,14 +61,15 @@ def create_ensemble(bins, bandwidth):
         "mc2": torch.tensor(0.511e6).float(),
     }
 
-    transformer = NonparametricTransform(2, 50, 0.0, torch.nn.Tanh())
+    transformer = NonparametricTransform(4, 50, 0.0, torch.nn.Tanh())
     base_dist = torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6))
     
     module_kwargs = {
         "initial_beam": InitialBeam(100000, transformer, base_dist, **defaults),
         "transport": QuadScanTransport(torch.tensor(0.1), torch.tensor(1.0), 5),
         "imager": Imager(bins, bandwidth),
-        "condition": False
+        "condition": False,
+        "init_weights": init_weights
     }
 
     ensemble = VotingRegressor(
