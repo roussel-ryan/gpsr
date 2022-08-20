@@ -31,7 +31,7 @@ class MaxEntropyQuadScan(QuadScanModel):
 
 def kl_div(target, pred):
     eps = 1e-8
-    return target * ((target + eps).log() - (pred + eps).log())
+    return target * torch.abs((target + eps).log() - (pred + eps).log())
     
 def log_squared_error(target, pred):
     eps = 1e-8
@@ -62,7 +62,7 @@ def create_ensemble(bins, bandwidth):
     
     module_kwargs = {
         "initial_beam": InitialBeam(100000, transformer, base_dist, **defaults),
-        "transport": QuadScanTransport(torch.tensor(0.12), torch.tensor(2.84 + 0.54), 1),
+        "transport": QuadScanTransport(torch.tensor(0.12), torch.tensor(2.84 + 0.54), 5),
         "imager": Imager(bins, bandwidth),
         "condition": False
     }
@@ -70,7 +70,7 @@ def create_ensemble(bins, bandwidth):
     ensemble = VotingRegressor(
         estimator=MaxEntropyQuadScan, 
         estimator_args=module_kwargs, 
-        n_estimators=2
+        n_estimators=5
     )
     return ensemble
 
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     bandwidth = bin_width/2
     ensemble = create_ensemble(bins, bandwidth)
     
-    alpha = 1e-4
+    alpha = 1e-0
     criterion = CustomLoss(alpha)
     ensemble.set_criterion(criterion)
 
@@ -114,5 +114,5 @@ if __name__ == "__main__":
     ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
     ensemble.set_optimizer("Adam", lr=0.001)
     
-    ensemble.fit(train_dataloader, epochs=n_epochs)
+    ensemble.fit(train_dataloader, epochs=n_epochs, save_dir="alpha_1_5")
 

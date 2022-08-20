@@ -135,10 +135,12 @@ def generate_test_images():
         plt.figure()
         plt.imshow(image)
 
+    xx = torch.meshgrid(bins, bins)
     # save image data
-    torch.save(images, "images.pt")
+    torch.save(images.unsqueeze(1), "train_images.pt")
     torch.save(k_in, "kappa.pt")
     torch.save(bins, "bins.pt")
+    torch.save(xx, "xx.pt")
 
 
 if __name__=="__main__":

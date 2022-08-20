@@ -1,6 +1,7 @@
 import logging
 
 import torch
+from torch.nn.functional import mse_loss
 from torch.utils.data import DataLoader, random_split, Subset
 from torchensemble import VotingRegressor, SnapshotEnsembleRegressor
 
@@ -13,8 +14,6 @@ from modeling import Imager, QuadScanTransport, ImageDataset, \
 
 logging.basicConfig(level=logging.INFO)
 
-def det(A):
-    return A[0, 0] * A[1, 1] - A[1, 0] ** 2
 
 class MaxEntropyQuadScan(QuadScanModel):
     def forward(self, K):
@@ -24,59 +23,34 @@ class MaxEntropyQuadScan(QuadScanModel):
             [output_beam.x.unsqueeze(0), output_beam.y.unsqueeze(0)]
         )
         output_images = self.imager(output_coords)
-        # return output_images
 
-        #scalar_metric = 0
-        # calculate 6D emittance of input beam
-        # emit =
-        cov = torch.cov(initial_beam.data.T)
-        #scalar_metric = torch.norm(initial_beam.data, dim=1).pow(2).mean()
-        scalar_metric = cov.det()
-        return output_images, -scalar_metric.log()
+        cov = torch.cov(initial_beam.data.T) + torch.eye(6, device = initial_beam.data.device)*1e-8
+        exp_factor = torch.det(2*3.14*2.71*cov)
 
+        return output_images, -0.5*torch.log(exp_factor)
+
+def kl_div(target, pred):
+    eps = 1e-8
+    return target * torch.abs((target + eps).log() - (pred + eps).log())
+    
+def log_squared_error(target, pred):
+    eps = 1e-8
+    return target * ((target + eps).log() - (pred + eps).log())**2
+    
 class CustomLoss(torch.nn.MSELoss):
-    def __init__(self):
+    def __init__(self, alpha):
         super().__init__()
         self.loss_record = []
+        self.alpha = alpha
         
-    def forward(self, input, target):
-        # image_loss = mse_loss(input[0], target, reduction="sum")
-        # return image_loss + 1.0 * input[1]
-        eps = 1e-8
-        image_loss = torch.sum(target * ((target + eps).log() - (input[0] + eps).log()))
-        entropy_loss = 0.001*input[1]
-        self.loss_record.append([image_loss.clone(), entropy_loss.clone()])
+    def forward(self, input_data, target):
+        image_loss = kl_div(target, input_data[0]).sum()
+        entropy_loss = self.alpha*input_data[1]
+        self.loss_record.append([image_loss, entropy_loss])
         return image_loss + entropy_loss
 
 
-if __name__ == "__main__":
-    folder = "../../test_case_4/"
-    all_k = torch.load(folder + "kappa.pt")
-    all_images = torch.load(folder + "images.pt").unsqueeze(1)
-    bins = torch.load(folder + "bins.pt")
-
-    #bins = (bins[:-1] + bins[1:]) / 2
-
-    all_k = all_k.cuda()[::2]
-    all_images = all_images.cuda()[::2]
-
-    print(all_k.shape)
-    print(all_images.shape)
-
-    dset = ImageDataset(all_k, all_images)
-    split = 8
-    train_dset = Subset(dset, range(split))
-    test_dset = Subset(dset, range(split, len(dset)))
-    train_dataloader = DataLoader(train_dset, batch_size=6, shuffle=True)
-    test_dataloader = DataLoader(test_dset, shuffle=True)
-
-    torch.save(train_dset, "train.dset")
-    torch.save(test_dset, "test.dset")
-
-    bin_width = bins[1] - bins[0]
-    print(bin_width)
-    bandwidth = bin_width
-
+def create_ensemble(bins, bandwidth):
     defaults = {
         "s": torch.tensor(0.0).float(),
         "p0c": torch.tensor(10.0e6).float(),
@@ -93,25 +67,55 @@ if __name__ == "__main__":
         "condition": False
     }
 
-    n_estimators = 5
     ensemble = VotingRegressor(
-        estimator=MaxEntropyQuadScan, estimator_args=module_kwargs, n_estimators=n_estimators
+        estimator=MaxEntropyQuadScan, 
+        estimator_args=module_kwargs, 
+        n_estimators=5
     )
+    return ensemble
 
-    # criterion = torch.nn.MSELoss(reduction="sum")
-    criterion = CustomLoss()
+def get_data(folder):
+    all_k = torch.load(folder + "kappa.pt")
+    all_images = torch.load(folder + "train_images.pt")
+    xx = torch.load(folder + "xx.pt")
+    bins = xx[0].T[0]
+
+    print(all_images.shape)
+    print(all_k.shape)
+    
+    all_k = all_k.cuda()
+    all_images = all_images.cuda()
+    
+    return all_k, all_images, bins, xx
+
+def get_datasets(all_k, all_images):
+    train_dset = ImageDataset(all_k[::2], all_images[::2])
+    test_dset = ImageDataset(all_k[1::2], all_images[1::2])
+    torch.save(train_dset, "train.dset")
+    torch.save(test_dset, "test.dset")
+    
+    return train_dset, test_dset
+    
+    
+if __name__ == "__main__":
+    folder = "../../test_case_4/"
+    all_k, all_images, bins, xx = get_data(folder)
+    train_dset, test_dset = get_datasets(all_k, all_images)
+    
+    train_dataloader = DataLoader(train_dset, batch_size=5, shuffle=True)
+    test_dataloader = DataLoader(test_dset, shuffle=True)
+
+    bin_width = bins[1] - bins[0]
+    bandwidth = bin_width/2
+    ensemble = create_ensemble(bins, bandwidth)
+    
+    alpha = 1e-1
+    criterion = CustomLoss(alpha)
     ensemble.set_criterion(criterion)
 
-    n_epochs = 200
-    #ensemble.set_scheduler("CosineAnnealingLR", T_max=n_epochs)
-    #ensemble.set_scheduler("StepLR", gamma=0.5, step_size=250, verbose=False)
-    ensemble.set_optimizer("Adam", lr=0.01)
-
-    save_dir = "control"
-    ensemble.fit(train_dataloader, epochs=n_epochs, save_dir=save_dir)#, test_loader=test_dataloader)#,
-    torch.save(
-        torch.cat([torch.tensor(ele).unsqueeze(0) for ele in criterion.loss_record[::n_estimators]]),
-        save_dir + "/loss_record.pt",
-    )
-
+    n_epochs = 400
+    #ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
+    ensemble.set_optimizer("Adam", lr=0.001)
+    
+    ensemble.fit(train_dataloader, epochs=n_epochs, save_dir="alpha_1e-1")
 
