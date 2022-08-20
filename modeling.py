@@ -33,7 +33,7 @@ class NonparametricTransform(torch.nn.Module):
         # X = X * 1e3
         X = self.stack(X)
 
-        return X * 1e-3
+        return X * 1e-2
 
 class InitialBeam(torch.nn.Module):
     def __init__(self, n, transformer, base_dist, **kwargs):
