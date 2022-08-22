@@ -114,16 +114,17 @@ if __name__ == "__main__":
     bandwidth = bin_width/2
     ensemble = create_ensemble(bins, bandwidth)
     
-    alpha = 1e-2
+    alpha = 1e-1
     criterion = CustomLoss(alpha)
     ensemble.set_criterion(criterion)
 
-    n_epochs = 400
+    n_epochs = 1000
     #ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
     ensemble.set_optimizer("Adam", lr=0.001)
+    
+    ensemble.fit(train_dataloader, epochs=n_epochs, save_dir="tracking")
 
-    save_dir = "alpha_1e-2"
-    ensemble.fit(train_dataloader, epochs=n_epochs, save_dir=save_dir)
-    torch.save(criterion.loss_record, save_dir + "/loss_log.pt")
+    # save tracking data
+    torch.save(criterion.loss_record, "loss_log.pt")
 
 
