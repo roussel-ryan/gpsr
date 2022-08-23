@@ -10,18 +10,18 @@ def beam_size_squared(k, d, l, s11, s12, s22):
 
 
 class EmittanceQuadScan(torch.nn.Module):
-    def __init__(self, k, d, l):
+    def __init__(self, d, l):
         super(EmittanceQuadScan, self).__init__()
-        self.register_buffer("k", k)
+
         self.register_buffer("d", d)
         self.register_buffer("l", l)
 
-        self.register_parameter("s11", torch.nn.Parameter(torch.ones(1) * 1e-6))
-        self.register_parameter("s12", torch.nn.Parameter(torch.ones(1) * 1e-6))
-        self.register_parameter("s22", torch.nn.Parameter(torch.ones(1) * 1e-6))
+        self.register_parameter("s11", torch.nn.Parameter(torch.ones(1) * 1e-7))
+        self.register_parameter("s12", torch.nn.Parameter(torch.ones(1) * 1e-7))
+        self.register_parameter("s22", torch.nn.Parameter(torch.ones(1) * 1e-7))
 
-    def forward(self):
-        return beam_size_squared(self.k, self.d, self.l, self.s11, self.s12, self.s22)
+    def forward(self, k):
+        return beam_size_squared(k, self.d, self.l, self.s11, self.s12, self.s22)
 
     @property
     def emittance(self):
@@ -43,7 +43,7 @@ if __name__ == '__main__':
     # fig,ax =plt.subplots()
     # ax.plot(k, gty)
 
-    model = EmittanceQuadScan(k, distance, q_len)
+    model = EmittanceQuadScan(distance, q_len)
     # Use the adam optimizer
     optimizer = torch.optim.Adam(model.parameters(),
                                  lr=0.1)  # Includes GaussianLikelihood parameters
@@ -52,7 +52,7 @@ if __name__ == '__main__':
         # Zero gradients from previous iteration
         optimizer.zero_grad()
         # Output from model
-        output = model()
+        output = model(k)
         # Calc loss and backprop gradients
         loss = mse_loss(output, gty)
         loss.backward()

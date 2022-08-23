@@ -13,7 +13,7 @@ from torch_track import Beam, TorchDrift, TorchLattice, TorchQuad
 def generate_test_beam():
     setstdx = {"type": "set_std x", "sigma_x": {"value": 2, "units": "mm"}}
     setstdpx = {"type": "set_std px", "sigma_px": {"value": 0.01, "units": "MeV/c"}}
-    k = 2 * 3.14 / (20 * unit("mm"))
+    k = 2 * 3.14 / (15 * unit("mm"))
     ycos = {
         "type": "cosine x:y",
         "amplitude": {"value": 30, "units": "mm"},
@@ -32,15 +32,16 @@ def generate_test_beam():
         "type": "polynomial x:pz",
         "coefficients": [
             {"value": 0.0, "units": "MeV/c"},
-            {"value": 150.0, "units": "MeV/c/meter"}
+            {"value": 75.0, "units": "MeV/c/meter"}
         ]
     }
 
     linear_position = {
         "type": "polynomial x:y",
         "coefficients": [
-            {"value": 0.0, "units": "m"},
-            {"value": 0.75, "units": ""}
+            {"value": -0.005, "units": "m"},
+            {"value": 0.75, "units": ""},
+            {"value": 50.0, "units":"1/m"}
         ]
     }
 
@@ -105,8 +106,8 @@ def generate_test_images():
     )
 
     n_images = 20
-    k_in = torch.linspace(-10, 10, n_images, **tkwargs).unsqueeze(1)
-    bins = torch.linspace(-25, 25, 150, **tkwargs) * 1e-3
+    k_in = torch.linspace(-25, 15, n_images, **tkwargs).unsqueeze(1)
+    bins = torch.linspace(-30, 30, 200, **tkwargs) * 1e-3
 
     # do tracking
     quad = TorchQuad(torch.tensor(0.1), K1=k_in, NUM_STEPS=5)
@@ -131,9 +132,15 @@ def generate_test_images():
 
     images = torch.cat([ele.unsqueeze(0) for ele in images], dim=0)
 
-    for image in images[::3]:
+    for i in range(0, len(images), 3):
         plt.figure()
-        plt.imshow(image)
+        plt.imshow(images[i])
+
+        plt.figure()
+        plt.hist(output_beam.x[i].detach().cpu().numpy())
+        plt.hist(output_beam.y[i].detach().cpu().numpy())
+
+        print(k_in[i], torch.std(output_beam.x[i])**2 * 1e6)
 
     xx = torch.meshgrid(bins, bins)
     # save image data
