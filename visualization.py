@@ -229,7 +229,7 @@ def add_image(ax, key1, key2, beams, bins, scale_axis=1, vmax=None):
     l = np.quantile(histograms, 0.05, axis=0)
     u = np.quantile(histograms, 0.95, axis=0)
 
-    ax.pcolor(xx[0]*scale_axis,xx[1]*scale_axis, means,vmin=0, vmax=vmax)
+    ax.pcolor(xx[0]*scale_axis, xx[1]*scale_axis, means, vmin=0, vmax=vmax)
 
     return ax, means
 

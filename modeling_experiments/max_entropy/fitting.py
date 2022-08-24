@@ -75,7 +75,7 @@ def create_ensemble(bins, bandwidth):
     ensemble = VotingRegressor(
         estimator=MaxEntropyQuadScan, 
         estimator_args=module_kwargs, 
-        n_estimators=5
+        n_estimators=2
     )
     return ensemble
 
@@ -118,11 +118,11 @@ if __name__ == "__main__":
     criterion = CustomLoss(alpha)
     ensemble.set_criterion(criterion)
 
-    n_epochs = 400
+    n_epochs = 2500
     #ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
     ensemble.set_optimizer("Adam", lr=0.001)
 
-    save_dir = "alpha_1e-3"
+    save_dir = "tracking_long"
     ensemble.fit(train_dataloader, epochs=n_epochs, save_dir=save_dir)
     torch.save(criterion.loss_record, save_dir + "/loss_log.pt")
 
