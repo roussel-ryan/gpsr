@@ -4,7 +4,7 @@ import torch
 from torch.nn.functional import mse_loss
 from torch.utils.data import DataLoader, random_split, Subset
 from torchensemble import VotingRegressor, SnapshotEnsembleRegressor
-
+import os
 import sys
 
 sys.path.append("../")
@@ -76,7 +76,7 @@ def create_ensemble(bins, bandwidth):
     ensemble = VotingRegressor(
         estimator=MaxEntropyQuadScan,
         estimator_args=module_kwargs,
-        n_estimators=2
+        n_estimators=5
     )
     return ensemble
 
@@ -87,28 +87,33 @@ def get_data(folder):
     xx = torch.load(folder + "xx.pt")
     bins = xx[0].T[0]
 
-    n_samples = 2
+    n_samples = 3
     all_k = all_k.cuda()[:, :n_samples]
     all_images = all_images.cuda()[:, :n_samples]
 
     return all_k, all_images, bins, xx
 
 
-def get_datasets(all_k, all_images):
-    train_dset = ImageDataset(all_k[::2], all_images[::2])
+def get_datasets(all_k, all_images, save_dir):
+    train_dset = ImageDataset(all_k[::7], all_images[::7])
     test_dset = ImageDataset(all_k[1::2], all_images[1::2])
-    torch.save(train_dset, "train.dset")
-    torch.save(test_dset, "test.dset")
+    torch.save(train_dset, save_dir + "/train.dset")
+    torch.save(test_dset, save_dir + "/test.dset")
 
     return train_dset, test_dset
 
 
 if __name__ == "__main__":
     folder = ""
-    all_k, all_images, bins, xx = get_data(folder)
-    train_dset, test_dset = get_datasets(all_k, all_images)
+    save_dir = "low_data"
+    if not os.path.isdir(save_dir):
+        os.mkdir(save_dir)
 
-    train_dataloader = DataLoader(train_dset, batch_size=1, shuffle=True)
+    all_k, all_images, bins, xx = get_data(folder)
+    train_dset, test_dset = get_datasets(all_k, all_images, save_dir)
+    print(len(train_dset))
+
+    train_dataloader = DataLoader(train_dset, batch_size=3, shuffle=True)
     test_dataloader = DataLoader(test_dset, shuffle=True)
 
     bin_width = bins[1] - bins[0]
@@ -119,10 +124,9 @@ if __name__ == "__main__":
     criterion = CustomLoss(alpha)
     ensemble.set_criterion(criterion)
 
-    n_epochs = 10
+    n_epochs = 400
     ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
     ensemble.set_optimizer("Adam", lr=0.001)
 
-    save_dir = "alpha_1e-3"
     ensemble.fit(train_dataloader, epochs=n_epochs, save_dir=save_dir)
     torch.save(criterion.loss_record, save_dir + "/loss_log.pt")
