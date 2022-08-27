@@ -25,3 +25,13 @@ def calc_rms_size(xx, images):
     var_y = torch.sum((y - mean_y) ** 2 * proj_y, dim=-1).unsqueeze(-1)
 
     return torch.cat([mean_x, mean_y], dim=-1), torch.cat([var_x, var_y], dim=-1)
+
+
+def kl_div(target, pred):
+    eps = 1e-8
+    return target * torch.abs((target + eps).log() - (pred + eps).log())
+
+
+def log_squared_error(target, pred):
+    eps = 1e-8
+    return target * ((target + eps).log() - (pred + eps).log()) ** 2

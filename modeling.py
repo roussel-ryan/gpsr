@@ -1,13 +1,14 @@
+from copy import deepcopy
+
 import matplotlib.pyplot as plt
 import torch
-from copy import deepcopy
-from torch.utils.data import Dataset
 
 from histogram import histogram2d
 from torch import nn
+from torch.utils.data import Dataset
+from torch_track import Beam, TorchDrift, TorchQuad
 from tqdm import trange
 from track import Particle
-from torch_track import TorchQuad, TorchDrift, Beam
 
 
 class NonparametricTransform(torch.nn.Module):
@@ -35,6 +36,7 @@ class NonparametricTransform(torch.nn.Module):
 
         return X * 1e-2
 
+
 class InitialBeam(torch.nn.Module):
     def __init__(self, n, transformer, base_dist, **kwargs):
         super(InitialBeam, self).__init__()
@@ -42,7 +44,7 @@ class InitialBeam(torch.nn.Module):
         self.n = n
         self.kwargs = kwargs
         # dist = torch.distributions.Uniform(-torch.ones(6), torch.ones(6))
-        #dist = torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6))
+        # dist = torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6))
         dist = base_dist
         base_distribution_samples = dist.sample([n])
 
@@ -70,8 +72,9 @@ class ImageDataset(Dataset):
 
 
 class QuadScanModel(torch.nn.Module):
-    def __init__(self, initial_beam, transport, imager, condition=True,
-                 init_weights=None):
+    def __init__(
+        self, initial_beam, transport, imager, condition=True, init_weights=None
+    ):
         super(QuadScanModel, self).__init__()
         self.beam_generator = deepcopy(initial_beam)
 
@@ -94,13 +97,32 @@ class QuadScanModel(torch.nn.Module):
         output_images = self.imager(output_coords)
         # return output_images
 
-        #scalar_metric = 0
+        # scalar_metric = 0
         # calculate 6D emittance of input beam
         # emit =
-        #cov = torch.cov(initial_beam.data.T)
+        # cov = torch.cov(initial_beam.data.T)
         scalar_metric = torch.norm(initial_beam.data, dim=1).pow(2).mean()
-        #scalar_metric = cov.trace()
+        # scalar_metric = cov.trace()
         return output_images, scalar_metric
+
+
+class MaxEntropyQuadScan(QuadScanModel):
+    def forward(self, K):
+        initial_beam = self.beam_generator()
+        output_beam = self.lattice(initial_beam, K)
+        output_coords = torch.cat(
+            [output_beam.x.unsqueeze(0), output_beam.y.unsqueeze(0)]
+        )
+        output_images = self.imager(output_coords)
+
+        scale = torch.tensor(1e3, device=K.device)
+        cov = torch.cov(initial_beam.data.T * scale) + torch.eye(
+            6, device=initial_beam.data.device
+        )
+        cov_scale = scale**2
+        exp_factor = torch.det(2 * 3.14 * 2.71 * cov)
+
+        return output_images, 0.5 * torch.log(exp_factor), cov
 
 
 def beam_loss(out_beam, target_beam):
@@ -124,8 +146,8 @@ def condition_initial_beam(initial_beam):
 
         optim.step()
 
-    #plt.plot(losses)
-    #plt.show()
+    # plt.plot(losses)
+    # plt.show()
 
     # check to make sure that the initial beam is a good fit to the base distribution
     output_beam = initial_beam()
@@ -154,24 +176,22 @@ class InitialBeam2(torch.nn.Module):
         base_distribution_samples = dist.sample([n])
 
         self.register_parameter(
-            "base_distribution_samples",
-            torch.nn.Parameter(base_distribution_samples)
+            "base_distribution_samples", torch.nn.Parameter(base_distribution_samples)
         )
 
-
     def forward(self, X=None):
-        X = self.base_distribution_samples*1e-2
+        X = self.base_distribution_samples * 1e-2
         return Beam(X, **self.kwargs)
 
 
 class QuadScanTransport(torch.nn.Module):
-    def __init__(self, quad_thick, drift,quad_steps=1):
+    def __init__(self, quad_thick, drift, quad_steps=1):
         super(QuadScanTransport, self).__init__()
         # AWA
-        #self.quad = TorchQuad(torch.tensor(0.12), K1=torch.tensor(0.0))
-        #self.drift = TorchDrift(torch.tensor(2.84 + 0.54))
+        # self.quad = TorchQuad(torch.tensor(0.12), K1=torch.tensor(0.0))
+        # self.drift = TorchDrift(torch.tensor(2.84 + 0.54))
 
-        self.quad = TorchQuad(quad_thick, K1=torch.tensor(0.0),NUM_STEPS=quad_steps)
+        self.quad = TorchQuad(quad_thick, K1=torch.tensor(0.0), NUM_STEPS=quad_steps)
         self.drift = TorchDrift(drift)
 
     def forward(self, X, K1):

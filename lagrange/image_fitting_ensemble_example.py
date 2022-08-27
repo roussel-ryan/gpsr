@@ -4,10 +4,13 @@ import os
 import sys
 
 import torch
+
+from lagrange.custom_snapshot_regressor import CustomSnapshotRegressor
+from torch.autograd import grad
+from torch.nn import Parameter
 from torch.nn.functional import mse_loss
 from torch.utils.data import DataLoader, random_split, Subset
-from torchensemble import SnapshotEnsembleRegressor, VotingRegressor
-
+from torchensemble import SnapshotEnsembleRegressor
 from utils import kl_div
 
 sys.path.append("../../")
@@ -16,49 +19,44 @@ from modeling import (
     ImageDataset,
     Imager,
     InitialBeam,
+    MaxEntropyQuadScan,
     NonparametricTransform,
-    QuadScanModel,
     QuadScanTransport,
 )
 
 logging.basicConfig(level=logging.INFO)
 
 
-def init_weights(m):
-    if isinstance(m, torch.nn.Linear):
-        torch.nn.init.xavier_uniform_(m.weight, gain=1.0)
-
-
-class MaxEntropyQuadScan(QuadScanModel):
-    def forward(self, K):
-        initial_beam = self.beam_generator()
-        output_beam = self.lattice(initial_beam, K)
-        output_coords = torch.cat(
-            [output_beam.x.unsqueeze(0), output_beam.y.unsqueeze(0)]
-        )
-        output_images = self.imager(output_coords)
-
-        cov = (
-            torch.cov(initial_beam.data.T)
-            + torch.eye(6, device=initial_beam.data.device) * 1e-8
-        )
-        exp_factor = torch.det(2 * 3.14 * 2.71 * cov)
-
-        return output_images, -0.5 * torch.log(exp_factor), cov
-
-
-
 class CustomLoss(torch.nn.MSELoss):
-    def __init__(self, alpha):
+    def __init__(self, l0, model):
         super().__init__()
         self.loss_record = []
-        self.alpha = alpha
+        self.register_parameter("lambda_", Parameter(l0))
+        #self.model = model
 
     def forward(self, input_data, target):
         image_loss = kl_div(target, input_data[0]).sum()
-        entropy_loss = self.alpha * input_data[1]
-        self.loss_record.append([image_loss, entropy_loss, input_data[2]])
-        return image_loss + entropy_loss
+        entropy_loss = -input_data[1]
+        # print(entropy_loss.data, image_loss.data, self.lambda_.data)
+
+        # attempt to maximize the entropy loss while constraining on the image loss
+        # using lagrange multipliers see:
+        # https://en.wikipedia.org/wiki/Lagrange_multiplier
+
+        unconstrained_loss = entropy_loss + self.lambda_ * image_loss
+        #z = grad(
+        #    unconstrained_loss,
+        #    list(self.model.beam_generator.parameters()) + [self.lambda_],
+        #    create_graph=True,
+        #)
+        #grad_loss = torch.norm(
+        #    torch.cat([ele.flatten().unsqueeze(1) for ele in z], dim=0)
+        #)
+        self.loss_record.append(
+            [image_loss, entropy_loss, input_data[2], self.lambda_.data]
+        )
+
+        return unconstrained_loss
 
 
 def create_ensemble(bins, bandwidth):
@@ -73,27 +71,24 @@ def create_ensemble(bins, bandwidth):
 
     module_kwargs = {
         "initial_beam": InitialBeam(100000, transformer, base_dist, **defaults),
-        "transport": QuadScanTransport(torch.tensor(0.1), torch.tensor(1.0), 5),
+        "transport": QuadScanTransport(torch.tensor(0.1), torch.tensor(1.0), 1),
         "imager": Imager(bins, bandwidth),
         "condition": False,
-        "init_weights": init_weights,
     }
 
-    ensemble = SnapshotEnsembleRegressor(
-        estimator=MaxEntropyQuadScan, estimator_args=module_kwargs, n_estimators=5
+    ensemble = CustomSnapshotRegressor(
+        estimator=MaxEntropyQuadScan,
+        estimator_args=module_kwargs,
+        n_estimators=5,
     )
 
-    # ensemble = VotingRegressor(
-    #    estimator=MaxEntropyQuadScan,
-    #    estimator_args=module_kwargs,
-    #    n_estimators=2
-    # )
+    ensemble.create_estimator()
     return ensemble
 
 
 def get_data(folder):
-    all_k = torch.load(folder + "kappa.pt")
-    all_images = torch.load(folder + "train_images.pt")
+    all_k = torch.load(folder + "kappa.pt").float()
+    all_images = torch.load(folder + "train_images.pt").float()
     xx = torch.load(folder + "xx.pt")
     bins = xx[0].T[0]
 
@@ -118,7 +113,7 @@ def get_datasets(all_k, all_images, save_dir):
 
 
 if __name__ == "__main__":
-    folder = "../../test_case_4/"
+    folder = "../test_case_4/"
 
     save_dir = "alpha_1e-3_snapshot_lr_01"
     if not os.path.isdir(save_dir):
@@ -135,13 +130,18 @@ if __name__ == "__main__":
     bandwidth = bin_width / 2
     ensemble = create_ensemble(bins, bandwidth)
 
-    alpha = 1e-3
-    criterion = CustomLoss(alpha)
+    criterion = GradientSquaredLoss(torch.tensor(100.0).to(all_k), ensemble.estimator)
     ensemble.set_criterion(criterion)
 
-    n_epochs = 2500
-    # ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
-    ensemble.set_optimizer("Adam", lr=0.01)
+    n_epochs = 1000
+    optim = torch.optim.Adam(
+        list(ensemble.estimator.beam_generator.parameters()),# + [criterion.lambda_],
+        lr=0.01,
+    )
+    ensemble.set_optimizer(optim)
 
-    ensemble.fit(train_dataloader, epochs=n_epochs, save_dir=save_dir)
+    # with torch.autograd.detect_anomaly():
+    ensemble.fit(
+        train_dataloader, epochs=n_epochs, save_dir=save_dir, lr_clip=[0.0001, 10]
+    )
     torch.save(criterion.loss_record, save_dir + "/loss_log.pt")

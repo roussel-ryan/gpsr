@@ -4,9 +4,10 @@ import os
 import sys
 
 import torch
+from torch.autograd import grad
+from torch.nn import Parameter
 from torch.nn.functional import mse_loss
 from torch.utils.data import DataLoader, random_split, Subset
-from torchensemble import SnapshotEnsembleRegressor, VotingRegressor
 
 from utils import kl_div
 
@@ -16,52 +17,37 @@ from modeling import (
     ImageDataset,
     Imager,
     InitialBeam,
+    MaxEntropyQuadScan,
     NonparametricTransform,
-    QuadScanModel,
     QuadScanTransport,
 )
 
 logging.basicConfig(level=logging.INFO)
 
 
-def init_weights(m):
-    if isinstance(m, torch.nn.Linear):
-        torch.nn.init.xavier_uniform_(m.weight, gain=1.0)
-
-
-class MaxEntropyQuadScan(QuadScanModel):
-    def forward(self, K):
-        initial_beam = self.beam_generator()
-        output_beam = self.lattice(initial_beam, K)
-        output_coords = torch.cat(
-            [output_beam.x.unsqueeze(0), output_beam.y.unsqueeze(0)]
-        )
-        output_images = self.imager(output_coords)
-
-        cov = (
-            torch.cov(initial_beam.data.T)
-            + torch.eye(6, device=initial_beam.data.device) * 1e-8
-        )
-        exp_factor = torch.det(2 * 3.14 * 2.71 * cov)
-
-        return output_images, -0.5 * torch.log(exp_factor), cov
-
-
-
-class CustomLoss(torch.nn.MSELoss):
-    def __init__(self, alpha):
+class GradientSquaredLoss(torch.nn.MSELoss):
+    def __init__(self, l0, model):
         super().__init__()
         self.loss_record = []
-        self.alpha = alpha
+        self.register_parameter("lambda_", Parameter(l0))
+        self.model = model
 
     def forward(self, input_data, target):
         image_loss = kl_div(target, input_data[0]).sum()
-        entropy_loss = self.alpha * input_data[1]
-        self.loss_record.append([image_loss, entropy_loss, input_data[2]])
-        return image_loss + entropy_loss
+        entropy_loss = input_data[1]
+
+        # attempt to maximize the entropy loss while constraining on the image loss
+        # using lagrange multipliers see:
+        # https://en.wikipedia.org/wiki/Lagrange_multiplier
+
+        unconstrained_loss = entropy_loss + self.lambda_ * image_loss
+        z = grad(unconstrained_loss, self.model.parameters(), create_graph=True)
+        grad_loss = torch.norm(torch.cat([ele.unsqueeze(0) for ele in z]))
+
+        return grad_loss
 
 
-def create_ensemble(bins, bandwidth):
+def construct_optimizer(bins, bandwidth):
     defaults = {
         "s": torch.tensor(0.0).float(),
         "p0c": torch.tensor(10.0e6).float(),
@@ -76,19 +62,12 @@ def create_ensemble(bins, bandwidth):
         "transport": QuadScanTransport(torch.tensor(0.1), torch.tensor(1.0), 5),
         "imager": Imager(bins, bandwidth),
         "condition": False,
-        "init_weights": init_weights,
     }
+    model = MaxEntropyQuadScan(**module_kwargs)
+    loss_module = GradientSquaredLoss(torch.tensor(100.0), model)
+    optim = torch.optim.Adam(list(model.parameters()) + [loss_module.lambda_], lr=0.001)
 
-    ensemble = SnapshotEnsembleRegressor(
-        estimator=MaxEntropyQuadScan, estimator_args=module_kwargs, n_estimators=5
-    )
-
-    # ensemble = VotingRegressor(
-    #    estimator=MaxEntropyQuadScan,
-    #    estimator_args=module_kwargs,
-    #    n_estimators=2
-    # )
-    return ensemble
+    return model, loss_module, optim
 
 
 def get_data(folder):
@@ -133,15 +112,11 @@ if __name__ == "__main__":
 
     bin_width = bins[1] - bins[0]
     bandwidth = bin_width / 2
-    ensemble = create_ensemble(bins, bandwidth)
+    model, loss_function, optim = construct_optimizer(bins, bandwidth)
 
-    alpha = 1e-3
-    criterion = CustomLoss(alpha)
-    ensemble.set_criterion(criterion)
+    for ii in range(1000):
+        # get predictions from the model
+        model_outputs = model()
+        grad_loss = loss_function()
 
-    n_epochs = 2500
-    # ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
-    ensemble.set_optimizer("Adam", lr=0.01)
 
-    ensemble.fit(train_dataloader, epochs=n_epochs, save_dir=save_dir)
-    torch.save(criterion.loss_record, save_dir + "/loss_log.pt")

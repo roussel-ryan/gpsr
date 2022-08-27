@@ -39,13 +39,12 @@ class MaxEntropyQuadScan(QuadScanModel):
         output_images = self.imager(output_coords)
 
         cov = (
-            torch.cov(initial_beam.data.T)
-            + torch.eye(6, device=initial_beam.data.device) * 1e-8
+                torch.cov(initial_beam.data.T)
+                + torch.eye(6, device=initial_beam.data.device) * 1e-8
         )
         exp_factor = torch.det(2 * 3.14 * 2.71 * cov)
 
         return output_images, -0.5 * torch.log(exp_factor), cov
-
 
 
 class CustomLoss(torch.nn.MSELoss):
@@ -92,10 +91,10 @@ def create_ensemble(bins, bandwidth):
 
 
 def get_data(folder):
-    all_k = torch.load(folder + "kappa.pt")
-    all_images = torch.load(folder + "train_images.pt")
+    all_k = torch.load(folder + "kappa.pt")[:-1, :1].float()
+    all_images = torch.load(folder + "train_images.pt")[:-1, :1].float()
     xx = torch.load(folder + "xx.pt")
-    bins = xx[0].T[0]
+    bins = xx[0].T[0].float()
 
     if torch.cuda.is_available():
         all_k = all_k.cuda()
@@ -118,9 +117,9 @@ def get_datasets(all_k, all_images, save_dir):
 
 
 if __name__ == "__main__":
-    folder = "../../test_case_4/"
+    folder = ""
 
-    save_dir = "alpha_1e-3_snapshot_lr_01"
+    save_dir = "alpha_1e-3_snapshot"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
@@ -141,7 +140,7 @@ if __name__ == "__main__":
 
     n_epochs = 2500
     # ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
-    ensemble.set_optimizer("Adam", lr=0.01)
+    ensemble.set_optimizer("Adam", lr=0.001)
 
     ensemble.fit(train_dataloader, epochs=n_epochs, save_dir=save_dir)
     torch.save(criterion.loss_record, save_dir + "/loss_log.pt")
