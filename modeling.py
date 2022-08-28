@@ -116,10 +116,7 @@ class MaxEntropyQuadScan(QuadScanModel):
         output_images = self.imager(output_coords)
 
         scale = torch.tensor(1e3, device=K.device)
-        cov = torch.cov(initial_beam.data.T * scale) + torch.eye(
-            6, device=initial_beam.data.device
-        )
-        cov_scale = scale**2
+        cov = torch.cov(initial_beam.data.T * scale)
         exp_factor = torch.det(2 * 3.14 * 2.71 * cov)
 
         return output_images, 0.5 * torch.log(exp_factor), cov
