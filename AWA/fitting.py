@@ -3,7 +3,6 @@ import os
 import sys
 
 import torch
-from torch.nn.functional import mse_loss
 from torch.utils.data import DataLoader, random_split, Subset
 from torchensemble import SnapshotEnsembleRegressor, VotingRegressor
 
@@ -84,7 +83,7 @@ def get_datasets(all_k, all_images, save_dir):
 
 if __name__ == "__main__":
     folder = ""
-    save_dir = "alpha_1000_snapshot_long"
+    save_dir = "alpha_1000_snapshot_2"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
@@ -99,13 +98,13 @@ if __name__ == "__main__":
     bandwidth = bin_width / 2
     ensemble = create_ensemble(bins, bandwidth)
 
-    alpha = torch.tensor(1000.0).to(all_k)
+    alpha = torch.tensor(1e3).to(all_k)
     criterion = WeightedConstrainedLoss(alpha)
     ensemble.set_criterion(criterion)
 
-    n_epochs = 5000
+    n_epochs = 2500
     # ensemble.set_scheduler("StepLR", gamma=0.1, step_size=200, verbose=False)
-    ensemble.set_optimizer("Adam", lr=0.003)
+    ensemble.set_optimizer("Adam", lr=0.005)
 
     ensemble.fit(
         train_dataloader, epochs=n_epochs, save_dir=save_dir, lr_clip=[0.0001, 10]
