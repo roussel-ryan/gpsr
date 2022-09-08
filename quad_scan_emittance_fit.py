@@ -128,7 +128,9 @@ if __name__ == "__main__":
 
         pred_y = model(k)
 
-        plt.plot(k, gty, "o")
-        plt.plot(k, pred_y.detach())
+        plt.plot(k, gty*1e6, "o")
+        plt.plot(k, pred_y.detach()*1e6)
+        plt.xlabel("k ($m^{-2}$)")
+        plt.ylabel("$\sigma_x^2\ (mm^2)$")
 
     plt.show()
