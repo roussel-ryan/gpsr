@@ -1,29 +1,36 @@
 import torch
+from bmadx import track
 from torch import Tensor
-from torch.nn import Module, Parameter, ModuleList
+from torch.nn import Module, ModuleList, Parameter
+
 from utils import get_slopes
-from track import make_track_a_quadrupole, make_track_a_drift, Particle
 
 
 class Beam(torch.nn.Module):
-    def __init__(self, data, **kwargs):
+    def __init__(self, data, p0c: float, s: float = 0.0, mc2: float = 0.511e6):
         super(Beam, self).__init__()
         self.keys = ["x", "px", "y", "py", "z", "pz"]
         self.data = data
 
         for i, key in enumerate(self.keys):
-            self.register_buffer(key, data[..., i])
+            self.register_parameter(key, Parameter(data[..., i], requires_grad=False))
 
-        for name, val in kwargs.items():
-            self.register_buffer(name, val)
-        self._defaults = {"s": self.s, "p0c": self.p0c, "mc2": self.mc2}
+        self.register_parameter(
+            "p0c", Parameter(torch.tensor(p0c), requires_grad=False)
+        )
+        self.register_parameter("s", Parameter(torch.tensor(s), requires_grad=False))
+        self.register_parameter(
+            "mc2", Parameter(torch.tensor(mc2), requires_grad=False)
+        )
 
     def to_list_of_beams(self):
         beams = []
         for i in range(len(getattr(self, self.keys[0]))):
-            beams += [Particle(*[
-                getattr(self, key)[i] for key in self.keys
-            ], **self._defaults)]
+            beams += [
+                track.Particle(
+                    *[getattr(self, key)[i] for key in self.keys], **self._defaults
+                )
+            ]
 
         return beams
 
@@ -36,24 +43,27 @@ class Beam(torch.nn.Module):
         return get_slopes(self.px, self.py, self.pz)[1]
 
 
-class TorchQuad(Module):
-
+class TorchQuadrupole(Module):
     def __init__(
-            self,
-            L: Tensor,
-            K1: Tensor,
-            NUM_STEPS: int = 1,
-            X_OFFSET: Tensor = torch.tensor(0.0),
-            Y_OFFSET: Tensor = torch.tensor(0.0),
+        self,
+        L: Tensor,
+        K1: Tensor,
+        NUM_STEPS: int = 1,
+        X_OFFSET: Tensor = torch.tensor(0.0),
+        Y_OFFSET: Tensor = torch.tensor(0.0),
+        TILT: Tensor = torch.tensor(0.0),
     ):
-        super(TorchQuad, self).__init__()
+        super(TorchQuadrupole, self).__init__()
         self.register_parameter("L", Parameter(L, requires_grad=False))
         self.register_parameter("X_OFFSET", Parameter(X_OFFSET, requires_grad=False))
         self.register_parameter("Y_OFFSET", Parameter(Y_OFFSET, requires_grad=False))
-        self.register_buffer("NUM_STEPS", torch.tensor(NUM_STEPS))
+        self.register_parameter(
+            "NUM_STEPS", Parameter(torch.tensor(NUM_STEPS), requires_grad=False)
+        )
+        self.register_parameter("TILT", Parameter(TILT, requires_grad=False))
 
         self.K1 = K1
-        self.track = make_track_a_quadrupole(torch)
+        self.track = track.make_track_a_quadrupole(torch)
 
     def forward(self, X):
         return self.track(X, self)
@@ -61,14 +71,14 @@ class TorchQuad(Module):
 
 class TorchDrift(Module):
     def __init__(
-            self,
-            L: Tensor,
+        self,
+        L: Tensor,
     ):
         super(TorchDrift, self).__init__()
         self.register_parameter("L", Parameter(L, requires_grad=False))
 
         # create function
-        self.track = make_track_a_drift(torch)
+        self.track = track.make_track_a_drift(torch)
 
     def forward(self, X):
         return self.track(X, self)
