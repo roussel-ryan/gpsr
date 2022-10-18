@@ -2,3 +2,4 @@
 *.pth
 *.dset
 __pycache__/
+.idea/
