@@ -14,12 +14,12 @@ from tqdm import trange
 
 class NNTransform(torch.nn.Module):
     def __init__(
-        self,
-        n_hidden,
-        width,
-        dropout=0.0,
-        activation=torch.nn.Tanh(),
-        output_scale=1e-2,
+            self,
+            n_hidden,
+            width,
+            dropout=0.0,
+            activation=torch.nn.Tanh(),
+            output_scale=1e-2,
     ):
         """
         Nonparametric transformation - NN
@@ -54,13 +54,17 @@ class InitialBeam(torch.nn.Module):
             transformed_beam, self.base_beam.p0c, self.base_beam.s, self.base_beam.mc2
         )
 
-    def get_entropy(self, beam):
-        # note: multiply and divide by 1e3 to help underflow issues
-        emit = (torch.det(torch.cov(beam.data.T*1e3)) * 10**-(3*6)) ** 0.5
-        #emit = (torch.det(torch.cov(beam.data.T*1e3)) * 10**-(3*6)) ** 0.5
-        return torch.log(
-            (2 * 3.14 * 2.71) ** 3 * emit
-        )
+
+def calculate_covariance(beam):
+    # note: multiply and divide by 1e3 to help underflow issues
+    return torch.cov(beam.data.T * 1e3) * 1e-6
+
+
+def calculate_entropy(cov):
+    emit = (torch.det(cov * 1e9))**0.5 * 1e-27
+    return torch.log(
+        (2 * 3.14 * 2.71) ** 3 * emit
+    )
 
 
 # create data loader

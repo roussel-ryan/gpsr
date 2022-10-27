@@ -118,7 +118,7 @@ def histogram(
         torch.Size([1, 128])
     """
 
-    pdf, _ = marginal_pdf(x.unsqueeze(2), bins, bandwidth, epsilon)
+    pdf, _ = marginal_pdf(x.unsqueeze(-1), bins, bandwidth, epsilon)
 
     return pdf
 
