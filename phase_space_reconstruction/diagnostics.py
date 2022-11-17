@@ -5,13 +5,15 @@ from phase_space_reconstruction.histogram import histogram2d
 
 
 class ImageDiagnostic(Module):
-    def __init__(self, bins, bandwidth=None):
+    def __init__(self, bins, bandwidth=None, x="x", y="y"):
         """
 
         :param bins: 1D tensor of bin edges for image diagnostic
         """
 
         super(ImageDiagnostic, self).__init__()
+        self.x = x
+        self.y = y
 
         self.register_buffer("bins", bins)
         self.register_buffer("resolution", bins[1] - bins[0])
@@ -26,15 +28,16 @@ class ImageDiagnostic(Module):
             ),
         )
 
-    def calculate_images(self, x_coords, y_coords):
+    def forward(self, beam):
         """
-        :param x_coords: (`batch_shape` x N) tensor of x coordinates of N particles
-        :param y_coords: (`batch_shape` x N) tensor of x coordinates of N particles
-        :return: ('batch_shape' x M x M) tensor with pixel intensities for M x M images
+        :param beam:
+             :return: ('batch_shape' x M x M) tensor with pixel intensities for M x M images
         """
-        if not x_coords.shape == y_coords.shape:
+        x_vals = getattr(beam, self.x)
+        y_vals = getattr(beam, self.y)
+        if not x_vals.shape == y_vals.shape:
             raise ValueError("x,y coords must be the same shape")
 
-        if len(x_coords.shape) == 1:
+        if len(x_vals.shape) == 1:
             raise ValueError("coords must be at least 2D")
-        return histogram2d(x_coords, y_coords, self.bins, self.bandwidth)
+        return histogram2d(x_vals, y_vals, self.bins, self.bandwidth)

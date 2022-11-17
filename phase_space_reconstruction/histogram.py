@@ -2,13 +2,59 @@
 from typing import Optional, Tuple
 
 import torch
+from matplotlib import pyplot as plt
+from torch import nn
+
+
+class KDEGaussian(nn.Module):
+    def __init__(self, bandwidth, locations=None):
+        super(KDEGaussian, self).__init__()
+        self.bandwidth = bandwidth
+        self.locations = None
+
+    def forward(self, samples, locations=None):
+        if locations is None:
+            locations = self.locations
+
+        assert samples.shape[-1] == locations.shape[-1]
+
+        # make copies of all samples for each location
+        all_samples = samples.reshape(samples.shape + (1,) * len(locations.shape[:-1]))
+        diff = torch.norm(
+            all_samples - torch.movedim(locations, -1, 0),
+            dim=-len(locations.shape[:-1]) - 1,
+        )
+        out = (-diff ** 2 / self.bandwidth ** 2).exp().sum(dim=len(samples.shape)-2)
+        norm = out.flatten(start_dim=len(locations.shape)-2).sum(dim=-1)
+        return out / norm.reshape(-1, *(1,)*(len(locations.shape)-1))
+
+
+if __name__ == "__main__":
+    # 2d histogram
+    x = torch.linspace(0.0, 1.0, 100)
+    mesh_x = torch.meshgrid(x, x)
+    test_x = torch.stack(mesh_x, dim=-1)
+
+    # samples
+    samples = torch.rand(10, 4, 2)
+
+    kde = KDEGaussian(torch.tensor(0.01))
+
+    h = kde(samples, test_x)
+
+    for i in range(len(h)):
+        fig, ax = plt.subplots()
+        c = ax.pcolor(*mesh_x, h[i])
+        ax.plot(*samples[i].T, "+")
+        fig.colorbar(c)
+    plt.show()
 
 
 def marginal_pdf(
-    values: torch.Tensor,
-    bins: torch.Tensor,
-    sigma: torch.Tensor,
-    epsilon: float = 1e-10,
+        values: torch.Tensor,
+        bins: torch.Tensor,
+        sigma: torch.Tensor,
+        epsilon: float = 1e-10,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Calculate the marginal probability distribution function of the input tensor based on the number of
     histogram bins.
@@ -55,7 +101,8 @@ def marginal_pdf(
 
 
 def joint_pdf(
-    kernel_values1: torch.Tensor, kernel_values2: torch.Tensor, epsilon: float = 1e-10
+        kernel_values1: torch.Tensor, kernel_values2: torch.Tensor,
+        epsilon: float = 1e-10
 ) -> torch.Tensor:
     """Calculate the joint probability distribution function of the input tensors based on the number of histogram
     bins.
@@ -86,16 +133,18 @@ def joint_pdf(
         )
 
     joint_kernel_values = torch.matmul(kernel_values1.transpose(-2, -1), kernel_values2)
-    normalization = torch.sum(
-        joint_kernel_values, dim=(-2, -1)
-    ).unsqueeze(-1).unsqueeze(-1) + epsilon
+    normalization = (
+            torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
+            + epsilon
+    )
     pdf = joint_kernel_values / normalization
 
     return pdf
 
 
 def histogram(
-    x: torch.Tensor, bins: torch.Tensor, bandwidth: torch.Tensor, epsilon: float = 1e-10
+        x: torch.Tensor, bins: torch.Tensor, bandwidth: torch.Tensor,
+        epsilon: float = 1e-10
 ) -> torch.Tensor:
     """Estimate the histogram of the input tensor.
 
@@ -124,11 +173,11 @@ def histogram(
 
 
 def histogram2d(
-    x1: torch.Tensor,
-    x2: torch.Tensor,
-    bins: torch.Tensor,
-    bandwidth: torch.Tensor,
-    epsilon: float = 1e-10,
+        x1: torch.Tensor,
+        x2: torch.Tensor,
+        bins: torch.Tensor,
+        bandwidth: torch.Tensor,
+        epsilon: float = 1e-10,
 ) -> torch.Tensor:
     """Estimate the 2d histogram of the input tensor.
 
@@ -159,4 +208,3 @@ def histogram2d(
     pdf = joint_pdf(kernel_values1, kernel_values2)
 
     return pdf
-

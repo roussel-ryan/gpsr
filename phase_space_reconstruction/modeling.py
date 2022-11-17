@@ -5,11 +5,43 @@ import matplotlib.pyplot as plt
 import torch
 from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchQuadrupole
 from bmadx.track import Particle
-
-from .histogram import histogram2d
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import trange
+
+from .histogram import histogram2d
+
+
+class PhaseSpaceReconstructionModel(torch.nn.Module):
+    def __init__(self, lattice, diagnostic, beam):
+        super(PhaseSpaceReconstructionModel, self).__init__()
+
+        self.lattice = lattice
+        self.diagnostic = diagnostic
+        self.beam = beam
+
+    def track_and_observe_beam(self, beam, K):
+        # alter quadrupole strength
+        self.lattice.elements[0].K1.data = K
+
+        # track beam through lattice
+        final_beam = self.lattice(beam)
+
+        # analyze beam with diagnostic
+        observations = self.diagnostic(final_beam)
+
+        return observations, final_beam
+
+    def forward(self, K):
+        proposal_beam = self.beam()
+
+        # track beam
+        observations, final_beam = self.track_and_observe_beam(proposal_beam, K)
+
+        # get entropy
+        entropy = calculate_beam_entropy(proposal_beam)
+
+        return observations, entropy
 
 
 class NNTransform(torch.nn.Module):
@@ -61,10 +93,12 @@ def calculate_covariance(beam):
 
 
 def calculate_entropy(cov):
-    emit = (torch.det(cov * 1e9))**0.5 * 1e-27
-    return torch.log(
-        (2 * 3.14 * 2.71) ** 3 * emit
-    )
+    emit = (torch.det(cov * 1e9)) ** 0.5 * 1e-27
+    return torch.log((2 * 3.14 * 2.71) ** 3 * emit)
+
+
+def calculate_beam_entropy(beam):
+    return calculate_entropy(calculate_covariance(beam))
 
 
 # create data loader
