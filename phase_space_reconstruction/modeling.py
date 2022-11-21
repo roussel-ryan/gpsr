@@ -16,16 +16,17 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
     def __init__(self, lattice, diagnostic, beam):
         super(PhaseSpaceReconstructionModel, self).__init__()
 
-        self.lattice = lattice
+        self.base_lattice = lattice
         self.diagnostic = diagnostic
         self.beam = beam
 
     def track_and_observe_beam(self, beam, K):
         # alter quadrupole strength
-        self.lattice.elements[0].K1.data = K
+        lattice = deepcopy(self.base_lattice)
+        lattice.elements[0].K1.data = K
 
         # track beam through lattice
-        final_beam = self.lattice(beam)
+        final_beam = lattice(beam)
 
         # analyze beam with diagnostic
         observations = self.diagnostic(final_beam)
