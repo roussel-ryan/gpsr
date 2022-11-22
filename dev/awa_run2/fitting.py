@@ -28,7 +28,7 @@ def create_ensemble(bins, bandwidth):
     lattice = create_quad_scan_beamline()
     diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
     # create NN beam
-    n_particles = 10000
+    n_particles = 20000
     nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
     nn_beam = modeling.InitialBeam(
         nn_transformer,
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     test_dataloader = DataLoader(test_dset, shuffle=True)
 
     bin_width = bins[1] - bins[0]
-    bandwidth = bin_width / 2
+    bandwidth = bin_width / 4
     ensemble = create_ensemble(bins, bandwidth)
 
     criterion = MENTLoss(torch.tensor(1e10))
