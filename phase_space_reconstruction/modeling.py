@@ -76,10 +76,16 @@ class NNTransform(torch.nn.Module):
 
 
 class InitialBeam(torch.nn.Module):
-    def __init__(self, transformer, base_dist):
+    def __init__(self, transformer, base_dist, n_particles, **kwargs):
         super(InitialBeam, self).__init__()
         self.transformer = transformer
-        self.base_beam = base_dist
+        self.base_dist = base_dist
+        self.base_beam = None
+
+        self.set_base_beam(base_dist, n_particles, **kwargs)
+
+    def set_base_beam(self, base_dist, n_particles, **kwargs):
+        self.base_beam = Beam(base_dist.sample([n_particles]), **kwargs)
 
     def forward(self):
         transformed_beam = self.transformer(self.base_beam.data)

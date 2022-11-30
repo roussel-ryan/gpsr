@@ -10,12 +10,13 @@ def kl_div(target, pred):
 
 
 class MENTLoss(Module):
-    def __init__(self, lambda_, beta_=torch.tensor(0.0), debug=False):
+    def __init__(self, lambda_, beta_=torch.tensor(0.0), gamma_=torch.tensor(1.0), debug=False):
         super(MENTLoss, self).__init__()
 
         self.debug = debug
         self.register_parameter("lambda_", Parameter(lambda_))
         self.register_parameter("beta_", Parameter(beta_))
+        self.register_parameter("gamma_", Parameter(gamma_))
 
         self.loss_record = []
 
@@ -39,4 +40,4 @@ class MENTLoss(Module):
         self.loss_record.append(
             torch.tensor([self.lambda_ * image_loss, entropy, total_loss]))
 
-        return total_loss
+        return total_loss * self.gamma_

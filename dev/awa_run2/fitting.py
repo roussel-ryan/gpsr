@@ -32,12 +32,9 @@ def create_ensemble(bins, bandwidth):
     nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
     nn_beam = modeling.InitialBeam(
         nn_transformer,
-        Beam(
-            torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)).sample(
-                [n_particles]
-            ),
-            p0c=torch.tensor(63.0e6),
-        ),
+        torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),
+        n_particles,
+        p0c=torch.tensor(63.0e6),
     )
     module_kwags = {"lattice": lattice, "diagnostic": diagnostic, "beam": nn_beam}
 
@@ -71,7 +68,8 @@ def load_data(tkwargs):
     xx = torch.tensor(xx, **tkwargs)
 
     n_samples = image_data.shape[1]
-    quad_strengths = quad_strengths.unsqueeze(1).repeat(1, n_samples).unsqueeze(-1)
+    quad_strengths = quad_strengths.unsqueeze(1).repeat(1, n_samples).unsqueeze(-1) *\
+                     0.975
 
     return quad_strengths, image_data, x, xx
 
@@ -88,7 +86,7 @@ def create_datasets(all_k, all_images, save_dir):
 if __name__ == "__main__":
     folder = ""
 
-    save_dir = "alpha_1000"
+    save_dir = "mse_scale_975_run3"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
@@ -104,14 +102,14 @@ if __name__ == "__main__":
     bandwidth = bin_width / 4
     ensemble = create_ensemble(bins, bandwidth)
 
-    criterion = MENTLoss(torch.tensor(1e10))
+    criterion = MENTLoss(torch.tensor(1e11), gamma_=torch.tensor(0.01))
 
     ensemble.set_criterion(criterion)
 
-    n_epochs = 500
-    ensemble.set_optimizer("Adam", lr=1e-3)
+    n_epochs = 3000
+    ensemble.set_optimizer("Adam", lr=1e-2)
     # with torch.autograd.detect_anomaly():
     ensemble.fit(
-        train_dataloader, epochs=n_epochs, save_dir=save_dir, lr_clip=[1e-4, 10]
+        train_dataloader, epochs=n_epochs, save_dir=save_dir, lr_clip=[1e-3, 10]
     )
     torch.save(criterion.loss_record, save_dir + "/loss_log.pt")
