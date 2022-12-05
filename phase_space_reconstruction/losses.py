@@ -22,6 +22,7 @@ class MENTLoss(Module):
         self.loss_record = []
 
     def forward(self, outputs, target_image):
+        assert outputs[0].shape == target_image.shape
         pred_image = outputs[0]
         entropy = outputs[1]
         
