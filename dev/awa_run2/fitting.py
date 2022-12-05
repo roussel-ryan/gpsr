@@ -28,7 +28,7 @@ def create_ensemble(bins, bandwidth):
     lattice = create_quad_scan_beamline()
     diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
     # create NN beam
-    n_particles = 20000
+    n_particles = 100000
     nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
     nn_beam = modeling.InitialBeam(
         nn_transformer,
@@ -69,7 +69,7 @@ def load_data(tkwargs):
 
     n_samples = image_data.shape[1]
     quad_strengths = quad_strengths.unsqueeze(1).repeat(1, n_samples).unsqueeze(-1) *\
-                     0.975
+                     0.95
 
     return quad_strengths, image_data, x, xx
 
@@ -83,10 +83,11 @@ def create_datasets(all_k, all_images, save_dir):
     return train_dset, test_dset
 
 
+
 if __name__ == "__main__":
     folder = ""
 
-    save_dir = "mse_scale_975_run3"
+    save_dir = "mse_scale_095_run3"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 

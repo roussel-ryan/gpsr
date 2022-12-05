@@ -28,6 +28,7 @@ class ImageDiagnostic(Module):
             ),
         )
 
+
     def forward(self, beam):
         """
         :param beam:
@@ -40,4 +41,5 @@ class ImageDiagnostic(Module):
 
         if len(x_vals.shape) == 1:
             raise ValueError("coords must be at least 2D")
+        
         return histogram2d(x_vals, y_vals, self.bins, self.bandwidth)
