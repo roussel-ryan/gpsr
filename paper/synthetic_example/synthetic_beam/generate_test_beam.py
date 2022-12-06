@@ -7,13 +7,13 @@ import sys
 sys.path.append("../../../")
 
 from phase_space_reconstruction.histogram import histogram2d
-from torch_track import Beam, TorchDrift, TorchLattice, TorchQuad
+from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchLattice, TorchQuadrupole
 
 
 def generate_test_beam():
     setstdx = {"type": "set_std x", "sigma_x": {"value": 2, "units": "mm"}}
     setstdpx = {"type": "set_std px", "sigma_px": {"value": 0.01, "units": "MeV/c"}}
-    k = 2 * 3.14 / (15 * unit("mm"))
+    k = 2 * 3.14 / (30 * unit("mm"))
     ycos = {
         "type": "cosine x:y",
         "amplitude": {"value": 30, "units": "mm"},
@@ -110,7 +110,7 @@ def generate_test_images():
     bins = torch.linspace(-30, 30, 200, **tkwargs) * 1e-3
 
     # do tracking
-    quad = TorchQuad(torch.tensor(0.1), K1=k_in, NUM_STEPS=5)
+    quad = TorchQuadrupole(torch.tensor(0.1), K1=k_in, NUM_STEPS=5)
     drift = TorchDrift(L=torch.tensor(1.0))
     train_lattice = TorchLattice([quad, drift])
 
@@ -125,7 +125,7 @@ def generate_test_images():
     # do histogramming
     images = []
     bins = bins.cpu()
-    bandwidth = torch.tensor(0.1e-3).cpu()
+    bandwidth = torch.tensor(0.1e-2).cpu()
     for i in range(n_images):
         hist = histogram2d(screen_data[i].T[0], screen_data[i].T[1], bins, bandwidth)
         images.append(hist)
