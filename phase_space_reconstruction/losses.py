@@ -25,6 +25,7 @@ class MENTLoss(Module):
         assert outputs[0].shape == target_image.shape
         pred_image = outputs[0]
         entropy = outputs[1]
+        cov = outputs[2]
         
         # compare image centroids to get regularization
         x = torch.arange(target_image.shape[-1]).to(target_image)
@@ -61,10 +62,10 @@ class MENTLoss(Module):
                     pred_centroids[1][i, 0].cpu().detach(),
                     "r+",
                 )
-
+            print(image_loss)
             plt.show()
 
-        self.loss_record.append(
+        self.loss_record.append([
             torch.tensor(
                 [
                     self.lambda_ * image_loss,
@@ -72,7 +73,7 @@ class MENTLoss(Module):
                     self.beta_ * centroid_loss,
                     total_loss * self.gamma_,
                 ]
-            )
+            ), cov]
         )
 
         return total_loss * self.gamma_

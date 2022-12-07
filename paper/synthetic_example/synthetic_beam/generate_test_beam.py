@@ -50,11 +50,11 @@ def generate_test_beam():
     twiss_x = {
         "type": "set_twiss x",
         "beta": {
-            "value": 10,
+            "value": 3,
             "units": "m",
         },
-        "alpha": {"value": 5, "units": ""},
-        "emittance": {"value": 2.0, "units": "um"},
+        "alpha": {"value": 5/3, "units": ""},
+        "emittance": {"value": 6.0, "units": "um"},
     }
 
     gen.input["transforms"] = {
@@ -125,7 +125,8 @@ def generate_test_images():
     # do histogramming
     images = []
     bins = bins.cpu()
-    bandwidth = torch.tensor(0.1e-2).cpu()
+    bin_width = bins[1]-bins[0]
+    bandwidth = bin_width.cpu() / 2
     for i in range(n_images):
         hist = histogram2d(screen_data[i].T[0], screen_data[i].T[1], bins, bandwidth)
         images.append(hist)

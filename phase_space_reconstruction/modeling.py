@@ -18,7 +18,7 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
 
         self.base_lattice = lattice
         self.diagnostic = diagnostic
-        self.beam = beam
+        self.beam = deepcopy(beam)
 
     def track_and_observe_beam(self, beam, K):
         # alter quadrupole strength
@@ -41,8 +41,11 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
 
         # get entropy
         entropy = calculate_beam_entropy(proposal_beam)
+        
+        # get beam covariance
+        cov = calculate_covariance(proposal_beam)
 
-        return observations, entropy
+        return observations, entropy, cov
 
 
 class NNTransform(torch.nn.Module):

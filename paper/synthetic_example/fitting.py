@@ -43,7 +43,7 @@ def create_ensemble(bins, bandwidth):
     ensemble = SnapshotEnsembleRegressor(
         estimator=modeling.PhaseSpaceReconstructionModel,
         estimator_args=module_kwags,
-        n_estimators=1,
+        n_estimators=10,
     )
 
     return ensemble
@@ -84,16 +84,19 @@ if __name__ == "__main__":
     test_dataloader = DataLoader(test_dset, shuffle=True)
 
     bin_width = bins[1] - bins[0]
-    bandwidth = bin_width
+    bandwidth = bin_width / 2
     ensemble = create_ensemble(bins, bandwidth)
 
-    criterion = MENTLoss(torch.tensor(1e11), gamma_=torch.tensor(0.01))
+    criterion = MENTLoss(torch.tensor(1e11), gamma_=torch.tensor(0.001))
+    #criterion = MENTLoss(torch.tensor(1e3), gamma_=torch.tensor(0.01))
     ensemble.set_criterion(criterion)
 
-    n_epochs = 2000
-    ensemble.set_optimizer("Adam", lr=1e-2)
+    n_epochs = 5000
+    ensemble.set_optimizer("Adam", lr=1e-2 / 2)
     # with torch.autograd.detect_anomaly():
     ensemble.fit(
-        train_dataloader, epochs=n_epochs, save_dir=save_dir, lr_clip=[1e-3, 10]
+        train_dataloader, 
+        epochs=n_epochs, 
+        save_dir=save_dir, lr_clip=[1e-3, 10]
     )
     torch.save(criterion.loss_record, save_dir + "/loss_log.pt")
