@@ -28,8 +28,8 @@ def create_ensemble(bins, bandwidth):
     lattice = create_quad_scan_beamline()
     diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
     # create NN beam
-    n_particles = 10000
-    nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
+    n_particles = 100000
+    nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-3)
     nn_beam = modeling.InitialBeam(
         nn_transformer,
         torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),
@@ -102,16 +102,16 @@ def run_one(scale):
     ensemble = create_ensemble(bins, bandwidth)
 
     criterion = MENTLoss(
-        torch.tensor(1e9), gamma_=torch.tensor(1.0), beta_=torch.tensor(0.01)
+        torch.tensor(1e11), gamma_=torch.tensor(0.00001)
     )
     
     ensemble.set_criterion(criterion)
 
     n_epochs = 2500
-    ensemble.set_optimizer("Adam", lr=1e-3)
+    ensemble.set_optimizer("Adam", lr=1e-2)
     # with torch.autograd.detect_anomaly():
     ensemble.fit(
-        train_dataloader, epochs=n_epochs, save_dir=save_dir, lr_clip=[1e-4, 10]
+        train_dataloader, epochs=n_epochs, save_dir=save_dir, lr_clip=[1e-3, 10]
     )
     torch.save(criterion.loss_record, save_dir + "/loss_log.pt")
     return criterion.loss_record
@@ -119,15 +119,16 @@ def run_one(scale):
 
 
 if __name__ == "__main__":
-    scales = [0.95, 0.975, 1.0, 1.025, 1.05]
+    scales = [0.95]#, 0.975, 1.0, 1.025, 1.05]
     
     for ele in scales:
         min_loss = 1000
         i = 0
-        while min_loss > 100:
-            print(f"run {i}")
-            loss = run_one(ele)
-            loss_trace = torch.stack(loss)[:,-1]
-            min_loss = torch.min(loss_trace)
+        loss = run_one(ele)
+
+        #while min_loss > 100:
+        #    print(f"run {i}")
+            #loss_trace = torch.stack(loss)[:,-1]
+            #min_loss = torch.min(loss_trace)
             
-            i += 1
+        #    i += 1

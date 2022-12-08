@@ -43,7 +43,7 @@ def create_ensemble(bins, bandwidth):
     ensemble = SnapshotEnsembleRegressor(
         estimator=modeling.PhaseSpaceReconstructionModel,
         estimator_args=module_kwags,
-        n_estimators=10,
+        n_estimators=20,
     )
 
     return ensemble
@@ -71,7 +71,7 @@ def create_datasets(all_k, all_images, save_dir):
 
 if __name__ == "__main__":
 
-    save_dir = "alpha_1000"
+    save_dir = "small_emittance_case2"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
@@ -91,8 +91,8 @@ if __name__ == "__main__":
     #criterion = MENTLoss(torch.tensor(1e3), gamma_=torch.tensor(0.01))
     ensemble.set_criterion(criterion)
 
-    n_epochs = 5000
-    ensemble.set_optimizer("Adam", lr=1e-2 / 2)
+    n_epochs = 10000
+    ensemble.set_optimizer("Adam", lr=1e-2)
     # with torch.autograd.detect_anomaly():
     ensemble.fit(
         train_dataloader, 

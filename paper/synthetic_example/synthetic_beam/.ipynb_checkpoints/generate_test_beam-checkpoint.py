@@ -4,16 +4,16 @@ from distgen.physical_constants import unit_registry as unit
 from matplotlib import pyplot as plt
 
 import sys
-sys.path.append("../")
+sys.path.append("../../../")
 
 from phase_space_reconstruction.histogram import histogram2d
-from torch_track import Beam, TorchDrift, TorchLattice, TorchQuad
+from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchLattice, TorchQuadrupole
 
 
 def generate_test_beam():
     setstdx = {"type": "set_std x", "sigma_x": {"value": 2, "units": "mm"}}
     setstdpx = {"type": "set_std px", "sigma_px": {"value": 0.01, "units": "MeV/c"}}
-    k = 2 * 3.14 / (20 * unit("mm"))
+    k = 2 * 3.14 / (30 * unit("mm"))
     ycos = {
         "type": "cosine x:y",
         "amplitude": {"value": 30, "units": "mm"},
@@ -32,15 +32,16 @@ def generate_test_beam():
         "type": "polynomial x:pz",
         "coefficients": [
             {"value": 0.0, "units": "MeV/c"},
-            {"value": 150.0, "units": "MeV/c/meter"}
+            {"value": 75.0, "units": "MeV/c/meter"}
         ]
     }
 
     linear_position = {
         "type": "polynomial x:y",
         "coefficients": [
-            {"value": 0.0, "units": "m"},
-            {"value": 0.75, "units": ""}
+            {"value": -0.005, "units": "m"},
+            {"value": 0.75, "units": ""},
+            {"value": 50.0, "units":"1/m"}
         ]
     }
 
@@ -49,7 +50,7 @@ def generate_test_beam():
     twiss_x = {
         "type": "set_twiss x",
         "beta": {
-            "value": 10,
+            "value": 9,
             "units": "m",
         },
         "alpha": {"value": 5, "units": ""},
@@ -105,11 +106,11 @@ def generate_test_images():
     )
 
     n_images = 20
-    k_in = torch.linspace(-10, 10, n_images, **tkwargs).unsqueeze(1)
-    bins = torch.linspace(-25, 25, 150, **tkwargs) * 1e-3
+    k_in = torch.linspace(-25, 15, n_images, **tkwargs).unsqueeze(1)
+    bins = torch.linspace(-30, 30, 200, **tkwargs) * 1e-3
 
     # do tracking
-    quad = TorchQuad(torch.tensor(0.1), K1=k_in, NUM_STEPS=5)
+    quad = TorchQuadrupole(torch.tensor(0.1), K1=k_in, NUM_STEPS=5)
     drift = TorchDrift(L=torch.tensor(1.0))
     train_lattice = TorchLattice([quad, drift])
 
@@ -124,21 +125,30 @@ def generate_test_images():
     # do histogramming
     images = []
     bins = bins.cpu()
-    bandwidth = torch.tensor(0.1e-3).cpu()
+    bin_width = bins[1]-bins[0]
+    bandwidth = bin_width.cpu() / 2
     for i in range(n_images):
         hist = histogram2d(screen_data[i].T[0], screen_data[i].T[1], bins, bandwidth)
         images.append(hist)
 
     images = torch.cat([ele.unsqueeze(0) for ele in images], dim=0)
 
-    for image in images[::3]:
+    for i in range(0, len(images), 3):
         plt.figure()
-        plt.imshow(image)
+        plt.imshow(images[i])
 
+        plt.figure()
+        plt.hist(output_beam.x[i].detach().cpu().numpy())
+        plt.hist(output_beam.y[i].detach().cpu().numpy())
+
+        print(k_in[i], torch.std(output_beam.x[i])**2 * 1e6)
+
+    xx = torch.meshgrid(bins, bins)
     # save image data
-    torch.save(images, "images.pt")
+    torch.save(images.unsqueeze(1), "train_images.pt")
     torch.save(k_in, "kappa.pt")
     torch.save(bins, "bins.pt")
+    torch.save(xx, "xx.pt")
 
 
 if __name__=="__main__":

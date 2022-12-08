@@ -50,11 +50,11 @@ def generate_test_beam():
     twiss_x = {
         "type": "set_twiss x",
         "beta": {
-            "value": 3,
+            "value": 9,
             "units": "m",
         },
-        "alpha": {"value": 5/3, "units": ""},
-        "emittance": {"value": 6.0, "units": "um"},
+        "alpha": {"value": 5, "units": ""},
+        "emittance": {"value": 2.0, "units": "um"},
     }
 
     gen.input["transforms"] = {
