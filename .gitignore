@@ -3,3 +3,4 @@
 *.dset
 __pycache__/
 .idea/
+phase_space_reconstruction.egg-info/

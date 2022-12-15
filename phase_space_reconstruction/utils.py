@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import torch
 
 
@@ -10,6 +11,35 @@ def calculate_centroid(images, x, y):
     y_centroid = (y_projection * y).sum(-1) / (y_projection.sum(-1) + 1e-8)
 
     return torch.stack((x_centroid, y_centroid))
+
+
+def calculate_ellipse(images, x, y):
+    x_projection = images.sum(dim=-2)
+    y_projection = images.sum(dim=-1)
+    xx, yy = torch.meshgrid(x, y)
+    xx = xx.unsqueeze(0).repeat(*images.shape[:-2], 1, 1)
+    yy = yy.unsqueeze(0).repeat(*images.shape[:-2], 1, 1)
+
+    # calculate weighted avg
+    x_centroid = (x_projection * x).sum(-1) / (x_projection.sum(-1) + 1e-8)
+    y_centroid = (y_projection * y).sum(-1) / (y_projection.sum(-1) + 1e-8)
+
+    x_centroid = x_centroid.reshape(-1, 1, 1)
+    y_centroid = y_centroid.reshape(-1, 1, 1)
+    # calculate rms
+    x_var = (images.transpose(-2, -1) * (xx - x_centroid) ** 2).sum((-1, -2)) / (
+        images.sum((-1, -2)) + 1e-8
+    )
+    y_var = (images.transpose(-2, -1) * (yy - y_centroid) ** 2).sum((-1, -2)) / (
+        images.sum((-1, -2)) + 1e-8
+    )
+    c_var = (images.transpose(-2, -1) * (xx - x_centroid) * (yy - y_centroid)).sum(
+        (-1, -2)
+    ) / (images.sum((-1, -2)) + 1e-8)
+
+    return torch.cat((x_centroid, y_centroid),dim=-1), torch.tensor(
+        ((x_var, c_var), (c_var, y_var))
+    )
 
 
 def get_norm_coords(beam_coords):
@@ -37,7 +67,7 @@ def get_core_fraction(beam_coords, frac=0.9, dims=slice(0, 4), normalized_output
 
     if normalized_output:
         sorted_norm_coords = normalized_coords[torch.argsort(origin_dist)]
-        return sorted_norm_coords[:int(beam_coords.shape[0] * frac)]
+        return sorted_norm_coords[: int(beam_coords.shape[0] * frac)]
     else:
         sorted_coords = beam_coords[torch.argsort(origin_dist)]
-        return sorted_coords[:int(beam_coords.shape[0] * frac)]
+        return sorted_coords[: int(beam_coords.shape[0] * frac)]
