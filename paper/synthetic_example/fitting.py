@@ -30,7 +30,7 @@ def create_ensemble(bins, bandwidth):
     lattice = create_quad_scan_beamline()
     diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
     # create NN beam
-    n_particles = 100000
+    n_particles = 10000
     nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
     nn_beam = modeling.InitialBeam(
         nn_transformer,
@@ -56,8 +56,9 @@ def load_data():
     all_images = torch.load(folder + "train_images.pt").float()
     xx = torch.load(folder + "xx.pt")
     bins = xx[0].T[0]
+    gt_beam = torch.load(folder + "ground_truth_dist.pt")
 
-    return all_k, all_images, bins, xx
+    return all_k, all_images, bins, xx, gt_beam
 
 
 def create_datasets(all_k, all_images, save_dir):
@@ -70,13 +71,13 @@ def create_datasets(all_k, all_images, save_dir):
 
 
 if __name__ == "__main__":
-
-    save_dir = "small_emittance_case2"
+    save_dir = "double_small_emittance_case"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
     tkwargs = {"dtype": torch.float}
-    all_k, all_images, bins, xx = load_data()
+    all_k, all_images, bins, xx, gt_beam = load_data()
+    torch.save(gt_beam, save_dir + "gt_beam.pt")
     train_dset, test_dset = create_datasets(all_k, all_images, save_dir)
     print(len(train_dset))
 

@@ -41,7 +41,7 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
 
         # get entropy
         entropy = calculate_beam_entropy(proposal_beam)
-        
+
         # get beam covariance
         cov = calculate_covariance(proposal_beam)
 
@@ -50,12 +50,12 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
 
 class NNTransform(torch.nn.Module):
     def __init__(
-            self,
-            n_hidden,
-            width,
-            dropout=0.0,
-            activation=torch.nn.Tanh(),
-            output_scale=1e-2,
+        self,
+        n_hidden,
+        width,
+        dropout=0.0,
+        activation=torch.nn.Tanh(),
+        output_scale=1e-2,
     ):
         """
         Nonparametric transformation - NN
@@ -122,6 +122,33 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.k[idx], self.images[idx]
+
+
+class NormalizedQuadScan(nn.Module):
+    def __init__(self, A, drift, quad_length):
+        super().__init__()
+        self.register_buffer("A", A)
+        self.register_buffer("d", drift)
+        self.register_buffer("l", quad_length)
+
+        # note params are normalized
+        self.register_parameter("lambda_1", nn.Parameter(torch.tensor(1.0)))
+        self.register_parameter("lambda_2", nn.Parameter(torch.tensor(1.0)))
+        self.register_parameter("c", nn.Parameter(torch.tensor(0.0)))
+
+    def forward(self, k):
+        # input should be real k, output is real sigma_x^2
+        norm_k = 1 + self.d * self.l * k
+        norm_s11 = (
+            norm_k ** 2 * self.lambda_1 ** 2
+            + 2 * self.d * norm_k * self.lambda_1 * self.lambda_2 * self.c
+            + self.lambda_2 ** 2 * self.d ** 2
+        )
+        return norm_s11 * self.A ** 2
+
+    def emittance(self):
+        norm_emit = self.lambda_1 * self.lambda_2 * (1 - self.c ** 2).sqrt()
+        return norm_emit * self.A ** 2
 
 
 def predict_images(beam, lattice, screen):

@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import torch
+import numpy as np
 
 
 def calculate_centroid(images, x, y):
@@ -37,7 +38,7 @@ def calculate_ellipse(images, x, y):
         (-1, -2)
     ) / (images.sum((-1, -2)) + 1e-8)
 
-    return torch.cat((x_centroid, y_centroid),dim=-1), torch.tensor(
+    return torch.cat((x_centroid, y_centroid), dim=-1), torch.tensor(
         ((x_var, c_var), (c_var, y_var))
     )
 

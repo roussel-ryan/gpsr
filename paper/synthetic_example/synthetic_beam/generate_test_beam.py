@@ -57,12 +57,23 @@ def generate_test_beam():
         "emittance": {"value": 2.0, "units": "um"},
     }
 
+    twiss_y = {
+        "type": "set_twiss y",
+        "beta": {
+            "value": 9,
+            "units": "m",
+        },
+        "alpha": {"value": 0, "units": ""},
+        "emittance": {"value": 2.0, "units": "um"},
+    }
+
     gen.input["transforms"] = {
-        "twiss": twiss_x,
+        "twissx": twiss_x,
+        "twissy": twiss_y,
         "pycos": pycos,
         "linear_energy": linear_energy,
         "linear_position": linear_position,
-        "order": ["twiss", "linear_position", "pycos", "linear_energy"],
+        "order": ["twissx","twissy", "linear_position", "pycos", "linear_energy"],
     }
     gen.run()
     particles_3 = gen.particles
