@@ -2,6 +2,7 @@ import logging
 import os
 
 import sys
+import time
 
 import torch
 
@@ -71,13 +72,13 @@ def create_datasets(all_k, all_images, save_dir):
 
 
 if __name__ == "__main__":
-    save_dir = "double_small_emittance_case"
+    save_dir = "double_small_emittance_case_cov_term_no_energy_spread"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
     tkwargs = {"dtype": torch.float}
     all_k, all_images, bins, xx, gt_beam = load_data()
-    torch.save(gt_beam, save_dir + "gt_beam.pt")
+    torch.save(gt_beam, save_dir + "/gt_beam.pt")
     train_dset, test_dset = create_datasets(all_k, all_images, save_dir)
     print(len(train_dset))
 
@@ -88,16 +89,18 @@ if __name__ == "__main__":
     bandwidth = bin_width / 2
     ensemble = create_ensemble(bins, bandwidth)
 
-    criterion = MENTLoss(torch.tensor(1e11), gamma_=torch.tensor(0.001))
-    #criterion = MENTLoss(torch.tensor(1e3), gamma_=torch.tensor(0.01))
+    criterion = MENTLoss(
+        torch.tensor(1e11), gamma_=torch.tensor(0.001), alpha_=torch.tensor(0.1)
+    )
+    # criterion = MENTLoss(torch.tensor(1e3), gamma_=torch.tensor(0.01))
     ensemble.set_criterion(criterion)
 
     n_epochs = 10000
     ensemble.set_optimizer("Adam", lr=1e-2)
     # with torch.autograd.detect_anomaly():
+    start = time.time()
     ensemble.fit(
-        train_dataloader, 
-        epochs=n_epochs, 
-        save_dir=save_dir, lr_clip=[1e-3, 10]
+        train_dataloader, epochs=n_epochs, save_dir=save_dir, lr_clip=[1e-3, 10]
     )
+    print(f"runtime: {time.time() - start}")
     torch.save(criterion.loss_record, save_dir + "/loss_log.pt")

@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 
 
 def create_quad_scan_beamline():
-    q1 = TorchQuadrupole(torch.tensor(0.12), torch.tensor(0.0), 10)
+    q1 = TorchQuadrupole(torch.tensor(0.12), torch.tensor(0.0), 5)
     d1 = TorchDrift(torch.tensor(3.38 - 0.12/2))
 
     lattice = TorchLattice([q1, d1])
@@ -28,7 +28,7 @@ def create_ensemble(bins, bandwidth):
     lattice = create_quad_scan_beamline()
     diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
     # create NN beam
-    n_particles = 100000
+    n_particles = 10000
     nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
     nn_beam = modeling.InitialBeam(
         nn_transformer,
@@ -41,7 +41,7 @@ def create_ensemble(bins, bandwidth):
     ensemble = SnapshotEnsembleRegressor(
         estimator=modeling.PhaseSpaceReconstructionModel,
         estimator_args=module_kwags,
-        n_estimators=1,
+        n_estimators=4,
     )
 
     return ensemble
@@ -75,19 +75,18 @@ def load_data(tkwargs):
 
 
 def create_datasets(all_k, all_images, save_dir):
-    train_dset = ImageDataset(all_k[::2], all_images[::2])
-    test_dset = ImageDataset(all_k[1::2], all_images[1::2])
+    train_dset = ImageDataset(all_k[::2, :3], all_images[::2, :3])
+    test_dset = ImageDataset(all_k[1::2, :3], all_images[1::2, :3])
     torch.save(train_dset, save_dir + "/train.dset")
     torch.save(test_dset, save_dir + "/test.dset")
 
     return train_dset, test_dset
 
 
-
 if __name__ == "__main__":
     folder = ""
 
-    save_dir = "mse_scale_095_run3"
+    save_dir = "mse_scale_1_run3_cov_term"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
@@ -103,11 +102,13 @@ if __name__ == "__main__":
     bandwidth = bin_width / 4
     ensemble = create_ensemble(bins, bandwidth)
 
-    criterion = MENTLoss(torch.tensor(1e11), gamma_=torch.tensor(0.01))
+    criterion = MENTLoss(
+        torch.tensor(1e11), gamma_=torch.tensor(0.001), alpha_=torch.tensor(0.1)
+    )
 
     ensemble.set_criterion(criterion)
 
-    n_epochs = 3000
+    n_epochs = 2000
     ensemble.set_optimizer("Adam", lr=1e-2)
     # with torch.autograd.detect_anomaly():
     ensemble.fit(

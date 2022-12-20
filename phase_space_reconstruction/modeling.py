@@ -139,15 +139,17 @@ class NormalizedQuadScan(nn.Module):
     def forward(self, k):
         # input should be real k, output is real sigma_x^2
         norm_k = 1 + self.d * self.l * k
+        norm_c = torch.tanh(self.c)
         norm_s11 = (
             norm_k ** 2 * self.lambda_1 ** 2
-            + 2 * self.d * norm_k * self.lambda_1 * self.lambda_2 * self.c
+            + 2 * self.d * norm_k * self.lambda_1 * self.lambda_2 * norm_c
             + self.lambda_2 ** 2 * self.d ** 2
         )
         return norm_s11 * self.A ** 2
 
     def emittance(self):
-        norm_emit = self.lambda_1 * self.lambda_2 * (1 - self.c ** 2).sqrt()
+        norm_c = torch.tanh(self.c)
+        norm_emit = (self.lambda_1**2 * self.lambda_2**2 * (1 - norm_c**2)).sqrt()
         return norm_emit * self.A ** 2
 
 

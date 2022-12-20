@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import torch
 from torch.nn import Module, Parameter
 from torch.nn.functional import mse_loss
-from phase_space_reconstruction.utils import calculate_centroid
+
+from phase_space_reconstruction.utils import calculate_centroid, calculate_ellipse
 
 
 def kl_div(target, pred):
@@ -10,14 +11,23 @@ def kl_div(target, pred):
     return target * torch.abs((target + eps).log() - (pred + eps).log())
 
 
+def log_mse(target, pred):
+    eps = 1e-10
+    return mse_loss((target + eps).log(), (pred + eps).log())
+
+
 class MENTLoss(Module):
-    def __init__(self, lambda_, beta_=torch.tensor(1.0), gamma_=torch.tensor(1.0), debug=False):
+    def __init__(
+        self, lambda_, beta_=torch.tensor(1.0), gamma_=torch.tensor(1.0),
+            alpha_=torch.tensor(1.0), debug=False
+    ):
         super(MENTLoss, self).__init__()
 
         self.debug = debug
         self.register_parameter("lambda_", Parameter(lambda_))
         self.register_parameter("beta_", Parameter(beta_))
         self.register_parameter("gamma_", Parameter(gamma_))
+        self.register_parameter("alpha_", Parameter(alpha_))
 
         self.loss_record = []
 
@@ -26,17 +36,23 @@ class MENTLoss(Module):
         pred_image = outputs[0]
         entropy = outputs[1]
         cov = outputs[2]
-        
+
         # compare image centroids to get regularization
         x = torch.arange(target_image.shape[-1]).to(target_image)
         pred_centroids = calculate_centroid(pred_image, x, x)
         target_centroids = calculate_centroid(target_image, x, x)
-        distances = torch.norm(pred_centroids-target_centroids, dim=0)
-        centroid_loss = distances.mean()**3
-        
-        #image_loss = kl_div(target_image, pred_image).mean()
+        distances = torch.norm(pred_centroids - target_centroids, dim=0)
+        centroid_loss = distances.mean() ** 3
+
+        # compare ellipses
+        _, pred_covs = calculate_ellipse(pred_image, x, x)
+        _, target_covs = calculate_ellipse(target_image, x, x)
+        cov_loss = mse_loss(pred_covs, target_covs)
+
+        # image_loss = kl_div(target_image, pred_image).mean()
         image_loss = mse_loss(target_image, pred_image)
-        total_loss = -entropy + self.lambda_ * image_loss + self.beta_ * centroid_loss
+        total_loss = -entropy + self.lambda_ * image_loss + self.beta_ * \
+                     centroid_loss + self.alpha_ * cov_loss
 
         if 0:
             fig, ax = plt.subplots(4, 2, sharex="all", sharey="all")
@@ -65,15 +81,19 @@ class MENTLoss(Module):
             print(image_loss)
             plt.show()
 
-        self.loss_record.append([
-            torch.tensor(
-                [
-                    self.lambda_ * image_loss,
-                    -entropy,
-                    self.beta_ * centroid_loss,
-                    total_loss * self.gamma_,
-                ]
-            ), cov]
+        self.loss_record.append(
+            [
+                torch.tensor(
+                    [
+                        self.lambda_ * image_loss,
+                        -entropy,
+                        self.beta_ * centroid_loss,
+                        self.alpha_ * cov_loss,
+                        total_loss * self.gamma_,
+                    ]
+                ),
+                cov,
+            ]
         )
 
         return total_loss * self.gamma_

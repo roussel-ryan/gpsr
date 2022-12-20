@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
-import torch
 import numpy as np
+import torch
 
 
 def calculate_centroid(images, x, y):
@@ -25,8 +25,8 @@ def calculate_ellipse(images, x, y):
     x_centroid = (x_projection * x).sum(-1) / (x_projection.sum(-1) + 1e-8)
     y_centroid = (y_projection * y).sum(-1) / (y_projection.sum(-1) + 1e-8)
 
-    x_centroid = x_centroid.reshape(-1, 1, 1)
-    y_centroid = y_centroid.reshape(-1, 1, 1)
+    x_centroid = x_centroid.reshape(*images.shape[:-2], 1, 1)
+    y_centroid = y_centroid.reshape(*images.shape[:-2], 1, 1)
     # calculate rms
     x_var = (images.transpose(-2, -1) * (xx - x_centroid) ** 2).sum((-1, -2)) / (
         images.sum((-1, -2)) + 1e-8
@@ -38,9 +38,12 @@ def calculate_ellipse(images, x, y):
         (-1, -2)
     ) / (images.sum((-1, -2)) + 1e-8)
 
-    return torch.cat((x_centroid, y_centroid), dim=-1), torch.tensor(
-        ((x_var, c_var), (c_var, y_var))
-    )
+    cov = torch.empty(*images.shape[:-2], 2, 2)
+    cov[..., 0, 0] = x_var
+    cov[..., 1, 0] = c_var
+    cov[..., 0, 1] = c_var
+    cov[..., 1, 1] = y_var
+    return torch.cat((x_centroid, y_centroid), dim=-1), cov
 
 
 def get_norm_coords(beam_coords):

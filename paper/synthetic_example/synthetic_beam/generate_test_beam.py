@@ -71,9 +71,9 @@ def generate_test_beam():
         "twissx": twiss_x,
         "twissy": twiss_y,
         "pycos": pycos,
-        "linear_energy": linear_energy,
+        #"linear_energy": linear_energy,
         "linear_position": linear_position,
-        "order": ["twissx","twissy", "linear_position", "pycos", "linear_energy"],
+        "order": ["twissx","twissy", "linear_position", "pycos"],#, "linear_energy"],
     }
     gen.run()
     particles_3 = gen.particles
