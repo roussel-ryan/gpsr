@@ -29,7 +29,7 @@ def create_ensemble(bins, bandwidth):
     diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
     # create NN beam
     n_particles = 100000
-    nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-3)
+    nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
     nn_beam = modeling.InitialBeam(
         nn_transformer,
         torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),
@@ -74,8 +74,8 @@ def load_data(tkwargs):
 
 
 def create_datasets(all_k, all_images, save_dir):
-    train_dset = ImageDataset(all_k[::2], all_images[::2])
-    test_dset = ImageDataset(all_k[1::2], all_images[1::2])
+    train_dset = ImageDataset(all_k[::2, :3], all_images[::2, :3])
+    test_dset = ImageDataset(all_k[1::2, :3], all_images[1::2, :3])
     torch.save(train_dset, save_dir + "/train.dset")
     torch.save(test_dset, save_dir + "/test.dset")
 
@@ -98,11 +98,11 @@ def run_one(scale):
     test_dataloader = DataLoader(test_dset, shuffle=True)
 
     bin_width = bins[1] - bins[0]
-    bandwidth = bin_width / 4
+    bandwidth = bin_width / 2
     ensemble = create_ensemble(bins, bandwidth)
 
     criterion = MENTLoss(
-        torch.tensor(1e11), gamma_=torch.tensor(0.00001)
+        torch.tensor(1e11), gamma_=torch.tensor(0.001), alpha_=torch.tensor(1e1)
     )
     
     ensemble.set_criterion(criterion)
@@ -119,7 +119,7 @@ def run_one(scale):
 
 
 if __name__ == "__main__":
-    scales = [0.95]#, 0.975, 1.0, 1.025, 1.05]
+    scales = [1.0]
     
     for ele in scales:
         min_loss = 1000

@@ -28,7 +28,7 @@ def create_ensemble(bins, bandwidth):
     lattice = create_quad_scan_beamline()
     diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
     # create NN beam
-    n_particles = 10000
+    n_particles = 100000
     nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
     nn_beam = modeling.InitialBeam(
         nn_transformer,
@@ -41,7 +41,7 @@ def create_ensemble(bins, bandwidth):
     ensemble = SnapshotEnsembleRegressor(
         estimator=modeling.PhaseSpaceReconstructionModel,
         estimator_args=module_kwags,
-        n_estimators=4,
+        n_estimators=5,
     )
 
     return ensemble
@@ -69,7 +69,7 @@ def load_data(tkwargs):
 
     n_samples = image_data.shape[1]
     quad_strengths = quad_strengths.unsqueeze(1).repeat(1, n_samples).unsqueeze(-1) *\
-                     0.95
+                     1.0
 
     return quad_strengths, image_data, x, xx
 
@@ -86,7 +86,7 @@ def create_datasets(all_k, all_images, save_dir):
 if __name__ == "__main__":
     folder = ""
 
-    save_dir = "mse_scale_1_run3_cov_term"
+    save_dir = "mse_scale_1_run3_cov_term_1e1"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
@@ -99,11 +99,11 @@ if __name__ == "__main__":
     test_dataloader = DataLoader(test_dset, shuffle=True)
 
     bin_width = bins[1] - bins[0]
-    bandwidth = bin_width / 4
+    bandwidth = bin_width / 2
     ensemble = create_ensemble(bins, bandwidth)
 
     criterion = MENTLoss(
-        torch.tensor(1e11), gamma_=torch.tensor(0.001), alpha_=torch.tensor(0.1)
+        torch.tensor(1e11), gamma_=torch.tensor(0.001), alpha_=torch.tensor(1e1)
     )
 
     ensemble.set_criterion(criterion)
