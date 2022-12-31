@@ -91,7 +91,7 @@ def run_one(scale):
     tkwargs = {"dtype": torch.float}
     all_k, all_images, bins, xx = load_data(tkwargs)
     all_k = all_k * scale
-    train_dset, test_dset = create_datasets(all_k, all_images, save_dir)
+    train_dset, test_dset = create_datasets(all_k, all_images, "uncertainty")
     print(len(train_dset))
 
     train_dataloader = DataLoader(train_dset, batch_size=11, shuffle=True)
