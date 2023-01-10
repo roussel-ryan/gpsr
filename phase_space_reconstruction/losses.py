@@ -15,6 +15,11 @@ def log_mse(target, pred):
     eps = 1e-10
     return mse_loss((target + eps).log(), (pred + eps).log())
 
+def mae_loss(target, pred):
+    return torch.mean(torch.abs(target - pred))
+
+def mae_log_loss(target, pred):
+    return torch.mean(torch.abs(torch.log(target + 1e-8) - torch.log(pred + 1e-8)))
 
 class MENTLoss(Module):
     def __init__(
@@ -47,10 +52,10 @@ class MENTLoss(Module):
         # compare ellipses
         _, pred_covs = calculate_ellipse(pred_image, x, x)
         _, target_covs = calculate_ellipse(target_image, x, x)
-        cov_loss = mse_loss(pred_covs, target_covs)
+        cov_loss = mae_loss(pred_covs, target_covs)
 
         # image_loss = kl_div(target_image, pred_image).mean()
-        image_loss = mse_loss(target_image, pred_image)
+        image_loss = mae_loss(target_image, pred_image)
         total_loss = -entropy + self.lambda_ * image_loss + self.beta_ * \
                      centroid_loss + self.alpha_ * cov_loss
 
