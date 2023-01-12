@@ -91,17 +91,17 @@ def create_datasets(all_k, all_images, save_dir):
 if __name__ == "__main__":
     folder = ""
 
-    base_dir = "/global/cfs/cdirs/m669/rroussel/phase_space_reconstruction"
-    save_dir = base_dir + "/mse_scale_1_l_1e10"
+    base_dir = "/global/cfs/cdirs/m669/rroussel/phase_space_reconstruction/"
+    save_dir = base_dir + "mse_scale_1_l_1e13_bw"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 
     tkwargs = {"dtype": torch.float}
-    all_k, all_images, bins, xx = load_data(base_dir,tkwargs)
+    all_k, all_images, bins, xx = load_data(base_dir, tkwargs)
     train_dset, test_dset = create_datasets(all_k, all_images, save_dir)
     print(len(train_dset))
 
-    train_dataloader = DataLoader(train_dset, batch_size=int(len(train_dset)/2), shuffle=True)
+    train_dataloader = DataLoader(train_dset, batch_size=int(len(train_dset)), shuffle=True)
     test_dataloader = DataLoader(test_dset, shuffle=True)
 
     bin_width = bins[1] - bins[0]
@@ -109,7 +109,7 @@ if __name__ == "__main__":
     ensemble = create_ensemble(bins, bandwidth)
 
     criterion = MENTLoss(
-        torch.tensor(1e10), 
+        torch.tensor(1e9), 
         gamma_=torch.tensor(1.0), 
         beta_=torch.tensor(0.0),
         alpha_=torch.tensor(0.0)
