@@ -1,7 +1,7 @@
 *.pt
 *.pth
 *.dset
-*__pycache__/
+**/__pycache__/
 .idea/
 phase_space_reconstruction.egg-info/
-*checkpoints*
+**/.ipynb_checkpoints/

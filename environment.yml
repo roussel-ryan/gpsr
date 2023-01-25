@@ -1,0 +1,20 @@
+name: phase_space_reconstruction
+channels:
+  - defaults
+dependencies:
+  - torchaudio
+  - pytorch=1.11.0
+  - cudatoolkit=11.3
+  - torchvision
+  - h5py
+  - scipy
+  - scikit-image
+  - matplotlib
+  - tqdm
+  - ipython
+  - ipykernel
+  - distgen
+  - pip
+  - pip:
+      - git+https://github.com/bmad-sim/Bmad-X
+

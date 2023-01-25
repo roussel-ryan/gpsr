@@ -72,7 +72,7 @@ def create_datasets(all_k, all_images, save_dir):
 
 
 if __name__ == "__main__":
-    save_dir = "double_small_emittance_case_cov_term_no_energy_spread"
+    save_dir = "double_small_emittance_case_cov_term_small_energy_spread"
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
 

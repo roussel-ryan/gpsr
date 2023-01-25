@@ -1,4 +1,4 @@
-n_particle: 100000
+n_particle: 1000000
 output:
   file: rad.gaussian.out.txt
   type: gpt
@@ -23,8 +23,8 @@ pz_dist:
     units: MeV/c
     value: 10.0
   sigma_pz:
-    units: keV/c
-    value: 0.001
+    units: MeV/c
+    value: 0.2
   type: gaussian
 start:
   tstart:
