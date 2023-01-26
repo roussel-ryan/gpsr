@@ -1,6 +1,7 @@
 name: phase_space_reconstruction
 channels:
   - pytorch
+  - conda-forge
   - defaults
 dependencies:
   - torchaudio
