@@ -23,7 +23,7 @@ def mae_log_loss(target, pred):
 
 class MENTLoss(Module):
     def __init__(
-        self, lambda_, beta_=torch.tensor(0.0), gamma_=torch.tensor(0.0),
+        self, lambda_, beta_=torch.tensor(0.0), gamma_=torch.tensor(1.0),
             alpha_=torch.tensor(0.0), debug=False
     ):
         super(MENTLoss, self).__init__()
