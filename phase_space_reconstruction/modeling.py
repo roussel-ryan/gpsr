@@ -4,7 +4,7 @@ from copy import deepcopy
 import matplotlib.pyplot as plt
 import torch
 from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchQuadrupole
-from bmadx.track import Particle
+from bmadx import Particle
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import trange
