@@ -18,7 +18,7 @@ dependencies:
   - distgen
   - pip
   - pip:
-      - git+https://github.com/bmad-sim/Bmad-X
+    # - git+https://github.com/bmad-sim/Bmad-X
       - torchensemble==0.1.7
       - pyro-ppl
 
