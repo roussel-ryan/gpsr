@@ -1,5 +1,5 @@
 import torch
-from bmadx import PI
+from bmadx import PI, M_ELECTRON, C_LIGHT
 from bmadx.bmad_torch.track_torch import TorchDrift, TorchQuadrupole, TorchCrabCavity, TorchRFCavity, TorchSBend, TorchLattice
 
 def create_quad_scan_beamline():
@@ -11,7 +11,7 @@ def create_quad_scan_beamline():
 
 def create_6d_diagnostic_beamline():
     # Design momentum
-    p_design = 4.0e7 # eV/c
+    p_design = 10.0e6 # eV/c
     
     # Quadrupole parameters
     l_q = 1e-3
@@ -22,8 +22,9 @@ def create_6d_diagnostic_beamline():
     
     # transverse deflecting cavity (TDC) parameters
     l_tdc = 0.23
-    v_tdc = 1e4
+    k_tdc = 2.00 # m^-1
     f_tdc = 1.3e9
+    v_tdc = p_design * k_tdc * C_LIGHT / ( 2 * PI * f_tdc )
     phi_tdc = 0.0 #scan parameter (maybe?)
     
     # Drift from TDC to Bend
@@ -31,7 +32,6 @@ def create_6d_diagnostic_beamline():
      
     # Bend parameters
     l_bend = 0.365 # arc length
-    p_bend = 4e7 # reference momentum
     theta = 20.0 * PI / 180.0 # angle
     g = theta/l_bend # curvature function. positive bends in the -x direction. 
     
@@ -49,8 +49,7 @@ def create_6d_diagnostic_beamline():
                           VOLTAGE = torch.tensor(v_tdc),
                           RF_FREQUENCY = torch.tensor(f_tdc),
                           PHI0 = torch.tensor(phi_tdc),
-                          P0C = torch.tensor(p_bend),
-                          G = torch.tensor(g)
+                          TILT=torch.tensor(PI/2),
                          )
     
     d2 = TorchDrift(L = torch.tensor(l_d2))
@@ -67,3 +66,4 @@ def create_6d_diagnostic_beamline():
     lattice = TorchLattice([q, d1, tdc, d2, bend, d3])
     
     return lattice
+    

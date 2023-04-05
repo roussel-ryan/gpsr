@@ -7,6 +7,7 @@ from phase_space_reconstruction.histogram import histogram2d
 from bmadx.bmad_torch.track_torch import Beam
 
 from beamline import create_quad_scan_beamline
+from beamline import create_6d_diagnostic_beamline
 
 def generate_test_beam():
     k = 2 * 3.14 / (30 * unit("mm"))
