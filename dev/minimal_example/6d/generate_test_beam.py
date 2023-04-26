@@ -69,6 +69,9 @@ def generate_test_beam():
     particles.plot("y", "px")
     particles.plot("z", "pz")
 
+    # dump test beam to h5 file
+    particles.write('pmd_par.h5')
+
     # dump test beam to pytorch file
     keys = ["x", "px", "y", "py", "z", "pz"]
     data = torch.cat(
@@ -86,6 +89,7 @@ def generate_test_beam():
 
 def generate_test_images():
     tkwargs = {"device": "cuda", "dtype": torch.float32}
+    p0c = 10.0e6
 
     generate_test_beam()
 
@@ -94,12 +98,13 @@ def generate_test_images():
     input_beam = Beam(
         beam_coords,
         s=torch.tensor(0.0, **tkwargs),
-        p0c=torch.mean(beam_coords[:, -1]),
+        p0c=torch.tensor(p0c, **tkwargs),
+        #p0c=torch.mean(beam_coords[:, -1]),
         mc2=torch.tensor(0.511e6, **tkwargs),
     )
 
     n_images = 20
-    k_in = torch.linspace(-25, 15, n_images, **tkwargs).unsqueeze(1)
+    k_in = torch.linspace(-10, 10, n_images, **tkwargs).unsqueeze(1)
     bins = torch.linspace(-30, 30, 50, **tkwargs) * 1e-3
 
     # create synthetic images
