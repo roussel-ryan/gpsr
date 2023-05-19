@@ -21,4 +21,5 @@ dependencies:
     # - git+https://github.com/bmad-sim/Bmad-X
       - torchensemble==0.1.7
       - pyro-ppl
+      - blitz-bayesian-pytorch
 
