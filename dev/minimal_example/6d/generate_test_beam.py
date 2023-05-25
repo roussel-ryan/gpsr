@@ -78,7 +78,8 @@ def generate_test_beam():
         [torch.tensor(getattr(particles, key)).unsqueeze(0) for key in keys]
     ).T
 
-    p0c = torch.mean(data[:, -1])
+    #p0c = torch.mean(data[:, -1])
+    p0c = 10.0e6
 
     data[:, 1] = data[:, 1] / p0c
     data[:, 3] = data[:, 3] / p0c
@@ -105,6 +106,7 @@ def generate_test_images():
 
     n_images = 20
     k_in = torch.linspace(-10, 10, n_images, **tkwargs).unsqueeze(1)
+    #print(k_in)
     bins = torch.linspace(-30, 30, 50, **tkwargs) * 1e-3
 
     # create synthetic images
@@ -129,14 +131,25 @@ def generate_test_images():
         images.append(hist)
 
     images = torch.cat([ele.unsqueeze(0) for ele in images], dim=0)
+    
+    mycmap = plt.get_cmap('viridis') # viridis plasma inferno magma and _r versions
+    mycmap.set_under(color='white') # map 0 to this color
+    for i in range(0, len(images)):
+        fig, ax = plt.subplots()
 
-    for i in range(0, len(images), 3):
-        plt.figure()
-        plt.imshow(images[i])
+        myvmin = 1 # something tiny
+        # Bin particles
+        ax.hist2d(x=1000*output_beam.x[i].detach().cpu().numpy(), y=1000*output_beam.y[i].detach().cpu().numpy(),  bins=[80,80], range=[[-40,40],[-40,40]] ,cmap=mycmap, vmin=myvmin)
+        ax.set_xlabel('x (mm)')
+        ax.set_ylabel('y (mm)')
+        ax.set_aspect('equal')
+        plt.show()  
+        #plt.figure()
+        #plt.imshow(images[i])
 
-        plt.figure()
-        plt.hist(output_beam.x[i].detach().cpu().numpy())
-        plt.hist(output_beam.y[i].detach().cpu().numpy())
+#        plt.figure()
+#        plt.hist(output_beam.x[i].detach().cpu().numpy())
+#        plt.hist(output_beam.y[i].detach().cpu().numpy())
 
         print(k_in[i], torch.std(output_beam.x[i])**2 * 1e6)
 

@@ -15,7 +15,7 @@ dependencies:
   - tqdm
   - ipython
   - ipykernel
-  - distgen
+  - distgen=0.6.11
   - pip
   - pip:
     # - git+https://github.com/bmad-sim/Bmad-X

@@ -90,11 +90,11 @@ def train_single_model():
 
     # visualize predictions
     image_pred, entropy_pred, cov_pred = model(all_k)
-    n_im = 5
+    n_im = len(all_k)
     fig,ax = plt.subplots(2, n_im, sharex="all", sharey="all", figsize=(40,10))
     for i in range(n_im):
-        ax[0, i].pcolor(*xx.cpu(), all_images[i*4].squeeze().detach().cpu())
-        ax[1, i].pcolor(*xx.cpu(), image_pred[i*4].squeeze().detach().cpu())
+        ax[0, i].pcolor(*xx.cpu(), all_images[i].squeeze().detach().cpu())
+        ax[1, i].pcolor(*xx.cpu(), image_pred[i].squeeze().detach().cpu())
     ax[0, 2].set_title("ground truth")
     ax[1, 2].set_title("prediction")
 
