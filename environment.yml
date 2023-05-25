@@ -15,10 +15,11 @@ dependencies:
   - tqdm
   - ipython
   - ipykernel
-  - distgen=0.6.11
+  - distgen=0.6.12
   - pip
   - pip:
     # - git+https://github.com/bmad-sim/Bmad-X
       - torchensemble==0.1.7
       - pyro-ppl
+      - blitz-bayesian-pytorch
 
