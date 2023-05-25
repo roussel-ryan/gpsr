@@ -1,0 +1,11 @@
+beginning[beta_a] = 10
+beginning[beta_b] = 10
+
+parameter[geometry] = open
+parameter[particle] = electron
+parameter[e_tot] = 10e6
+
+d: drift, l = 1.0
+
+lat: line = (d)
+use, lat
