@@ -1,15 +1,15 @@
 import numpy as np
+import distgen
 from distgen import Generator
 from distgen.physical_constants import unit_registry as unit
 from distgen.physical_constants import c
 from math import pi
-from matplotlib import pyplot as plt
 
 import sys
 sys.path.append("../../../")
 
 from phase_space_reconstruction.histogram import histogram2d
-from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchLattice, TorchQuadrupole
+#from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchLattice, TorchQuadrupole
 
 
 def create_initial_beam(yaml_file):
@@ -35,6 +35,15 @@ def create_initial_beam(yaml_file):
         "amplitude": {"value": 0.05, "units": "MeV/c"},
         "omega": {"value": k.magnitude, "units": str(k.units)},
         "phase": {"value": 90, "units": "deg"},
+    }
+
+    linear_energy = {
+        "type": "polynomial z:pz",
+        "coefficients": [
+            {"value": 0.0, "units": "MeV/c"},
+            {"value": -75.0, "units": "MeV/c/meter"},
+            {"value": 7500.0, "units": "MeV/c/meter/meter"}
+        ]
     }
 
     linear_position = {
@@ -66,13 +75,25 @@ def create_initial_beam(yaml_file):
         "emittance": {"value": 2.0, "units": "um"},
     }
 
-    gen.input["transforms"] = {
-        "twissx": twiss_x,
-        "twissy": twiss_y,
-        "pycos": pycos,
-        "linear_position": linear_position,
-        "order": ["twissx", "twissy", "linear_position", "pycos"]
-    }
+
+    if distgen.__version__ >= '1.0.0':
+        gen["transforms"] = {
+            "twissx": twiss_x,
+            "twissy": twiss_y,
+            "pycos": pycos,
+            "linear_position": linear_position,
+            "linear_energy": linear_energy,
+            "order": ["twissx", "twissy", "linear_position", "pycos", "linear_energy"]
+        }
+    else:
+        gen.input["transforms"] = {
+            "twissx": twiss_x,
+            "twissy": twiss_y,
+            "pycos": pycos,
+            "linear_position": linear_position,
+            "linear_energy": linear_energy,
+            "order": ["twissx", "twissy", "linear_position", "pycos", "linear_energy"]
+        }
 
     # generate beam
 
@@ -80,29 +101,3 @@ def create_initial_beam(yaml_file):
     particle_group.drift_to_z(z=0)
 
     return particle_group
-
-
-def transform_to_bmad_coords(particle_group, p0c):
-    """
-    Transforms openPMD-beamphysics ParticleGroup to 
-    bmad phase-space coordinates.
-
-        Parameters:
-            particle_group (ParticleGroup): openPMD-beamphysics ParticleGroup
-            p0c (float): reference momentum in eV
-
-        Returns:
-            bmad_coords (ndarray): bmad phase space coordinates
-    """
-
-    x = particle_group.x
-    px = particle_group.px / p0c
-    y = particle_group.y
-    py = particle_group.py / p0c
-    z = particle_group.beta * 299792458 * particle_group.t
-    pz = particle_group.p / p0c -1.0
-
-    bmad_coords = np.column_stack((x, px, y, py, z, pz))
-
-    return bmad_coords
-
