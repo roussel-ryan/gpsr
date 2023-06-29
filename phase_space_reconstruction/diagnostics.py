@@ -23,7 +23,7 @@ class ImageDiagnostic(Module):
         self.register_buffer(
             "mesh",
             torch.cat(
-                [ele.unsqueeze(0) for ele in torch.meshgrid(self.bins, self.bins)],
+                [ele.unsqueeze(0) for ele in torch.meshgrid(self.bins, self.bins, indexing='ij')],
                 dim=0,
             ),
         )

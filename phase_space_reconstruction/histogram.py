@@ -32,7 +32,7 @@ class KDEGaussian(nn.Module):
 if __name__ == "__main__":
     # 2d histogram
     x = torch.linspace(0.0, 1.0, 100)
-    mesh_x = torch.meshgrid(x, x)
+    mesh_x = torch.meshgrid(x, x, indexing='ij')
     test_x = torch.stack(mesh_x, dim=-1)
 
     # samples

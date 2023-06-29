@@ -1,9 +1,43 @@
+import os
+
+import torch
 import numpy as np
+
 import distgen
 from distgen import Generator
 from distgen.physical_constants import unit_registry as unit
-
 from math import pi
+
+from bmadx import M_ELECTRON
+from bmadx.bmad_torch.track_torch import Beam
+from bmadx.bmad_torch.track_torch import Beam
+from bmadx.coordinates import openPMD_to_bmadx
+
+
+def create_ground_truth_beam(folder='data', yaml_file='gaussian.yaml', gt_file='gt_dist.pt'):
+    tkwargs = {"dtype": torch.float32}
+
+    # create openPMD-beamphysics particle group
+    par = create_initial_beam(os.path.join(folder, yaml_file))
+
+    # transform to Bmad phase space coordinates
+    p0c = 10.0e6 # reference momentum in eV
+    coords = np.array(openPMD_to_bmadx(par, p0c)).T
+    coords = torch.tensor(coords, **tkwargs)
+
+    # create Bmad-x pytorch beam:
+    gt_beam = Beam(
+        coords,
+        s=torch.tensor(0.0),
+        p0c=torch.tensor(10.0e6),
+        mc2=torch.tensor(M_ELECTRON)
+    )
+
+    # save ground truth beam
+    torch.save(gt_beam, os.path.join(folder,gt_file))
+    print(f'ground truth distribution saved at {os.path.join(folder,gt_file)}')
+
+    return gt_beam
 
 def create_initial_beam(yaml_file):
     """
