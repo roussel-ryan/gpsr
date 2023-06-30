@@ -2,14 +2,28 @@ import torch
 from bmadx import PI, C_LIGHT
 from bmadx.bmad_torch.track_torch import TorchDrift, TorchQuadrupole, TorchCrabCavity, TorchSBend, TorchLattice
 
-def create_4d_diagnostic_beamline():
-    q1 = TorchQuadrupole(torch.tensor(0.1), torch.tensor(0.0), 5)
-    d1 = TorchDrift(torch.tensor(1.0))
+def quad_scan_lattice(l_d = 1.0, l_q = 0.1, n_slices=5):
+    '''Creates quad scan lattice
 
+        Args: 
+            l_d: drift length
+            l_q: quad length
+            n_steps (int): slices in quad tracking
+
+        Returns:
+            lattice: quad scan lattice
+    '''
+
+    q1 = TorchQuadrupole(torch.tensor(l_q),
+                         torch.tensor(0.0),
+                         n_slices
+                         )
+    d1 = TorchDrift(torch.tensor(l_d))
     lattice = TorchLattice([q1, d1])
+
     return lattice
 
-def create_6d_diagnostic_beamline():
+def six_dim_scan_lattice():
     # Design momentum
     p_design = 10.0e6 # eV/c
     

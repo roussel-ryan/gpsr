@@ -32,6 +32,7 @@ class ImageDiagnostic(Module):
         self.kde_calculator = KDEGaussian(bandwidth, locations=mesh)
 
     def forward(self, beam: Beam):
+
         x_vals = getattr(beam, self.x)
         y_vals = getattr(beam, self.y)
         if not x_vals.shape == y_vals.shape:
