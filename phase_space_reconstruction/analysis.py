@@ -8,18 +8,15 @@ def compare_screens(measured_images,
                     test_ids=None
                     ):
 
-    xx = np.meshgrid(bins, bins, indexing='ij')
+    edges = np.array([bins[0], bins[-1], bins[0], bins[-1]])*1e3 # mm
 
     fig, ax = plt.subplots(2,20, figsize=(20,2))
 
     for i in range(len(measured_images)):
-        ax[0, i].pcolormesh(xx[0]*1e3, xx[1]*1e3,
-                            measured_images[i])
-        ax[1, i].pcolormesh(xx[0]*1e3, xx[1]*1e3,
-                            predicted_images[i])
-        
-        ax[0,i].set_aspect('equal')
-        ax[1,i].set_aspect('equal')
+        ax[0, i].imshow(measured_images[i].T, origin='lower',
+                        extent=edges, interpolation='none')
+        ax[1, i].imshow(predicted_images[i].T, origin='lower',
+                        extent=edges, interpolation='none')
 
         ax[0,i].tick_params(bottom=False, left=False,
                             labelbottom=False, labelleft=False)
@@ -30,7 +27,7 @@ def compare_screens(measured_images,
         ax[1,0].set_ylabel('predicted')
         
         if quad_strengths is not None:
-            ax[0,i].set_title(f'{quad_strengths[i][0]:.1f}')
+            ax[0,i].set_title(f'k={quad_strengths[i][0]:.1f}')
 
         if test_ids is not None:
             if i in test_ids:
@@ -41,6 +38,11 @@ def compare_screens(measured_images,
                     spine.set_edgecolor('orange')
                     spine.set_linewidth(2)
 
+    ax[1,0].tick_params(bottom=True, left=True,
+                        labelbottom=True, labelleft=True)
+    ax[0,0].tick_params(bottom=False, left=True,
+                        labelbottom=False, labelleft=True)
+    
     plt.subplots_adjust(wspace=0.1,
                         hspace=0.1)
     

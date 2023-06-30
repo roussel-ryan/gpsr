@@ -1,0 +1,47 @@
+twiss_x:
+  type: set_twiss x
+  beta:
+    value: 9
+    units: m
+  alpha: 
+    value: 5
+    units: 
+  emittance:
+    value: 2.0
+    units: um
+twiss_y:
+  type: set_twiss y
+  beta:
+    value: 9
+    units: m
+  alpha: 
+    value: 0
+    units: 
+  emittance:
+    value: 2.0
+    units: um
+pol_xy:
+  type: polynomial x:y
+  coefficients:
+    - value: -0.005
+      units: m
+    - value: 0.75
+      units: 
+    - value: 50.0
+      units: 1/m
+pycos:
+  type: cosine y:py
+  amplitude:
+    value: 0.05
+    units: MeV/c
+  omega:
+    value: 0.2
+    units: 1/mm
+  phase:
+    value: 90
+    units: deg
+order: 
+  - twiss_x
+  - twiss_y
+  - pol_xy
+  - pycos

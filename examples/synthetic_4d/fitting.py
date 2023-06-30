@@ -1,78 +1,73 @@
-import matplotlib.pyplot as plt
+import os
+
 import torch
 from torch.utils.data import DataLoader
 
-from phase_space_reconstruction import modeling
+from phase_space_reconstruction.beamlines import quad_scan_lattice
 from phase_space_reconstruction.diagnostics import ImageDiagnostic
 from phase_space_reconstruction.losses import MENTLoss
-from phase_space_reconstruction.modeling import ImageDataset
-
-from beamline import create_quad_scan_beamline
-
-
-
-def load_data():
-    folder = ""
-
-    all_k = torch.load(folder + "kappa.pt").float().unsqueeze(-1)
-    all_images = torch.load(folder + "train_images.pt").float()
-    xx = torch.stack(torch.load(folder + "xx.pt"))
-
-    bins = xx[0].T[0]
-    gt_beam = torch.load(folder + "ground_truth_dist.pt")
-
-    return all_k, all_images, bins, xx, gt_beam
+from phase_space_reconstruction.modeling import (
+    NNTransform,
+    InitialBeam,
+    PhaseSpaceReconstructionModel,
+    ImageDataset
+    )
 
 
-def train_single_model():
-    # import and organize data for training
-    all_k, all_images, bins, xx, gt_beam = load_data()
+def train_model(
+        scan_data, 
+        n_epochs = 100,
+        device = 'cpu',
+        save_as = None
+        ):
+    
+    # Device selection: 
+    DEVICE = torch.device(device)
+    print(f'Using device: {DEVICE}')
 
-    if torch.cuda.is_available():
-        all_k = all_k.cuda()
-        all_images = all_images.cuda()
-        bins = bins.cuda()
-        gt_beam = gt_beam.cuda()
-
-
-    train_dset = ImageDataset(all_k[::2], all_images[::2])
-    test_dset = ImageDataset(all_k[1::2], all_images[1::2])
+    all_k = scan_data['quad_strengths'].to(DEVICE)
+    all_images = scan_data['images'].to(DEVICE)
+    bins = scan_data['bins'].to(DEVICE)
+    
+    # divide scan data in training and testing data sets
+    n_scan = len(scan_data['quad_strengths'])
+    train_ids = [*range(n_scan)[::2]]
+    test_ids = [*range(n_scan)[1::2]]
+    train_dset = ImageDataset(all_k[train_ids], all_images[train_ids])
+    test_dset = ImageDataset(all_k[test_ids], all_images[test_ids])
 
     train_dataloader = DataLoader(train_dset, batch_size=10, shuffle=True)
-    test_dataloader = DataLoader(test_dset, shuffle=True)
 
     bin_width = bins[1] - bins[0]
     bandwidth = bin_width / 2
 
     # create phase space reconstruction model
     diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
-    lattice = create_quad_scan_beamline()
+    lattice = quad_scan_lattice()
 
     n_particles = 10000
-    nn_transformer = modeling.NNTransform(2, 20, output_scale=1e-2)
-    nn_beam = modeling.InitialBeam(
+    nn_transformer = NNTransform(2, 20, output_scale=1e-2)
+    nn_beam = InitialBeam(
         nn_transformer,
         torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),
         n_particles,
         p0c=torch.tensor(10.0e6),
     )
 
-    model = modeling.PhaseSpaceReconstructionModel(
+    model = PhaseSpaceReconstructionModel(
         lattice,
         diagnostic,
         nn_beam
     )
 
-    if torch.cuda.is_available():
-        model = model.cuda()
+    model = model.to(DEVICE)
 
     # train model
-    n_epochs = 1000
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     loss_fn = MENTLoss(torch.tensor(1e11))
 
     for i in range(n_epochs):
-        for batch_idx, elem in enumerate(train_dataloader):
+        for elem in train_dataloader:
             k, target_images = elem[0], elem[1]
 
             optimizer.zero_grad()
@@ -84,18 +79,15 @@ def train_single_model():
         if i % 100 == 0:
             print(i, loss)
 
-    # visualize predictions
-    image_pred, entropy_pred, cov_pred = model(all_k)
+    prediction = {
+        'beam': model.beam.forward(),
+        'images': model.forward(all_k)[0],
+        'train_ids': train_ids,
+        'test_ids': test_ids
+    }
 
-    fig,ax = plt.subplots(2, 5, sharex="all", sharey="all")
-    for i in range(5):
-        ax[0, i].pcolor(*xx.cpu(), all_images[i].squeeze().detach().cpu())
-        ax[1, i].pcolor(*xx.cpu(), image_pred[i].squeeze().detach().cpu())
-    ax[0, 2].set_title("ground truth")
-    ax[1, 2].set_title("prediction")
-
-
-if __name__ == "__main__":
-    train_single_model()
-    plt.show()
-
+    if save_as is not None:
+        torch.save(prediction, save_as)
+    
+    return prediction 
+    
