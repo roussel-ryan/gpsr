@@ -1,53 +1,10 @@
 # modified from kornia.enhance.histogram
-from typing import Optional, Tuple
+from typing import Tuple
 
 import torch
-from matplotlib import pyplot as plt
+from torch import Tensor
 from torch import nn
-
-
-class KDEGaussian(nn.Module):
-    def __init__(self, bandwidth, locations=None):
-        super(KDEGaussian, self).__init__()
-        self.bandwidth = bandwidth
-        self.locations = None
-
-    def forward(self, samples, locations=None):
-        if locations is None:
-            locations = self.locations
-
-        assert samples.shape[-1] == locations.shape[-1]
-
-        # make copies of all samples for each location
-        all_samples = samples.reshape(samples.shape + (1,) * len(locations.shape[:-1]))
-        diff = torch.norm(
-            all_samples - torch.movedim(locations, -1, 0),
-            dim=-len(locations.shape[:-1]) - 1,
-        )
-        out = (-diff ** 2 / self.bandwidth ** 2).exp().sum(dim=len(samples.shape)-2)
-        norm = out.flatten(start_dim=len(locations.shape)-2).sum(dim=-1)
-        return out / norm.reshape(-1, *(1,)*(len(locations.shape)-1))
-
-
-if __name__ == "__main__":
-    # 2d histogram
-    x = torch.linspace(0.0, 1.0, 100)
-    mesh_x = torch.meshgrid(x, x, indexing='ij')
-    test_x = torch.stack(mesh_x, dim=-1)
-
-    # samples
-    samples = torch.rand(10, 4, 2)
-
-    kde = KDEGaussian(torch.tensor(0.01))
-
-    h = kde(samples, test_x)
-
-    for i in range(len(h)):
-        fig, ax = plt.subplots()
-        c = ax.pcolor(*mesh_x, h[i])
-        ax.plot(*samples[i].T, "+")
-        fig.colorbar(c)
-    plt.show()
+from torch.profiler import profile, ProfilerActivity
 
 
 def marginal_pdf(
@@ -126,12 +83,6 @@ def joint_pdf(
             f"Input kernel_values2 type is not a torch.Tensor. Got {type(kernel_values2)}"
         )
 
-    if kernel_values1.shape != kernel_values2.shape:
-        raise ValueError(
-            "Inputs kernel_values1 and kernel_values2 must have the same shape."
-            " Got {} and {}".format(kernel_values1.shape, kernel_values2.shape)
-        )
-
     joint_kernel_values = torch.matmul(kernel_values1.transpose(-2, -1), kernel_values2)
     normalization = (
             torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
@@ -175,7 +126,8 @@ def histogram(
 def histogram2d(
         x1: torch.Tensor,
         x2: torch.Tensor,
-        bins: torch.Tensor,
+        bins1: torch.Tensor,
+        bins2: torch.Tensor,
         bandwidth: torch.Tensor,
         epsilon: float = 1e-10,
 ) -> torch.Tensor:
@@ -202,9 +154,58 @@ def histogram2d(
         torch.Size([2, 128, 128])
     """
 
-    _, kernel_values1 = marginal_pdf(x1.unsqueeze(-1), bins, bandwidth, epsilon)
-    _, kernel_values2 = marginal_pdf(x2.unsqueeze(-1), bins, bandwidth, epsilon)
+    _, kernel_values1 = marginal_pdf(x1.unsqueeze(-1), bins1, bandwidth, epsilon)
+    _, kernel_values2 = marginal_pdf(x2.unsqueeze(-1), bins2, bandwidth, epsilon)
 
     pdf = joint_pdf(kernel_values1, kernel_values2)
 
     return pdf
+
+
+class KDEGaussian(nn.Module):
+    def __init__(self, bandwidth, locations=None):
+        super(KDEGaussian, self).__init__()
+        self.bandwidth = bandwidth
+        self.locations = None
+
+    def forward(self, samples, locations=None):
+        if locations is None:
+            locations = self.locations
+
+        assert samples.shape[-1] == locations.shape[-1]
+        sample_batch_shape = samples.shape[:-2]
+
+        for _ in range(len(samples.shape) - 1):
+            locations = locations.unsqueeze(-2)
+        # make copies of all samples for each location
+        diff = torch.norm(
+            samples - locations,
+            dim=-1,
+        )
+        out = (-diff ** 2 / (2.0 * self.bandwidth ** 2)).exp().sum(dim=-1)
+        norm = out.flatten(end_dim=-len(sample_batch_shape) - 1).sum(dim=0)
+        pdf = out / norm.reshape(1, 1, *sample_batch_shape)
+        return pdf
+
+
+if __name__ == "__main__":
+    # 2d histogram
+    x = torch.linspace(0.0, 1.0, 100)
+    mesh_x = torch.meshgrid(x, x)
+    test_x = torch.stack(mesh_x, dim=-1)
+
+    # samples ( `batch_size x n_particles x coord_dim`)
+    samples = torch.rand(10, 10000, 2)
+
+    kde = KDEGaussian(0.01)
+
+    with profile(activities=[ProfilerActivity.CPU],
+                 profile_memory=True) as prof:
+        out = []
+        for ele in samples:
+            out += [kde(ele, test_x)]
+            print(out[-1].shape)
+
+
+    prof.export_chrome_trace("kde_rectangle.json")
+    print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
