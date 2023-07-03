@@ -1,23 +1,24 @@
-name: phase_space_reconstruction
+name: ps-reconstruction
 channels:
-  - pytorch
   - conda-forge
   - defaults
 dependencies:
-  - pytorch=1.11.0
-  - cudatoolkit=11.3
-  - h5py
-  - scipy
-  - scikit-image
-  - matplotlib
-  - tqdm
+  - python=3.10
   - ipython
   - ipykernel
+  - numpy
+  - matplotlib
+  - scipy
+  - h5py
+  - scikit-image
+  - tqdm
   - distgen=0.6.12
   - pip
   - pip:
-    # - git+https://github.com/bmad-sim/Bmad-X
-      - torchensemble==0.1.7
-      - pyro-ppl
-      - blitz-bayesian-pytorch
+    - torch
+    - torchvision
+    - torchaudio
+    - torchensemble==0.1.7
+    - pyro-ppl
+    - blitz-bayesian-pytorch
 

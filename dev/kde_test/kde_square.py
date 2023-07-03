@@ -1,11 +1,5 @@
-# modified from kornia.enhance.histogram
-from typing import Tuple
-
 import torch
-from torch import Tensor
-from torch import nn
-from torch.profiler import profile, ProfilerActivity
-
+from typing import Tuple
 
 def marginal_pdf(
         values: torch.Tensor,
@@ -56,7 +50,6 @@ def marginal_pdf(
 
     return pdf, kernel_values
 
-
 def joint_pdf(
         kernel_values1: torch.Tensor, kernel_values2: torch.Tensor,
         epsilon: float = 1e-10
@@ -83,6 +76,12 @@ def joint_pdf(
             f"Input kernel_values2 type is not a torch.Tensor. Got {type(kernel_values2)}"
         )
 
+    if kernel_values1.shape != kernel_values2.shape:
+        raise ValueError(
+            "Inputs kernel_values1 and kernel_values2 must have the same shape."
+            " Got {} and {}".format(kernel_values1.shape, kernel_values2.shape)
+        )
+
     joint_kernel_values = torch.matmul(kernel_values1.transpose(-2, -1), kernel_values2)
     normalization = (
             torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
@@ -92,42 +91,10 @@ def joint_pdf(
 
     return pdf
 
-
-def histogram(
-        x: torch.Tensor, bins: torch.Tensor, bandwidth: torch.Tensor,
-        epsilon: float = 1e-10
-) -> torch.Tensor:
-    """Estimate the histogram of the input tensor.
-
-    The calculation uses kernel density estimation which requires a bandwidth (smoothing) parameter.
-
-    Args:
-        x: Input tensor to compute the histogram with shape :math:`(B, D)`.
-        bins: The number of bins to use the histogram :math:`(N_{bins})`.
-        bandwidth: Gaussian smoothing factor with shape shape [1].
-        epsilon: A scalar, for numerical stability.
-
-    Returns:
-        Computed histogram of shape :math:`(B, N_{bins})`.
-
-    Examples:
-        >>> x = torch.rand(1, 10)
-        >>> bins = torch.torch.linspace(0, 255, 128)
-        >>> hist = histogram(x, bins, bandwidth=torch.tensor(0.9))
-        >>> hist.shape
-        torch.Size([1, 128])
-    """
-
-    pdf, _ = marginal_pdf(x.unsqueeze(-1), bins, bandwidth, epsilon)
-
-    return pdf
-
-
 def histogram2d(
         x1: torch.Tensor,
         x2: torch.Tensor,
-        bins1: torch.Tensor,
-        bins2: torch.Tensor,
+        bins: torch.Tensor,
         bandwidth: torch.Tensor,
         epsilon: float = 1e-10,
 ) -> torch.Tensor:
@@ -154,58 +121,22 @@ def histogram2d(
         torch.Size([2, 128, 128])
     """
 
-    _, kernel_values1 = marginal_pdf(x1.unsqueeze(-1), bins1, bandwidth, epsilon)
-    _, kernel_values2 = marginal_pdf(x2.unsqueeze(-1), bins2, bandwidth, epsilon)
+    _, kernel_values1 = marginal_pdf(x1.unsqueeze(-1), bins, bandwidth, epsilon)
+    _, kernel_values2 = marginal_pdf(x2.unsqueeze(-1), bins, bandwidth, epsilon)
 
     pdf = joint_pdf(kernel_values1, kernel_values2)
 
     return pdf
 
+x_vals = torch.ones((20,1000))
+y_vals = torch.ones((20,1000))
+bins = torch.linspace(-30, 30, 200) * 1e-3
+bandwidth = (bins[1]-bins[0]) / 2
 
-class KDEGaussian(nn.Module):
-    def __init__(self, bandwidth, locations=None):
-        super(KDEGaussian, self).__init__()
-        self.bandwidth = bandwidth
-        self.locations = None
+# Profiling: 
 
-    def forward(self, samples, locations=None):
-        if locations is None:
-            locations = self.locations
+scalene_profiler.start()
 
-        assert samples.shape[-1] == locations.shape[-1]
-        sample_batch_shape = samples.shape[:-2]
+hist = histogram2d(x_vals, y_vals, bins, bandwidth)
 
-        for _ in range(len(samples.shape) - 1):
-            locations = locations.unsqueeze(-2)
-        # make copies of all samples for each location
-        diff = torch.norm(
-            samples - locations,
-            dim=-1,
-        )
-        out = (-diff ** 2 / (2.0 * self.bandwidth ** 2)).exp().sum(dim=-1)
-        norm = out.flatten(end_dim=-len(sample_batch_shape) - 1).sum(dim=0)
-        pdf = out / norm.reshape(1, 1, *sample_batch_shape)
-        return pdf
-
-
-if __name__ == "__main__":
-    # 2d histogram
-    x = torch.linspace(0.0, 1.0, 100)
-    mesh_x = torch.meshgrid(x, x)
-    test_x = torch.stack(mesh_x, dim=-1)
-
-    # samples ( `batch_size x n_particles x coord_dim`)
-    samples = torch.rand(10, 10000, 2)
-
-    kde = KDEGaussian(0.01)
-
-    with profile(activities=[ProfilerActivity.CPU],
-                 profile_memory=True) as prof:
-        out = []
-        for ele in samples:
-            out += [kde(ele, test_x)]
-            print(out[-1].shape)
-
-
-    prof.export_chrome_trace("kde_rectangle.json")
-    print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
+scalene_profiler.stop()

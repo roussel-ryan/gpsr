@@ -1,6 +1,5 @@
 import torch
 from torch.nn import Module
-from torch import Tensor
 
 from phase_space_reconstruction.histogram import histogram2d
 from bmadx.bmad_torch.track_torch import Beam
@@ -9,7 +8,6 @@ from bmadx.bmad_torch.track_torch import Beam
 class ImageDiagnostic(Module):
     def __init__(self, bins_x: Tensor, bins_y, bandwidth: float, x="x", y="y"):
         """
-
         Parameters
         ----------
         bins_x : Tensor
@@ -27,6 +25,7 @@ class ImageDiagnostic(Module):
         y : str, optional
             Beam attribute coorsponding to the vertical image axis. Default: `y`
         """
+
         super(ImageDiagnostic, self).__init__()
         self.x = x
         self.y = y
