@@ -2,18 +2,21 @@ import torch
 from torch.nn import Module
 from torch import Tensor
 
-from phase_space_reconstruction.histogram import KDEGaussian
+from phase_space_reconstruction.histogram import histogram2d
 from bmadx.bmad_torch.track_torch import Beam
 
 
 class ImageDiagnostic(Module):
-    def __init__(self, mesh: Tensor, bandwidth: float, x="x", y="y"):
+    def __init__(self, bins_x: Tensor, bins_y, bandwidth: float, x="x", y="y"):
         """
 
         Parameters
         ----------
-        mesh : Tensor
-            A 'n x m' mesh of pixel centers that correspond to the physical diagnostic.
+        bins_x : Tensor
+            A 'n' mesh of pixel centers that correspond to the physical diagnostic.
+
+        bins_y : Tensor
+            A 'm' mesh of pixel centers that correspond to the physical diagnostic.
 
         bandwidth : float
             Bandwidth uses for kernel density estimation
@@ -28,8 +31,9 @@ class ImageDiagnostic(Module):
         self.x = x
         self.y = y
 
-        self.register_buffer("mesh", mesh)
-        self.kde_calculator = KDEGaussian(bandwidth, locations=mesh)
+        self.register_buffer("bins_x", bins_x)
+        self.register_buffer("bins_y", bins_y)
+        self.register_buffer("bandwidth", torch.tensor(bandwidth))
 
     def forward(self, beam: Beam):
         x_vals = getattr(beam, self.x)
@@ -40,6 +44,4 @@ class ImageDiagnostic(Module):
         if len(x_vals.shape) == 1:
             raise ValueError("coords must be at least 2D")
 
-        beam_vals = torch.stack((x_vals, y_vals))
-        
-        return self.kde_calculator(beam_vals)
+        return histogram2d(x_vals, y_vals, self.bins_x, self.bins_y, self.bandwidth)
