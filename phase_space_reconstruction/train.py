@@ -1,9 +1,6 @@
-import os
-
 import torch
 from torch.utils.data import DataLoader
 
-from phase_space_reconstruction.beamlines import quad_scan_lattice
 from phase_space_reconstruction.diagnostics import ImageDiagnostic
 from phase_space_reconstruction.losses import MENTLoss
 from phase_space_reconstruction.modeling import (
@@ -14,37 +11,47 @@ from phase_space_reconstruction.modeling import (
     )
 
 
-def train_model(
-        scan_data, 
+def train_quad_scan(
+        train_dset,
+        lattice,
+        screen, 
         n_epochs = 100,
         device = 'cpu',
         save_as = None
         ):
     
+    """
+    Trains quad scan model.
+
+    Parameters
+    ----------
+    train_data: ImageDataset
+        training data
+
+    lattice: bmadx TorchLattice
+        diagnostics lattice
+
+    screen: ImageDiagnostic
+        screen diagnostics
+
+    Returns
+    -------
+    predicted_beam: bmadx Beam
+        reconstructed beam
+        
+    """
+    
     # Device selection: 
     DEVICE = torch.device(device)
     print(f'Using device: {DEVICE}')
 
-    all_k = scan_data['quad_strengths'].to(DEVICE)
-    all_images = scan_data['images'].to(DEVICE)
-    bins = scan_data['bins'].to(DEVICE)
-    
-    # divide scan data in training and testing data sets
-    n_scan = len(scan_data['quad_strengths'])
-    train_ids = [*range(n_scan)[::2]]
-    test_ids = [*range(n_scan)[1::2]]
-    train_dset = ImageDataset(all_k[train_ids], all_images[train_ids])
-    test_dset = ImageDataset(all_k[test_ids], all_images[test_ids])
+    ks = train_dset.k.to(DEVICE)
+    imgs = train_dset.images.to(DEVICE)
 
-    train_dataloader = DataLoader(train_dset, batch_size=10, shuffle=True)
-
-    bin_width = bins[1] - bins[0]
-    bandwidth = bin_width / 2
+    train_dset_device = ImageDataset(ks, imgs)
+    train_dataloader = DataLoader(train_dset_device, batch_size=10, shuffle=True)
 
     # create phase space reconstruction model
-    diagnostic = ImageDiagnostic(bins, bandwidth=bandwidth)
-    lattice = quad_scan_lattice()
-
     n_particles = 10000
     nn_transformer = NNTransform(2, 20, output_scale=1e-2)
     nn_beam = InitialBeam(
@@ -53,10 +60,9 @@ def train_model(
         n_particles,
         p0c=torch.tensor(10.0e6),
     )
-
     model = PhaseSpaceReconstructionModel(
         lattice,
-        diagnostic,
+        screen,
         nn_beam
     )
 
@@ -79,15 +85,12 @@ def train_model(
         if i % 100 == 0:
             print(i, loss)
 
-    prediction = {
-        'beam': model.beam.forward(),
-        'images': model.forward(all_k)[0],
-        'train_ids': train_ids,
-        'test_ids': test_ids
-    }
+    model = model.to('cpu')
+
+    predicted_beam = model.beam.forward().detach()
 
     if save_as is not None:
-        torch.save(prediction, save_as)
+        torch.save(predicted_beam, save_as)
     
-    return prediction 
+    return predicted_beam
     

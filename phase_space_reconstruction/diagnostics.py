@@ -1,38 +1,39 @@
 import torch
 from torch.nn import Module
-from torch import Tensor
 
-from phase_space_reconstruction.histogram import KDEGaussian
-from bmadx.bmad_torch.track_torch import Beam
+from phase_space_reconstruction.histogram import histogram2d
 
 
 class ImageDiagnostic(Module):
-    def __init__(self, mesh: Tensor, bandwidth: float, x="x", y="y"):
+    def __init__(self, bins, bandwidth=None, x="x", y="y"):
         """
 
-        Parameters
-        ----------
-        mesh : Tensor
-            A 'n x m' mesh of pixel centers that correspond to the physical diagnostic.
-
-        bandwidth : float
-            Bandwidth uses for kernel density estimation
-
-        x : str, optional
-            Beam attribute coorsponding to the horizontal image axis. Default: `x`
-
-        y : str, optional
-            Beam attribute coorsponding to the vertical image axis. Default: `y`
+        :param bins: 1D tensor of bin edges for image diagnostic
         """
+
         super(ImageDiagnostic, self).__init__()
         self.x = x
         self.y = y
 
-        self.register_buffer("mesh", mesh)
-        self.kde_calculator = KDEGaussian(bandwidth, locations=mesh)
+        self.register_buffer("bins", bins)
+        self.register_buffer("resolution", bins[1] - bins[0])
+        self.register_buffer(
+            "bandwidth", self.resolution if bandwidth is None else bandwidth
+        )
+        self.register_buffer(
+            "mesh",
+            torch.cat(
+                [ele.unsqueeze(0) for ele in torch.meshgrid(self.bins, self.bins, indexing='ij')],
+                dim=0,
+            ),
+        )
 
-    def forward(self, beam: Beam):
 
+    def forward(self, beam):
+        """
+        :param beam:
+             :return: ('batch_shape' x M x M) tensor with pixel intensities for M x M images
+        """
         x_vals = getattr(beam, self.x)
         y_vals = getattr(beam, self.y)
         if not x_vals.shape == y_vals.shape:
@@ -40,7 +41,5 @@ class ImageDiagnostic(Module):
 
         if len(x_vals.shape) == 1:
             raise ValueError("coords must be at least 2D")
-
-        beam_vals = torch.stack((x_vals, y_vals))
         
-        return self.kde_calculator(beam_vals)
+        return histogram2d(x_vals, y_vals, self.bins, self.bandwidth)

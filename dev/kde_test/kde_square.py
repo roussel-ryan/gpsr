@@ -1,54 +1,5 @@
-# modified from kornia.enhance.histogram
-from typing import Optional, Tuple
-
 import torch
-from matplotlib import pyplot as plt
-from torch import nn
-
-
-class KDEGaussian(nn.Module):
-    def __init__(self, bandwidth, locations=None):
-        super(KDEGaussian, self).__init__()
-        self.bandwidth = bandwidth
-        self.locations = None
-
-    def forward(self, samples, locations=None):
-        if locations is None:
-            locations = self.locations
-
-        assert samples.shape[-1] == locations.shape[-1]
-
-        # make copies of all samples for each location
-        all_samples = samples.reshape(samples.shape + (1,) * len(locations.shape[:-1]))
-        diff = torch.norm(
-            all_samples - torch.movedim(locations, -1, 0),
-            dim=-len(locations.shape[:-1]) - 1,
-        )
-        out = (-diff ** 2 / self.bandwidth ** 2).exp().sum(dim=len(samples.shape)-2)
-        norm = out.flatten(start_dim=len(locations.shape)-2).sum(dim=-1)
-        return out / norm.reshape(-1, *(1,)*(len(locations.shape)-1))
-
-
-if __name__ == "__main__":
-    # 2d histogram
-    x = torch.linspace(0.0, 1.0, 100)
-    mesh_x = torch.meshgrid(x, x, indexing='ij')
-    test_x = torch.stack(mesh_x, dim=-1)
-
-    # samples
-    samples = torch.rand(10, 4, 2)
-
-    kde = KDEGaussian(torch.tensor(0.01))
-
-    h = kde(samples, test_x)
-
-    for i in range(len(h)):
-        fig, ax = plt.subplots()
-        c = ax.pcolor(*mesh_x, h[i])
-        ax.plot(*samples[i].T, "+")
-        fig.colorbar(c)
-    plt.show()
-
+from typing import Tuple
 
 def marginal_pdf(
         values: torch.Tensor,
@@ -99,7 +50,6 @@ def marginal_pdf(
 
     return pdf, kernel_values
 
-
 def joint_pdf(
         kernel_values1: torch.Tensor, kernel_values2: torch.Tensor,
         epsilon: float = 1e-10
@@ -141,37 +91,6 @@ def joint_pdf(
 
     return pdf
 
-
-def histogram(
-        x: torch.Tensor, bins: torch.Tensor, bandwidth: torch.Tensor,
-        epsilon: float = 1e-10
-) -> torch.Tensor:
-    """Estimate the histogram of the input tensor.
-
-    The calculation uses kernel density estimation which requires a bandwidth (smoothing) parameter.
-
-    Args:
-        x: Input tensor to compute the histogram with shape :math:`(B, D)`.
-        bins: The number of bins to use the histogram :math:`(N_{bins})`.
-        bandwidth: Gaussian smoothing factor with shape shape [1].
-        epsilon: A scalar, for numerical stability.
-
-    Returns:
-        Computed histogram of shape :math:`(B, N_{bins})`.
-
-    Examples:
-        >>> x = torch.rand(1, 10)
-        >>> bins = torch.torch.linspace(0, 255, 128)
-        >>> hist = histogram(x, bins, bandwidth=torch.tensor(0.9))
-        >>> hist.shape
-        torch.Size([1, 128])
-    """
-
-    pdf, _ = marginal_pdf(x.unsqueeze(-1), bins, bandwidth, epsilon)
-
-    return pdf
-
-
 def histogram2d(
         x1: torch.Tensor,
         x2: torch.Tensor,
@@ -208,3 +127,16 @@ def histogram2d(
     pdf = joint_pdf(kernel_values1, kernel_values2)
 
     return pdf
+
+x_vals = torch.ones((20,1000))
+y_vals = torch.ones((20,1000))
+bins = torch.linspace(-30, 30, 200) * 1e-3
+bandwidth = (bins[1]-bins[0]) / 2
+
+# Profiling: 
+
+scalene_profiler.start()
+
+hist = histogram2d(x_vals, y_vals, bins, bandwidth)
+
+scalene_profiler.stop()

@@ -9,8 +9,6 @@ from torch import nn
 from torch.utils.data import Dataset
 from tqdm import trange
 
-from .histogram import histogram2d
-
 
 class PhaseSpaceReconstructionModel(torch.nn.Module):
     def __init__(self, lattice, diagnostic, beam):
