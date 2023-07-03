@@ -6,7 +6,7 @@ from bmadx.bmad_torch.track_torch import Beam
 
 
 class ImageDiagnostic(Module):
-    def __init__(self, bins_x: Tensor, bins_y, bandwidth: float, x="x", y="y"):
+    def __init__(self, bins_x: torch.Tensor, bins_y: torch.Tensor, bandwidth: float, x="x", y="y"):
         """
         Parameters
         ----------
