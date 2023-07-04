@@ -1,24 +1,26 @@
 name: ps-reconstruction
 channels:
   - conda-forge
+  - pytorch
+  - nvidia
   - defaults
 dependencies:
   - python=3.10
   - ipython
   - ipykernel
+  - torch
+  - torchvision
+  - torchaudio
+  - pytorch-cuda=11.7
   - numpy
   - matplotlib
   - scipy
   - h5py
   - scikit-image
   - tqdm
-  - distgen=0.6.12
+  - distgen
   - pip
   - pip:
-    - torch
-    - torchvision
-    - torchaudio
     - torchensemble==0.1.7
     - pyro-ppl
     - blitz-bayesian-pytorch
-
