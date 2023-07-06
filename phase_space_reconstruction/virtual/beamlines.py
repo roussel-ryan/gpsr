@@ -5,13 +5,21 @@ from bmadx.bmad_torch.track_torch import TorchDrift, TorchQuadrupole, TorchCrabC
 def quad_scan_lattice(l_d = 1.0, l_q = 0.1, n_slices=5):
     '''Creates quad scan lattice
 
-        Args: 
-            l_d: drift length
-            l_q: quad length
-            n_steps (int): slices in quad tracking
+        Params
+        ------ 
+            l_d: float
+                drift length (m). Default: 1.0
 
-        Returns:
-            lattice: quad scan lattice
+            l_q: float 
+                quad length (m). Default: 0.1
+
+            n_steps: int
+                slices in quad tracking. Default: 5
+
+        Returns
+        -------
+            lattice: bmad_torch.TorchLattice
+                quad scan lattice
     '''
 
     q1 = TorchQuadrupole(torch.tensor(l_q),

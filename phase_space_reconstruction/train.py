@@ -14,6 +14,7 @@ from phase_space_reconstruction.modeling import (
 def train_quad_scan(
         train_dset,
         lattice,
+        p0c,
         screen, 
         n_epochs = 100,
         device = 'cpu',
@@ -58,7 +59,7 @@ def train_quad_scan(
         nn_transformer,
         torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),
         n_particles,
-        p0c=torch.tensor(10.0e6),
+        p0c=torch.tensor(p0c),
     )
     model = PhaseSpaceReconstructionModel(
         lattice,
