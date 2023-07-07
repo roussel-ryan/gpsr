@@ -1,6 +1,6 @@
 *.pt
 *.pth
-*.dset
+#*.dset
 **/__pycache__/
 .idea/
 phase_space_reconstruction.egg-info/
