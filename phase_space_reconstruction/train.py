@@ -11,18 +11,20 @@ from phase_space_reconstruction.modeling import (
     )
 
 
-def train_quad_scan(
+def train_1d_scan(
         train_dset,
         lattice,
         p0c,
-        screen, 
+        screen,
         n_epochs = 100,
         device = 'cpu',
         save_as = None
         ):
     
     """
-    Trains quad scan model.
+    Trains beam model by scanning an arbitrary lattice.
+    Note: as of now, the quadrupole that is scanned should 
+    be the first element of the lattice. 
 
     Parameters
     ----------
@@ -30,7 +32,7 @@ def train_quad_scan(
         training data
 
     lattice: bmadx TorchLattice
-        diagnostics lattice
+        diagnostics lattice. First element is the scanned quad.
 
     screen: ImageDiagnostic
         screen diagnostics
