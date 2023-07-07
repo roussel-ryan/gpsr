@@ -93,7 +93,7 @@ def plot_scan_data(
             ax[j,0].set_axis_off()
             ax[j,0].text(0.5, 0.5, f'img {j+1}', va='center', ha='center')
         
-        ax[0,0].set_title('$k$ (1/m):')
+        ax[0,0].set_title('$k$ (1/m$^2$):')
 
         
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
@@ -198,7 +198,7 @@ def plot_predicted_screens(
         ax[j,0].set_axis_off()
         ax[j,0].text(0.5, 0.5, f'img {j+1}', va='center', ha='center')
     
-    ax[0,0].set_title('$k$ (1/m):')
+    ax[0,0].set_title('$k$ (1/m$^2$):')
 
         
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
