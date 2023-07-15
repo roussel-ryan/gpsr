@@ -43,12 +43,14 @@ pycos:
 pol_zpz:
   type: polynomial z:pz
   coefficients: 
-    - value: 0.0
+    - value: 0
       units: MeV/c
-    - value: -75.0
-      units: MeV/c/m
-    - value: 7500.0
-      units: MeV/c/m/m
+    - value: -1
+      units: MeV/c/mm
+    - value: 0
+      units: MeV/c/mm/mm
+    - value: -0.25
+      units: MeV/c/mm/mm/mm
 order: 
   - twiss_x
   - twiss_y

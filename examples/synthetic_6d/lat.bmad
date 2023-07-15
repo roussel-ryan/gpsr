@@ -1,0 +1,17 @@
+beginning[beta_a] = 10
+beginning[beta_b] = 10
+
+parameter[geometry] = open
+parameter[particle] = electron
+parameter[p0c] = 43.36e6
+
+q: quad, L = 0.1, k1 = 0, NUM_STEPS = 5
+d1: drift, L = 0.5975
+tdc: crab_cavity, L = 0.23, VOLTAGE = 0, rf_frequency = 1.3e9, phi0 = 0.0, tilt = pi/2.0
+d2: drift, L = 0.518
+bend: sbend, L = 0.365, g = 0.9563447956, fringe_at=no_end, e1 = pi/18.0, e2 = pi/18.0
+d3: drift, L = 0.895
+
+lat: line = (q, d1, tdc, d2, bend, d3)
+
+use, lat

@@ -7,6 +7,7 @@ def run_quad_scan(
         lattice,
         screen,
         ks,
+        scan_quad_id = 0,
         save_as = None
         ):
     
@@ -35,8 +36,8 @@ def run_quad_scan(
     """
 
     # tracking though diagnostics lattice
-    diagnostics_lattice = lattice
-    diagnostics_lattice.elements[0].K1.data = ks
+    diagnostics_lattice = lattice.copy()
+    diagnostics_lattice.elements[scan_quad_id].K1.data = ks
     output_beam = diagnostics_lattice(beam)
 
     # histograms at screen

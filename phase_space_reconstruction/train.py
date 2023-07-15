@@ -64,7 +64,7 @@ def train_1d_scan(
         p0c=torch.tensor(p0c),
     )
     model = PhaseSpaceReconstructionModel(
-        lattice,
+        lattice.copy(),
         screen,
         nn_beam
     )
@@ -90,7 +90,7 @@ def train_1d_scan(
 
     model = model.to('cpu')
 
-    predicted_beam = model.beam.forward().detach()
+    predicted_beam = model.beam.forward().detach_clone()
 
     if save_as is not None:
         torch.save(predicted_beam, save_as)

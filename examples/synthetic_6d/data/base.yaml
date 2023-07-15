@@ -26,12 +26,12 @@ z_dist:
     value: 0
   sigma_z:
     units: mm
-    value: 2.0
+    value: 1.0
   type: gaussian
 pz_dist:
   avg_pz:
     units: MeV/c
-    value: 10.0
+    value: 43.36
   sigma_pz:
     units: MeV/c
     value: 0.1
