@@ -206,3 +206,38 @@ def plot_predicted_screens(
     print('test samples boxed in orange')
     
     return fig, ax
+
+def screen_stats(image, bins_x, bins_y):
+    """
+    Returns screen stats
+
+    Parameters
+    ----------
+    image: 2D array-like
+        screen image of size [n_x, n_y].
+
+    bins_x: 1D array-like
+        x axis bins physical locations of size [n_x]
+
+    bins_y: 2D array-like
+        x axis bins physical locations of size [n_y]
+
+    Returns
+    -------
+    dictionary with 'avg_x', 'avg_y', 'std_x' and 'std_y'.
+    """
+    proj_x = image.sum(axis=1)
+    proj_y = image.sum(axis=0)
+
+    # stats
+    avg_x = (bins_x*proj_x).sum()/proj_x.sum()
+    avg_y = (bins_y*proj_y).sum()/proj_y.sum()
+
+    std_x = (((bins_x*proj_x - avg_x)**2).sum()/proj_x.sum())**(1/2)
+    std_y = (((bins_y*proj_y - avg_y)**2).sum()/proj_y.sum())**(1/2)
+
+
+    return {'avg_x': avg_x,
+            'avg_y': avg_y,
+            'std_x': std_x,
+            'std_y': std_y}

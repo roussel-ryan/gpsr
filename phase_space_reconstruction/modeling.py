@@ -120,6 +120,17 @@ class ImageDataset(Dataset):
 
     def __getitem__(self, idx):
         return self.k[idx], self.images[idx]
+    
+class ImageDataset2(Dataset):
+    def __init__(self, param_mesh, images):
+        self.images = images
+        self.param_mesh = param_mesh
+
+    def __len__(self):
+        return len(self.images)
+
+    def __getitem__(self, idx):
+        return self.param_mesh[idx], self.images[idx]
 
 
 class NormalizedQuadScan(nn.Module):
