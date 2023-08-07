@@ -1,5 +1,5 @@
 import torch
-from phase_space_reconstruction.modeling import ImageDataset, ImageDataset2
+from phase_space_reconstruction.modeling import ImageDataset, ImageDataset3D
 
 
 def run_quad_scan(
@@ -53,14 +53,14 @@ def run_quad_scan(
 
     return dset
 
-def run_quad_tdc_scan(
+def run_3d_scan(
         beam,
         lattice,
         screen,
-        quad_ks,
-        quad_id,
-        tdc_vs,
-        tdc_id,
+        ks,
+        vs,
+        gs,
+        ids = [0, 2, 4],
         save_as = None
         ):
     
@@ -95,20 +95,23 @@ def run_quad_tdc_scan(
         output image dataset
     """
 
-    # parameter scan mesh
-    params = torch.meshgrid(quad_ks, tdc_vs, indexing='ij')
-
-    # tracking though diagnostics lattice
+    # base lattice
     diagnostics_lattice = lattice.copy()
-    diagnostics_lattice.elements[quad_id].K1.data = params[0]
-    diagnostics_lattice.elements[tdc_id].VOLTAGE.data = params[1]
+    # params:
+    params = torch.meshgrid(ks, vs, gs, indexing='ij')
+    params = torch.stack(params, dim=-1).reshape((-1,3)).unsqueeze(-1)
+    diagnostics_lattice.elements[ids[0]].K1.data = params[:,0].unsqueeze(-1)
+    diagnostics_lattice.elements[ids[1]].VOLTAGE.data = params[:,1].unsqueeze(-1)
+    diagnostics_lattice.elements[ids[2]].G.data = params[:,2].unsqueeze(-1)
+
+    # track through lattice
     output_beam = diagnostics_lattice(beam)
 
     # histograms at screen
     images = screen(output_beam)
 
     # create image dataset
-    dset = ImageDataset2(params, images)
+    dset = ImageDataset3D(params, images)
     
     # save scan data if wanted
     if save_as is not None:

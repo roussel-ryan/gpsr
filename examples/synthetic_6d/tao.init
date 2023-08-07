@@ -7,4 +7,6 @@
   beam_init%position_file = "pmd_beam.h5"
   saved_at =  "*"
   ix_universe = 1
+  beam_init%species = "electron"
+  beam_init%bunch_charge = 10e-12
 /

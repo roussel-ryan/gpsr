@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from bmadx import PI, C_LIGHT
 from bmadx.bmad_torch.track_torch import TorchDrift, TorchQuadrupole, TorchCrabCavity, TorchSBend, TorchLattice
 
@@ -31,16 +32,14 @@ def quad_drift(l_d = 1.0, l_q = 0.1, n_slices=5):
 
     return lattice
 
-def quad_tdc_bend(p0c):
+def quad_tdc_bend(p0c, dipole_on=False):
+
     # Design momentum
     p_design = p0c # eV/c
     
     # Quadrupole parameters
     l_q = 0.1
-    k1 = 0.0 # scan parameter
-    
-    # Drift from Quad to TDC
-    l_d1 = 0.5975
+    k1 = 0.0
     
     # transverse deflecting cavity (TDC) parameters
     l_tdc = 0.23
@@ -49,18 +48,27 @@ def quad_tdc_bend(p0c):
     #v_tdc = p_design * k_tdc * C_LIGHT / ( 2 * PI * f_tdc )
     #v_tdc = 7.0e5
     v_tdc = 0.0 # scan parameter
-    phi_tdc = 0.0 # scan parameter (maybe?)
-    
-    # Drift from TDC to Bend
-    l_d2 = 0.518
+    phi_tdc = 0.0 # 0-crossing phase
      
     # Bend parameters
-    l_bend = 0.365 # arc length
-    theta = 20.0 * PI / 180.0 # angle
-    g = theta/l_bend # curvature function. positive bends in the -x direction. 
+    l_arc = 0.365 # arc length
+    theta = 20.0 * PI / 180.0 # angle in radians
+    g = theta / l_arc # curvature function. positive bends in the -x direction. 
+    l_bend = l_arc / theta * np.sin(theta) # 0.3576
     
-    # Drift from Bend to YAG
-    l_d3 = 0.895
+    # Drifts with geometrical corrections: 
+
+    # Drift from Quad to TDC (0.5975)
+    l_d1 = 0.7625 - l_q/2 - l_tdc/2
+
+    # Drift from TDC to Bend (0.3392)
+    l_d2 = 0.633 - l_tdc/2 - l_bend/2
+
+    # Drift from Bend to YAG 2 (bend on) (0.70472)
+    l_d3_on = 0.895 - l_bend/2/np.cos(theta)
+
+    # Drift from Bend to straight ahead YAG (bend off) (0.7162)
+    l_d3_off = 0.895 - l_bend/2
     
     # Elements:
     q = TorchQuadrupole(L = torch.tensor(l_q),
@@ -73,124 +81,67 @@ def quad_tdc_bend(p0c):
                           VOLTAGE = torch.tensor(v_tdc),
                           RF_FREQUENCY = torch.tensor(f_tdc),
                           PHI0 = torch.tensor(phi_tdc),
-                          TILT=torch.tensor(PI/2)
+                          TILT = torch.tensor(PI/2)
                          )
     
     d2 = TorchDrift(L = torch.tensor(l_d2))
+
+    if dipole_on:
+        bend = TorchSBend(L = torch.tensor(l_arc),
+                          P0C = torch.tensor(p_design),
+                          G = torch.tensor(g),
+                          E1 = torch.tensor(theta/2),
+                          E2 = torch.tensor(theta/2),
+                          FRINGE_AT = "no_end"
+                         )
     
-    bend = TorchSBend(L = torch.tensor(l_bend),
-                      P0C = torch.tensor(p_design),
-                      G = torch.tensor(g),
-                      E1 = torch.tensor(theta/2),
-                      E2 = torch.tensor(theta/2),
-                      FRINGE_AT = "no_end"
-                     )
-    
-    d3 = TorchDrift(L = torch.tensor(l_d3))
+        d3 = TorchDrift(L = torch.tensor(l_d3_on))
+
+    else:
+        bend = TorchDrift(L = torch.tensor(l_bend))
+        d3 = TorchDrift(L = torch.tensor(l_d3_off))
     
     lattice = TorchLattice([q, d1, tdc, d2, bend, d3])
     
     return lattice
 
-def quad_quad_tdc_bend(p0c):
+def quadlet_tdc_bend(p0c, dipole_on=False):
     # Design momentum
     p_design = p0c # eV/c
     
     # Quadrupole parameters
     l_q = 0.1
-    k1 = 0.0 # scan parameter
-    # drift between the 2 quads:
-    l_d0 = 0.5
-
-    
-    # Drift from Quad to TDC
-    l_d1 = 0.5975
+    k1 = 0.0 
+    d_q = 0.1 #distance between quads in triplet
     
     # transverse deflecting cavity (TDC) parameters
     l_tdc = 0.23
     #k_tdc = 2.00 # m^-1
     f_tdc = 1.3e9
     #v_tdc = p_design * k_tdc * C_LIGHT / ( 2 * PI * f_tdc )
-    v_tdc = 7.0e5
+    #v_tdc = 7.0e5
+    v_tdc = 0.0 # scan parameter
     phi_tdc = 0.0 # scan parameter (maybe?)
-    
-    # Drift from TDC to Bend
-    l_d2 = 0.518
      
     # Bend parameters
-    l_bend = 0.365 # arc length
-    theta = 20.0 * PI / 180.0 # angle
-    g = theta/l_bend # curvature function. positive bends in the -x direction. 
+    l_arc = 0.365 # arc length
+    theta = 20.0 * PI / 180.0 # angle in radians
+    g = theta / l_arc # curvature function. positive bends in the -x direction. 
+    l_bend = l_arc / theta * np.sin(theta)
     
-    # Drift from Bend to YAG
-    l_d3 = 0.895
-    
-    # Elements:
-    q0 = TorchQuadrupole(L = torch.tensor(l_q),
-                         K1 = torch.tensor(k1),
-                         NUM_STEPS = 5)
-    
-    d0 = TorchDrift(L = torch.tensor(l_d0))
-    
-    q1 = TorchQuadrupole(L = torch.tensor(l_q),
-                         K1 = torch.tensor(k1),
-                         NUM_STEPS = 5)
-    
-    d1 = TorchDrift(L = torch.tensor(l_d1))
-    
-    tdc = TorchCrabCavity(L = torch.tensor(l_tdc),
-                          VOLTAGE = torch.tensor(v_tdc),
-                          RF_FREQUENCY = torch.tensor(f_tdc),
-                          PHI0 = torch.tensor(phi_tdc),
-                          TILT=torch.tensor(PI/2)
-                         )
-    
-    d2 = TorchDrift(L = torch.tensor(l_d2))
-    
-    bend = TorchSBend(L = torch.tensor(l_bend),
-                      P0C = torch.tensor(p_design),
-                      G = torch.tensor(g),
-                      E1 = torch.tensor(theta/2),
-                      E2 = torch.tensor(theta/2),
-                      FRINGE_AT = "no_end"
-                     )
-    
-    d3 = TorchDrift(L = torch.tensor(l_d3))
-    
-    lattice = TorchLattice([q0, d0, q1, d1, tdc, d2, bend, d3])
-    
-    return lattice
+    # Drifts with geometrical corrections: 
 
-def quadlet_tdc_bend(p0c):
-    # Design momentum
-    p_design = p0c # eV/c
-    
-    # Quadrupole parameters
-    l_q = 0.1
-    k1 = 0.0 # scan parameter
-    d_q = 0.1
-    
     # Drift from Quad to TDC
-    l_d4 = 0.5975
-    
-    # transverse deflecting cavity (TDC) parameters
-    l_tdc = 0.23
-    #k_tdc = 2.00 # m^-1
-    f_tdc = 1.3e9
-    #v_tdc = p_design * k_tdc * C_LIGHT / ( 2 * PI * f_tdc )
-    v_tdc = 7.0e5
-    phi_tdc = 0.0 # scan parameter (maybe?)
-    
+    l_d4 = 0.7625 - l_q/2 - l_tdc/2
+
     # Drift from TDC to Bend
-    l_d5 = 0.518
-     
-    # Bend parameters
-    l_bend = 0.365 # arc length
-    theta = 20.0 * PI / 180.0 # angle
-    g = theta/l_bend # curvature function. positive bends in the -x direction. 
-    
-    # Drift from Bend to YAG
-    l_d6 = 0.895
+    l_d5 = 0.633 - l_tdc/2 - l_bend/2
+
+    # Drift from Bend to YAG 2 (bend on)
+    l_d6_on = 0.895 - l_bend/2/np.cos(theta)
+
+    # Drift from Bend to straight ahead YAG (bend off)
+    l_d6_off = 0.895 - l_bend/2
     
     # Elements:
     q1 = TorchQuadrupole(L = torch.tensor(l_q),
@@ -225,17 +176,23 @@ def quadlet_tdc_bend(p0c):
                          )
     
     d5 = TorchDrift(L = torch.tensor(l_d5))
+
+    if dipole_on:
+        bend = TorchSBend(L = torch.tensor(l_arc),
+                          P0C = torch.tensor(p_design),
+                          G = torch.tensor(g),
+                          E1 = torch.tensor(theta/2),
+                          E2 = torch.tensor(theta/2),
+                          FRINGE_AT = "no_end"
+                         )
     
-    bend = TorchSBend(L = torch.tensor(l_bend),
-                      P0C = torch.tensor(p_design),
-                      G = torch.tensor(g),
-                      E1 = torch.tensor(theta/2),
-                      E2 = torch.tensor(theta/2),
-                      FRINGE_AT = "no_end"
-                     )
+        d6 = TorchDrift(L = torch.tensor(l_d6_on))
+
+    else:
+        bend = TorchDrift(L = torch.tensor(l_bend))
+        d6 = TorchDrift(L = torch.tensor(l_d6_off))
+
     
-    d6 = TorchDrift(L = torch.tensor(l_d6))
-    
-    lattice = TorchLattice([q1, d1, q2, d2, q3, d3, q4, d4, tdc, d5, bend, d5])
+    lattice = TorchLattice([q1, d1, q2, d2, q3, d3, q4, d4, tdc, d5, bend, d6])
     
     return lattice

@@ -102,6 +102,7 @@ def plot_scan_data(
     
     return fig, ax
 
+
 def plot_predicted_screens(
         prediction_dset,
         train_dset,
@@ -207,6 +208,7 @@ def plot_predicted_screens(
     
     return fig, ax
 
+
 def screen_stats(image, bins_x, bins_y):
     """
     Returns screen stats
@@ -241,3 +243,47 @@ def screen_stats(image, bins_x, bins_y):
             'avg_y': avg_y,
             'std_x': std_x,
             'std_y': std_y}
+
+
+def plot_3d_scan_data(
+        train_dset
+        ):
+
+    # reshape data into parameter 3D mesh:
+    n_k = len(torch.unique(train_dset.params.squeeze(-1)[:,0]))
+    n_v = len(torch.unique(train_dset.params.squeeze(-1)[:,1]))
+    n_g = len(torch.unique(train_dset.params.squeeze(-1)[:,2]))
+    image_shape = train_dset.images.shape
+    params = train_dset.params.reshape((n_k, n_v, n_g, 3))
+    images = train_dset.images.reshape((n_k, n_v, n_g, image_shape[-2], image_shape[-1]))
+
+    # plot
+    fig, ax = plt.subplots(n_v+n_g+1, n_k+1, figsize=((n_k+1)*2, (n_v+n_g+1)*2))
+
+    ax[0, 0].set_axis_off()
+    ax[0, 0].text(1, 0, '$k_1$ (1/m$^2$)', va='bottom', ha='right')
+    for i in range(n_k):
+        ax[0, i+1].set_axis_off()
+        ax[0, i+1].text(0.5, 0, f'{params[i,0,0,0]:.1f}', va='bottom', ha='center')
+        for j in range(n_v):
+            for k in range(n_g):
+                ax[2*j+k+1, i+1].imshow(images[i,j,k].T,
+                                    origin = 'lower',
+                                    #extent = extent,
+                                    interpolation = 'none')
+                ax[2*j+k+1, i+1].tick_params(bottom=False, left=False,
+                                       labelbottom=False, labelleft=False)
+
+                if j == 0:
+                    v_lbl = "off"
+                else: 
+                    v_lbl = "on"
+                if k == 0:
+                    g_lbl = "off"
+                else: 
+                    g_lbl = "on"
+
+                ax[2*j+k+1, 0].set_axis_off()
+                ax[2*j+k+1, 0].text(1,0.5, f'T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}', va='center', ha='right')
+    
+    return fig, ax

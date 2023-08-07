@@ -7,7 +7,9 @@ from phase_space_reconstruction.modeling import (
     NNTransform,
     InitialBeam,
     PhaseSpaceReconstructionModel,
-    ImageDataset
+    ImageDataset,
+    PhaseSpaceReconstructionModel3D,
+    ImageDataset3D
     )
 
 
@@ -16,6 +18,7 @@ def train_1d_scan(
         lattice,
         p0c,
         screen,
+        scan_quad_id = 0,
         n_epochs = 100,
         device = 'cpu',
         save_as = None
@@ -80,7 +83,7 @@ def train_1d_scan(
             k, target_images = elem[0], elem[1]
 
             optimizer.zero_grad()
-            output = model(k)
+            output = model(k, scan_quad_id)
             loss = loss_fn(output, target_images)
             loss.backward()
             optimizer.step()
@@ -97,11 +100,12 @@ def train_1d_scan(
     
     return predicted_beam
     
-def train_2d_scan(
+def train_3d_scan(
         train_dset,
         lattice,
         p0c,
         screen,
+        ids = [0, 2, 4],
         n_epochs = 100,
         device = 'cpu',
         save_as = None
@@ -134,10 +138,11 @@ def train_2d_scan(
     DEVICE = torch.device(device)
     print(f'Using device: {DEVICE}')
 
-    ks = train_dset.k.to(DEVICE)
+    
+    params = train_dset.params.to(DEVICE)
     imgs = train_dset.images.to(DEVICE)
 
-    train_dset_device = ImageDataset(ks, imgs)
+    train_dset_device = ImageDataset3D(params, imgs)
     train_dataloader = DataLoader(train_dset_device, batch_size=10, shuffle=True)
 
     # create phase space reconstruction model
@@ -149,7 +154,7 @@ def train_2d_scan(
         n_particles,
         p0c=torch.tensor(p0c),
     )
-    model = PhaseSpaceReconstructionModel(
+    model = PhaseSpaceReconstructionModel3D(
         lattice.copy(),
         screen,
         nn_beam
@@ -163,10 +168,10 @@ def train_2d_scan(
 
     for i in range(n_epochs):
         for elem in train_dataloader:
-            k, target_images = elem[0], elem[1]
+            params_i, target_images = elem[0], elem[1]
 
             optimizer.zero_grad()
-            output = model(k)
+            output = model(params_i, ids)
             loss = loss_fn(output, target_images)
             loss.backward()
             optimizer.step()
