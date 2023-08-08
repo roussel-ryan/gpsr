@@ -146,7 +146,7 @@ def train_3d_scan(
     train_dataloader = DataLoader(train_dset_device, batch_size=10, shuffle=True)
 
     # create phase space reconstruction model
-    n_particles = 10000
+    n_particles = 100000
     nn_transformer = NNTransform(2, 20, output_scale=1e-2)
     nn_beam = InitialBeam(
         nn_transformer,
