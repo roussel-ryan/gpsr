@@ -1,4 +1,4 @@
-n_particle: 100000
+n_particle: 10000
 total_charge:
   units: pC
   value: 10
