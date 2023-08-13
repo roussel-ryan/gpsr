@@ -93,7 +93,7 @@ def plot_scan_data(
             ax[j,0].set_axis_off()
             ax[j,0].text(0.5, 0.5, f'img {j+1}', va='center', ha='center')
         
-        ax[0,0].set_title('$k$ (1/m):')
+        ax[0,0].set_title('$k$ (1/m$^2$):')
 
         
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
@@ -101,6 +101,7 @@ def plot_scan_data(
     print('test samples boxed in orange')
     
     return fig, ax
+
 
 def plot_predicted_screens(
         prediction_dset,
@@ -198,11 +199,91 @@ def plot_predicted_screens(
         ax[j,0].set_axis_off()
         ax[j,0].text(0.5, 0.5, f'img {j+1}', va='center', ha='center')
     
-    ax[0,0].set_title('$k$ (1/m):')
+    ax[0,0].set_title('$k$ (1/m$^2$):')
 
         
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
     print(f'image size = {(bins_x[-1]-bins_x[0])*1e3:.0f} x {(bins_y[-1]-bins_y[0])*1e3:.0f} mm')
     print('test samples boxed in orange')
+    
+    return fig, ax
+
+
+def screen_stats(image, bins_x, bins_y):
+    """
+    Returns screen stats
+
+    Parameters
+    ----------
+    image: 2D array-like
+        screen image of size [n_x, n_y].
+
+    bins_x: 1D array-like
+        x axis bins physical locations of size [n_x]
+
+    bins_y: 2D array-like
+        x axis bins physical locations of size [n_y]
+
+    Returns
+    -------
+    dictionary with 'avg_x', 'avg_y', 'std_x' and 'std_y'.
+    """
+    proj_x = image.sum(axis=1)
+    proj_y = image.sum(axis=0)
+
+    # stats
+    avg_x = (bins_x*proj_x).sum()/proj_x.sum()
+    avg_y = (bins_y*proj_y).sum()/proj_y.sum()
+
+    std_x = (((bins_x*proj_x - avg_x)**2).sum()/proj_x.sum())**(1/2)
+    std_y = (((bins_y*proj_y - avg_y)**2).sum()/proj_y.sum())**(1/2)
+
+
+    return {'avg_x': avg_x,
+            'avg_y': avg_y,
+            'std_x': std_x,
+            'std_y': std_y}
+
+
+def plot_3d_scan_data(
+        train_dset
+        ):
+
+    # reshape data into parameter 3D mesh:
+    n_k = len(torch.unique(train_dset.params.squeeze(-1)[:,0]))
+    n_v = len(torch.unique(train_dset.params.squeeze(-1)[:,1]))
+    n_g = len(torch.unique(train_dset.params.squeeze(-1)[:,2]))
+    image_shape = train_dset.images.shape
+    params = train_dset.params.reshape((n_k, n_v, n_g, 3))
+    images = train_dset.images.reshape((n_k, n_v, n_g, image_shape[-2], image_shape[-1]))
+
+    # plot
+    fig, ax = plt.subplots(n_v+n_g+1, n_k+1, figsize=((n_k+1)*2, (n_v+n_g+1)*2))
+
+    ax[0, 0].set_axis_off()
+    ax[0, 0].text(1, 0, '$k_1$ (1/m$^2$)', va='bottom', ha='right')
+    for i in range(n_k):
+        ax[0, i+1].set_axis_off()
+        ax[0, i+1].text(0.5, 0, f'{params[i,0,0,0]:.1f}', va='bottom', ha='center')
+        for j in range(n_v):
+            for k in range(n_g):
+                ax[2*j+k+1, i+1].imshow(images[i,j,k].T,
+                                    origin = 'lower',
+                                    #extent = extent,
+                                    interpolation = 'none')
+                ax[2*j+k+1, i+1].tick_params(bottom=False, left=False,
+                                       labelbottom=False, labelleft=False)
+
+                if j == 0:
+                    v_lbl = "off"
+                else: 
+                    v_lbl = "on"
+                if k == 0:
+                    g_lbl = "off"
+                else: 
+                    g_lbl = "on"
+
+                ax[2*j+k+1, 0].set_axis_off()
+                ax[2*j+k+1, 0].text(1,0.5, f'T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}', va='center', ha='right')
     
     return fig, ax

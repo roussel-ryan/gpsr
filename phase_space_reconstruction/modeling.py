@@ -18,10 +18,10 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
         self.diagnostic = diagnostic
         self.beam = deepcopy(beam)
 
-    def track_and_observe_beam(self, beam, K):
+    def track_and_observe_beam(self, beam, K, scan_quad_id = 0):
         # alter quadrupole strength
         lattice = deepcopy(self.base_lattice)
-        lattice.elements[0].K1.data = K
+        lattice.elements[scan_quad_id].K1.data = K
 
         # track beam through lattice
         final_beam = lattice(beam)
@@ -31,11 +31,11 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
 
         return observations, final_beam
 
-    def forward(self, K):
+    def forward(self, K, scan_quad_id = 0):
         proposal_beam = self.beam()
 
         # track beam
-        observations, final_beam = self.track_and_observe_beam(proposal_beam, K)
+        observations, final_beam = self.track_and_observe_beam(proposal_beam, K, scan_quad_id)
 
         # get entropy
         entropy = calculate_beam_entropy(proposal_beam)
@@ -155,3 +155,51 @@ def predict_images(beam, lattice, screen):
     out_beam = lattice(beam)
     images = screen.calculate_images(out_beam.x, out_beam.y)
     return images
+
+
+class PhaseSpaceReconstructionModel3D(torch.nn.Module):
+    def __init__(self, lattice, diagnostic, beam):
+        super(PhaseSpaceReconstructionModel3D, self).__init__()
+
+        self.base_lattice = lattice
+        self.diagnostic = diagnostic
+        self.beam = deepcopy(beam)
+
+    def track_and_observe_beam(self, beam, params, ids=[0,2,4]):
+        lattice = deepcopy(self.base_lattice)
+        lattice.elements[ids[0]].K1.data = params[:,0].unsqueeze(-1)
+        lattice.elements[ids[1]].VOLTAGE.data = params[:,1].unsqueeze(-1)
+        lattice.elements[ids[2]].G.data = params[:,2].unsqueeze(-1)
+
+        # track beam through lattice
+        final_beam = lattice(beam)
+
+        # analyze beam with diagnostic
+        observations = self.diagnostic(final_beam)
+
+        return observations, final_beam
+
+    def forward(self, params, ids=[0, 2, 4]):
+        proposal_beam = self.beam() 
+
+        # track beam
+        observations, final_beam = self.track_and_observe_beam(proposal_beam, params, ids)
+
+        # get entropy
+        entropy = calculate_beam_entropy(proposal_beam)
+
+        # get beam covariance
+        cov = calculate_covariance(proposal_beam)
+
+        return observations, entropy, cov
+    
+class ImageDataset3D(Dataset):
+    def __init__(self, params, images):
+        self.params = params
+        self.images = images
+
+    def __len__(self):
+        return len(self.params)
+
+    def __getitem__(self, idx):
+        return self.params[idx], self.images[idx]

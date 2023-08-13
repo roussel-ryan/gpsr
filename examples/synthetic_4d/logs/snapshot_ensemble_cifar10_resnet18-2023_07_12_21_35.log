@@ -1,0 +1,8 @@
+2023-07-12 21:35:06,309 - snapshot_ensemble.py[line:298] - INFO: lr: 0.10000 | Epoch: 000 | Batch: 000 | Loss: 2.34610 | Correct: 13/128
+2023-07-12 21:35:09,552 - snapshot_ensemble.py[line:298] - INFO: lr: 0.09999 | Epoch: 000 | Batch: 100 | Loss: 2.00744 | Correct: 32/128
+2023-07-12 21:35:12,782 - snapshot_ensemble.py[line:298] - INFO: lr: 0.09996 | Epoch: 000 | Batch: 200 | Loss: 1.76930 | Correct: 42/128
+2023-07-12 21:35:16,024 - snapshot_ensemble.py[line:298] - INFO: lr: 0.09991 | Epoch: 000 | Batch: 300 | Loss: 1.78379 | Correct: 43/128
+2023-07-12 21:35:18,966 - snapshot_ensemble.py[line:298] - INFO: lr: 0.09985 | Epoch: 001 | Batch: 000 | Loss: 1.54028 | Correct: 54/128
+2023-07-12 21:35:22,199 - snapshot_ensemble.py[line:298] - INFO: lr: 0.09976 | Epoch: 001 | Batch: 100 | Loss: 1.63126 | Correct: 49/128
+2023-07-12 21:35:25,432 - snapshot_ensemble.py[line:298] - INFO: lr: 0.09965 | Epoch: 001 | Batch: 200 | Loss: 1.46999 | Correct: 57/128
+2023-07-12 21:35:28,663 - snapshot_ensemble.py[line:298] - INFO: lr: 0.09952 | Epoch: 001 | Batch: 300 | Loss: 1.45760 | Correct: 57/128
