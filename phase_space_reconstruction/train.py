@@ -21,7 +21,8 @@ def train_1d_scan(
         scan_quad_id = 0,
         n_epochs = 100,
         device = 'cpu',
-        save_as = None
+        save_as = None,
+        lambda_ = 1e11,
         ):
     
     """
@@ -76,7 +77,7 @@ def train_1d_scan(
 
     # train model
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = MENTLoss(torch.tensor(1e11))
+    loss_fn = MENTLoss(torch.tensor(lambda_))
 
     for i in range(n_epochs):
         for elem in train_dataloader:
@@ -109,7 +110,8 @@ def train_3d_scan(
         n_epochs = 100,
         device = 'cpu',
         n_particles = 10_000,
-        save_as = None
+        save_as = None,
+        lambda_ = 1e11,
         ):
     
     """
@@ -164,7 +166,7 @@ def train_3d_scan(
 
     # train model
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = MENTLoss(torch.tensor(1e11))
+    loss_fn = MENTLoss(torch.tensor(lambda_))
 
     for i in range(n_epochs):
         for elem in train_dataloader:
