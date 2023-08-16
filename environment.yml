@@ -20,6 +20,7 @@ dependencies:
   - tqdm
   - distgen
   - pip
+  - openpmd-beamphysics
   - pip:
     - torchensemble==0.1.7
     - pyro-ppl

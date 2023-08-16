@@ -5,6 +5,7 @@ from matplotlib import transforms
 from matplotlib.patches import Ellipse
 
 
+
 def add_image_projection(ax, image, bins, axis, scale_x=1, c="r"):
     if axis == "x":
         proj = image.sum(dim=-1)
