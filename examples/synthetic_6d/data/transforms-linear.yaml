@@ -20,17 +20,15 @@ twiss_y:
   emittance:
     value: 2.0
     units: um
-pol_zpz:
-  type: polynomial z:pz
-  coefficients: 
-    - value: 0
-      units: MeV/c
-    - value: -1.5
-      units: MeV/c/mm
+shear_zpz:
+  type: shear z:pz
+  shear_coefficient: 
+    value: 0.5
+    units: (MeV/c)/mm
 rot_xy:
   type: rotate2d x:y
   angle:
-    value: 30
+    value: 60
     units: degree
 rot_xz:
   type: rotate2d x:z
@@ -39,8 +37,8 @@ rot_xz:
     units: degree
 
 order: 
+  - shear_zpz
   - twiss_x
   - twiss_y
-  - pol_zpz
   - rot_xy
   - rot_xz
