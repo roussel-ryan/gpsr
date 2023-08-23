@@ -6,6 +6,24 @@ from torch.nn.functional import mse_loss
 from phase_space_reconstruction.utils import calculate_centroid, calculate_ellipse
 
 
+def normalize_images(images):
+    """
+    Normalizes images tensor so that the 
+    image pixel intensities add up to 1
+    
+    Parameters
+    ----------
+    images: torch.Tensor
+        tensor containing images
+
+    Returns
+    -------
+    normalized images
+    """
+
+    sums = images.sum(dim = (-1, -2), keepdim=True)
+    return images / sums
+
 def kl_div(target, pred):
     eps = 1e-10
     return target * torch.abs((target + eps).log() - (pred + eps).log())
@@ -36,9 +54,10 @@ class MENTLoss(Module):
 
         self.loss_record = []
 
-    def forward(self, outputs, target_image):
-        assert outputs[0].shape == target_image.shape
-        pred_image = outputs[0]
+    def forward(self, outputs, target_image_original):
+        assert outputs[0].shape == target_image_original.shape
+        target_image = normalize_images(target_image_original)
+        pred_image = normalize_images(outputs[0])
         entropy = outputs[1]
         cov = outputs[2]
 
