@@ -21,8 +21,10 @@ def train_1d_scan(
         scan_quad_id = 0,
         n_epochs = 100,
         device = 'cpu',
+        n_particles = 10_000,
         save_as = None,
         lambda_ = 1e11,
+        batch_size = 10
         ):
     
     """
@@ -56,10 +58,13 @@ def train_1d_scan(
     imgs = train_dset.images.to(DEVICE)
 
     train_dset_device = ImageDataset(ks, imgs)
-    train_dataloader = DataLoader(train_dset_device, batch_size=10, shuffle=True)
+    train_dataloader = DataLoader(
+        train_dset_device, 
+        batch_size=batch_size, 
+        shuffle=True
+        )
 
     # create phase space reconstruction model
-    n_particles = 10000
     nn_transformer = NNTransform(2, 20, output_scale=1e-2)
     nn_beam = InitialBeam(
         nn_transformer,
@@ -82,7 +87,6 @@ def train_1d_scan(
     for i in range(n_epochs):
         for elem in train_dataloader:
             k, target_images = elem[0], elem[1]
-
             optimizer.zero_grad()
             output = model(k, scan_quad_id)
             loss = loss_fn(output, target_images)
@@ -101,6 +105,8 @@ def train_1d_scan(
     
     return predicted_beam
     
+
+
 def train_3d_scan(
         train_dset,
         lattice,
@@ -112,6 +118,7 @@ def train_3d_scan(
         n_particles = 10_000,
         save_as = None,
         lambda_ = 1e11,
+        batch_size = 10
         ):
     
     """
@@ -146,7 +153,10 @@ def train_3d_scan(
     imgs = train_dset.images.to(DEVICE)
 
     train_dset_device = ImageDataset3D(params, imgs)
-    train_dataloader = DataLoader(train_dset_device, batch_size=10, shuffle=True)
+    train_dataloader = DataLoader(
+        train_dset_device, 
+        batch_size=batch_size, 
+        shuffle=True)
 
     # create phase space reconstruction model
     nn_transformer = NNTransform(2, 20, output_scale=1e-2)
@@ -171,7 +181,6 @@ def train_3d_scan(
     for i in range(n_epochs):
         for elem in train_dataloader:
             params_i, target_images = elem[0], elem[1]
-
             optimizer.zero_grad()
             output = model(params_i, ids)
             loss = loss_fn(output, target_images)
