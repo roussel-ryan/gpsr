@@ -78,6 +78,7 @@ class MENTLoss(Module):
         total_loss = -entropy + self.lambda_ * image_loss + self.beta_ * \
                      centroid_loss + self.alpha_ * cov_loss
 
+        """
         if 0:
             fig, ax = plt.subplots(4, 2, sharex="all", sharey="all")
             fig.set_size_inches(5, 15)
@@ -104,7 +105,8 @@ class MENTLoss(Module):
                 )
             print(image_loss)
             plt.show()
-
+        """
+        """
         self.loss_record.append(
             [
                 torch.tensor(
@@ -119,5 +121,5 @@ class MENTLoss(Module):
                 cov,
             ]
         )
-
+        """
         return total_loss * self.gamma_

@@ -12,7 +12,7 @@ twiss_x:
 twiss_y:
   type: set_twiss y
   beta:
-    value: 9
+    value: 5
     units: m
   alpha: 
     value: -5
@@ -23,11 +23,11 @@ twiss_y:
 pol_xy:
   type: polynomial x:y
   coefficients:
-    - value: -0.005
-      units: m
-    - value: 0.75
+    - value: -2.0
+      units: mm
+    - value: 0.5
       units: 
-    - value: 50.0
+    - value: 30.0
       units: 1/m
 cos_ypy:
   type: cosine y:py
@@ -35,7 +35,7 @@ cos_ypy:
     value: 0.05
     units: MeV/c
   omega:
-    value: 0.2
+    value: 0.5
     units: 1/mm
   phase:
     value: 90

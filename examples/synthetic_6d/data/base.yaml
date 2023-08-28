@@ -8,7 +8,7 @@ random_type: pseudo
 r_dist:
   sigma_xy:
     units: mm
-    value: 2
+    value: 1
   type: radial_gaussian
 px_dist:
   sigma_px:
@@ -18,7 +18,7 @@ px_dist:
 py_dist:
   sigma_py:
     units: MeV/c
-    value: 0.02
+    value: 0.01
   type: gaussian
 z_dist:
   avg_z:
@@ -26,7 +26,7 @@ z_dist:
     value: 0
   sigma_z:
     units: mm
-    value: 1.0
+    value: 0.5
   type: gaussian
 pz_dist:
   avg_pz:
