@@ -1,0 +1,44 @@
+twiss_x:
+  type: set_twiss x
+  beta:
+    value: 9
+    units: m
+  alpha: 
+    value: 5
+    units: 
+  emittance:
+    value: 2.0
+    units: um
+twiss_y:
+  type: set_twiss y
+  beta:
+    value: 9
+    units: m
+  alpha: 
+    value: -5
+    units: 
+  emittance:
+    value: 2.0
+    units: um
+shear_zpz:
+  type: shear z:pz
+  shear_coefficient: 
+    value: 0.5
+    units: (MeV/c)/mm
+rot_xy:
+  type: rotate2d x:y
+  angle:
+    value: 60
+    units: degree
+rot_xz:
+  type: rotate2d x:z
+  angle:
+    value: -30
+    units: degree
+
+order: 
+  - shear_zpz
+  - twiss_x
+  - twiss_y
+  - rot_xy
+  - rot_xz
