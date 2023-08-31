@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from pmd_beamphysics.particles import ParticleGroup
+from bmadx.bmad_torch.track_torch import Beam
 
 #--------------------------------------------------------------------------
 
@@ -46,9 +47,33 @@ def calculate_beam_matrix(beam_distribution: ParticleGroup, beam_fraction: float
     return fractional_beam.cov("x", "py", "y", "py", "t", "pz")
 
 
-def get_beam_fraction(beam_distribution: ParticleGroup, beam_fraction):
+def get_beam_fraction_openpmd_par(
+        beam_distribution: ParticleGroup,
+        beam_fraction
+):
     """ get core of the beam according to 6D normalized beam coordinates"""
     vnames = ["x", "px", "y", "py", "t", "pz"]
+    data = np.copy(np.stack([beam_distribution[name] for name in vnames]).T)
+    data[:, -2] = data[:, -2] - np.mean(data[:, -2])
+    data[:, -1] = data[:, -1] - np.mean(data[:, -1])
+    cov = np.cov(data.T)
+
+    # get inverse cholesky decomp
+    t_data = (np.linalg.inv(np.linalg.cholesky(cov)) @ data.T).T
+
+    J = np.linalg.norm(t_data, axis=1)
+    sort_idx = np.argsort(J)
+    frac_beam = beam_distribution[sort_idx][:int(len(beam_distribution) *
+                                                 beam_fraction)]
+
+    return frac_beam
+
+def get_beam_fraction_bmad_beam(
+        beam_distribution: Beam,
+        beam_fraction
+):
+    """ get core of the beam according to 6D normalized beam coordinates"""
+    vnames = ["x", "px", "y", "py", "z", "pz"]
     data = np.copy(np.stack([beam_distribution[name] for name in vnames]).T)
     data[:, -2] = data[:, -2] - np.mean(data[:, -2])
     data[:, -1] = data[:, -1] - np.mean(data[:, -1])
