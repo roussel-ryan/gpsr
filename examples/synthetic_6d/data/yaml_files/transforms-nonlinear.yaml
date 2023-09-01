@@ -45,16 +45,16 @@ pol_zpz:
   coefficients: 
     - value: 0
       units: MeV/c
-    - value: -0.25
+    - value: 0.25
       units: MeV/c/mm
     - value: 0
       units: MeV/c/mm/mm
-    - value: -0.01
+    - value: 0.01
       units: MeV/c/mm/mm/mm
 couple_xz:
   type: rotate2d x:z
   angle:
-    value: 30
+    value: -30
     units: degree
 couple_yz:
   type: rotate2d y:z
