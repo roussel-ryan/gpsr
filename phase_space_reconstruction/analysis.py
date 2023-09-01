@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from pmd_beamphysics.particles import ParticleGroup
+from bmadx.structures import Particle
 from bmadx.bmad_torch.track_torch import Beam
 
 #--------------------------------------------------------------------------
@@ -68,13 +69,15 @@ def get_beam_fraction_openpmd_par(
 
     return frac_beam
 
-def get_beam_fraction_bmad_beam(
+def get_beam_fraction_bmadx_beam(
         beam_distribution: Beam,
         beam_fraction
 ):
     """ get core of the beam according to 6D normalized beam coordinates"""
     vnames = ["x", "px", "y", "py", "z", "pz"]
-    data = np.copy(np.stack([beam_distribution[name] for name in vnames]).T)
+    #pars = beam_distribution.numpy_particles()
+    #data = np.copy(np.stack([getattr(pars, name) for name in vnames]).T)
+    data = beam_distribution.data.detach().clone().numpy()
     data[:, -2] = data[:, -2] - np.mean(data[:, -2])
     data[:, -1] = data[:, -1] - np.mean(data[:, -1])
     cov = np.cov(data.T)
@@ -84,7 +87,12 @@ def get_beam_fraction_bmad_beam(
 
     J = np.linalg.norm(t_data, axis=1)
     sort_idx = np.argsort(J)
-    frac_beam = beam_distribution[sort_idx][:int(len(beam_distribution) *
-                                                 beam_fraction)]
+    frac_coords = data[sort_idx][:int(len(data) * beam_fraction)]
+    frac_beam = Beam(
+        torch.tensor(frac_coords),
+        p0c = beam_distribution.p0c,
+        s = beam_distribution.s,
+        mc2 = beam_distribution.mc2
+    )
 
     return frac_beam
