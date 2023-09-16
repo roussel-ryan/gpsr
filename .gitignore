@@ -5,3 +5,4 @@
 .idea/
 phase_space_reconstruction.egg-info/
 **/.ipynb_checkpoints/
+*.data
