@@ -7,8 +7,8 @@ from bmadx.bmad_torch.track_torch import (
     TorchCrabCavity,
     TorchRFCavity,
     TorchSBend,
-    TorchLattice
-    )
+    TorchLattice, TorchSextupole
+)
 
 
 def quad_drift(l_d = 1.0, l_q = 0.1, n_slices=5):
@@ -32,6 +32,35 @@ def quad_drift(l_d = 1.0, l_q = 0.1, n_slices=5):
     '''
 
     q1 = TorchQuadrupole(torch.tensor(l_q),
+                         torch.tensor(0.0),
+                         n_slices
+                         )
+    d1 = TorchDrift(torch.tensor(l_d))
+    lattice = TorchLattice([q1, d1])
+
+    return lattice
+
+def sextupole_drift(l_d = 1.0, l_q = 0.1, n_slices=5):
+    '''Creates quad + drift lattice
+
+        Params
+        ------
+            l_d: float
+                drift length (m). Default: 1.0
+
+            l_q: float
+                quad length (m). Default: 0.1
+
+            n_steps: int
+                slices in quad tracking. Default: 5
+
+        Returns
+        -------
+            lattice: bmad_torch.TorchLattice
+                quad scan lattice
+    '''
+
+    q1 = TorchSextupole(torch.tensor(l_q),
                          torch.tensor(0.0),
                          n_slices
                          )
