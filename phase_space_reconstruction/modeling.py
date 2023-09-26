@@ -46,6 +46,16 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
         return observations, entropy, cov
 
 
+class VariationalPhaseSpaceReconstructionModel(PhaseSpaceReconstructionModel):
+    def forward(self, K, scan_quad_id = 0):
+        proposal_beam = self.beam()
+
+        # track beam
+        observations, _ = self.track_and_observe_beam(proposal_beam, K, scan_quad_id)
+
+        return observations
+
+
 class NNTransform(torch.nn.Module):
     def __init__(
         self,
