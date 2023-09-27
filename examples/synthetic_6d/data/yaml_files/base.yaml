@@ -1,0 +1,38 @@
+n_particle: 10000
+total_charge:
+  units: pC
+  value: 10
+start:
+  type: time
+random_type: pseudo
+r_dist:
+  sigma_xy:
+    units: mm
+    value: 1
+  type: radial_gaussian
+px_dist:
+  sigma_px:
+    units: MeV/c
+    value: 0.001
+  type: gaussian
+py_dist:
+  sigma_py:
+    units: MeV/c
+    value: 0.01
+  type: gaussian
+z_dist:
+  avg_z:
+    units: mm
+    value: 0
+  sigma_z:
+    units: mm
+    value: 0.5
+  type: gaussian
+pz_dist:
+  avg_pz:
+    units: MeV/c
+    value: 43.36
+  sigma_pz:
+    units: MeV/c
+    value: 0.2
+  type: gaussian

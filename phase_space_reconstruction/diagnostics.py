@@ -6,7 +6,7 @@ from bmadx.bmad_torch.track_torch import Beam
 
 
 class ImageDiagnostic(Module):
-    def __init__(self, bins_x: torch.Tensor, bins_y: torch.Tensor, bandwidth: float, x="x", y="y"):
+    def __init__(self, bins_x: torch.Tensor, bins_y: torch.Tensor, bandwidth: torch.Tensor, x="x", y="y"):
         """
         Parameters
         ----------
@@ -16,7 +16,7 @@ class ImageDiagnostic(Module):
         bins_y : Tensor
             A 'm' mesh of pixel centers that correspond to the physical diagnostic.
 
-        bandwidth : float
+        bandwidth : Tensor
             Bandwidth uses for kernel density estimation
 
         x : str, optional
@@ -32,7 +32,7 @@ class ImageDiagnostic(Module):
 
         self.register_buffer("bins_x", bins_x)
         self.register_buffer("bins_y", bins_y)
-        self.register_buffer("bandwidth", torch.tensor(bandwidth))
+        self.register_buffer("bandwidth", bandwidth)
 
     def forward(self, beam: Beam):
         x_vals = getattr(beam, self.x)

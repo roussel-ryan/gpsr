@@ -6,13 +6,15 @@ from torch.nn.functional import mse_loss
 
 
 class IndependentVariationalNN(torch.nn.Module):
-    def __init__(self,n_outputs=1):
+    def __init__(self, n_outputs=1, n_samples=1, output_scale=1):
         super(IndependentVariationalNN, self).__init__()
 
         # define architecture
         n_common_layers = 2
-        width = 10
+        width = 20
         activation = nn.Tanh()
+        self.n_samples = n_samples
+        self.output_scale = output_scale
 
         # create input layer
         layers = [nn.Linear(n_outputs, width), activation]
@@ -28,16 +30,16 @@ class IndependentVariationalNN(torch.nn.Module):
         self.rho = nn.Sequential(*deepcopy(layers))
 
     def std(self, X):
-        return torch.log1p(torch.exp(self.rho(X)))
+        return torch.log1p(torch.exp(self.rho(X))) * self.output_scale
 
     def forward(self, X):
         mean = self.mean(X)
         std = self.std(X)
 
         # sample
-        eps = torch.randn_like(X)
+        eps = torch.randn((self.n_samples, *X.shape)).to(X)
 
-        return mean + std * eps
+        return mean * self.output_scale + std * eps
 
 
 class CoupledVariationalNN(torch.nn.Module):

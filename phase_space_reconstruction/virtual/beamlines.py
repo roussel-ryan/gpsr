@@ -5,9 +5,10 @@ from bmadx.bmad_torch.track_torch import (
     TorchDrift,
     TorchQuadrupole,
     TorchCrabCavity,
+    TorchRFCavity,
     TorchSBend,
-    TorchLattice
-    )
+    TorchLattice, TorchSextupole
+)
 
 
 def quad_drift(l_d = 1.0, l_q = 0.1, n_slices=5):
@@ -31,6 +32,35 @@ def quad_drift(l_d = 1.0, l_q = 0.1, n_slices=5):
     '''
 
     q1 = TorchQuadrupole(torch.tensor(l_q),
+                         torch.tensor(0.0),
+                         n_slices
+                         )
+    d1 = TorchDrift(torch.tensor(l_d))
+    lattice = TorchLattice([q1, d1])
+
+    return lattice
+
+def sextupole_drift(l_d = 1.0, l_q = 0.1, n_slices=5):
+    '''Creates quad + drift lattice
+
+        Params
+        ------
+            l_d: float
+                drift length (m). Default: 1.0
+
+            l_q: float
+                quad length (m). Default: 0.1
+
+            n_steps: int
+                slices in quad tracking. Default: 5
+
+        Returns
+        -------
+            lattice: bmad_torch.TorchLattice
+                quad scan lattice
+    '''
+
+    q1 = TorchSextupole(torch.tensor(l_q),
                          torch.tensor(0.0),
                          n_slices
                          )
@@ -292,3 +322,74 @@ def quadlet_tdc_bend(p0c, dipole_on = False):
         )
     
     return lattice
+
+def test_beamline(p0c):
+    l_drift = torch.tensor(1.0)
+    l_quad = torch.tensor(0.1)
+    d_quad = torch.tensor(0.1)
+    l_cav = torch.tensor(0.2)
+    l_bend = torch.tensor(0.3)
+    k = torch.tensor(0.0)
+    k_skew = torch.tensor(5.0)
+    rf_freq = torch.tensor(1.3e9)
+    voltage = torch.tensor(1e7)
+
+    q1 = TorchQuadrupole(
+        L = l_quad,
+        K1 = k,
+        NUM_STEPS=5
+    )
+    d1 = TorchDrift(L = d_quad)
+    q2 = TorchQuadrupole(
+        L = l_quad,
+        K1 = k,
+        NUM_STEPS=5
+    )
+    d2 = TorchDrift(L = d_quad)
+    q3 = TorchQuadrupole(
+        L = l_quad,
+        K1 = k,
+        NUM_STEPS=5
+    )
+    d3 = TorchDrift(L = d_quad)
+    q_skew = TorchQuadrupole(
+        L = l_quad,
+        K1 = k_skew,
+        NUM_STEPS=5,
+        TILT = torch.tensor(3*PI/4)
+    )
+    d4 = TorchDrift(L = l_drift)
+    rf_cav = TorchRFCavity(
+        L = l_cav,
+        VOLTAGE = voltage,
+        RF_FREQUENCY = rf_freq 
+    )
+    d5 = TorchDrift(L = l_drift)
+    crab_cav = TorchCrabCavity(
+        L = l_cav,
+        VOLTAGE = -voltage,
+        RF_FREQUENCY = rf_freq,
+        TILT=torch.tensor(PI/2)
+        )
+    
+    d6 = TorchDrift( L = l_drift )
+    l_arc = 0.365 # arc length
+    theta = 20.0 * PI / 180.0 # angle in radians
+    g = theta / l_arc # curvature function. positive bends in the -x direction. 
+    l_bend = l_arc / theta * np.sin(theta) # 0.3576
+    bend = TorchSBend(
+        L = torch.tensor(l_arc),
+        P0C = torch.tensor(p0c),
+        G = torch.tensor(g),
+        E1 = torch.tensor(0.0),
+        E2 = torch.tensor(theta),
+        FRINGE_AT = "no_end"
+        )
+    d7 = TorchDrift(L = l_drift)
+
+    lattice = TorchLattice(
+        [q1, d1, q2, d2, q3, d3, q_skew, d4, rf_cav, d5, crab_cav, d6, bend, d7]
+        )
+    
+    return lattice
+
