@@ -75,8 +75,8 @@ def get_beam_fraction_bmadx_beam(
 ):
     """ get core of the beam according to 6D normalized beam coordinates"""
     data = beam_distribution.data.detach().clone().numpy()
-    data[:, -2] = data[:, -2] - np.mean(data[:, -2])
-    data[:, -1] = data[:, -1] - np.mean(data[:, -1])
+    #data[:, -2] = data[:, -2] - np.mean(data[:, -2])
+    #data[:, -1] = data[:, -1] - np.mean(data[:, -1])
     cov = np.cov(data.T)
 
     # get inverse cholesky decomp
@@ -100,8 +100,8 @@ def get_beam_fraction_bmadx_particle(
 ):
     """ get core of the beam according to 6D normalized beam coordinates"""
     data = np.stack(beam_distribution[:6]).T
-    data[:, -2] = data[:, -2] - np.mean(data[:, -2])
-    data[:, -1] = data[:, -1] - np.mean(data[:, -1])
+    #data[:, -2] = data[:, -2] - np.mean(data[:, -2])
+    #data[:, -1] = data[:, -1] - np.mean(data[:, -1])
     cov = np.cov(data.T)
 
     # get inverse cholesky decomp
