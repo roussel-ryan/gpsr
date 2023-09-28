@@ -1,0 +1,70 @@
+twiss_x:
+  type: set_twiss x
+  beta:
+    value: 9
+    units: m
+  alpha: 
+    value: 5
+    units: 
+  emittance:
+    value: 2.0
+    units: um
+twiss_y:
+  type: set_twiss y
+  beta:
+    value: 5
+    units: m
+  alpha: 
+    value: -5
+    units: 
+  emittance:
+    value: 2.0
+    units: um
+pol_xy:
+  type: polynomial x:y
+  coefficients:
+    - value: -2.0
+      units: mm
+    - value: 0.5
+      units: 
+    - value: 30.0
+      units: 1/m
+cos_ypy:
+  type: cosine y:py
+  amplitude:
+    value: 0.05
+    units: MeV/c
+  omega:
+    value: 0.5
+    units: 1/mm
+  phase:
+    value: 90
+    units: deg
+pol_zpz:
+  type: polynomial z:pz
+  coefficients: 
+    - value: 0
+      units: MeV/c
+    - value: 0.25
+      units: MeV/c/mm
+    - value: 0
+      units: MeV/c/mm/mm
+    - value: 0.01
+      units: MeV/c/mm/mm/mm
+couple_xz:
+  type: rotate2d x:z
+  angle:
+    value: -30
+    units: degree
+couple_yz:
+  type: rotate2d y:z
+  angle:
+    value: -30
+    units: degree
+order: 
+  - twiss_x
+  - twiss_y
+  - pol_xy
+  - cos_ypy
+  - couple_xz
+  - pol_zpz

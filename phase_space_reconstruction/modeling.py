@@ -46,6 +46,16 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
         return observations, entropy, cov
 
 
+class VariationalPhaseSpaceReconstructionModel(PhaseSpaceReconstructionModel):
+    def forward(self, K, scan_quad_id = 0):
+        proposal_beam = self.beam()
+
+        # track beam
+        observations, _ = self.track_and_observe_beam(proposal_beam, K, scan_quad_id)
+
+        return observations
+
+
 class NNTransform(torch.nn.Module):
     def __init__(
         self,
@@ -157,6 +167,41 @@ def predict_images(beam, lattice, screen):
     return images
 
 
+class SextPhaseSpaceReconstructionModel(torch.nn.Module):
+    def __init__(self, lattice, diagnostic, beam):
+        super(SextPhaseSpaceReconstructionModel, self).__init__()
+
+        self.base_lattice = lattice
+        self.diagnostic = diagnostic
+        self.beam = deepcopy(beam)
+
+    def track_and_observe_beam(self, beam, K2, scan_quad_id = 0):
+        lattice = deepcopy(self.base_lattice)
+        lattice.elements[0].K2.data = K2
+
+        # track beam through lattice
+        final_beam = lattice(beam)
+
+        # analyze beam with diagnostic
+        observations = self.diagnostic(final_beam)
+
+        return observations, final_beam
+
+    def forward(self, params, ids):
+        proposal_beam = self.beam()
+
+        # track beam
+        observations, final_beam = self.track_and_observe_beam(proposal_beam, params, ids)
+
+        # get entropy
+        entropy = calculate_beam_entropy(proposal_beam)
+
+        # get beam covariance
+        cov = calculate_covariance(proposal_beam)
+
+        return observations, entropy, cov
+
+
 class PhaseSpaceReconstructionModel3D(torch.nn.Module):
     def __init__(self, lattice, diagnostic, beam):
         super(PhaseSpaceReconstructionModel3D, self).__init__()
@@ -165,7 +210,7 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
         self.diagnostic = diagnostic
         self.beam = deepcopy(beam)
 
-    def track_and_observe_beam(self, beam, params, ids=[0,2,4]):
+    def track_and_observe_beam(self, beam, params, ids):
         lattice = deepcopy(self.base_lattice)
         lattice.elements[ids[0]].K1.data = params[:,0].unsqueeze(-1)
         lattice.elements[ids[1]].VOLTAGE.data = params[:,1].unsqueeze(-1)
@@ -179,7 +224,7 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
 
         return observations, final_beam
 
-    def forward(self, params, ids=[0, 2, 4]):
+    def forward(self, params, ids):
         proposal_beam = self.beam() 
 
         # track beam
