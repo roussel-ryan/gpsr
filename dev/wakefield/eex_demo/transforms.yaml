@@ -1,0 +1,22 @@
+twiss_x:
+  type: set_twiss x
+  beta:
+    value: 0.5
+    units: m
+  alpha: 
+    value: 0
+    units: 
+  emittance:
+    value: 2.0
+    units: um
+twiss_y:
+  type: set_twiss y
+  beta:
+    value: 9
+    units: m
+  alpha:
+    value: 0
+    units:
+  emittance:
+    value: 2.0
+    units: um
