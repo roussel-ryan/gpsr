@@ -41,7 +41,7 @@ def output(input, beam, lattice):
     # outputs
     std_x = final_beam.x.std()
     std_y = final_beam.y.std()
-    total_size = torch.sqrt(std_x**2 + std_y**2)
+    total_size = torch.sqrt((std_x-0.001)**2 + (std_y-0.001)**2)
 
     return {
         "std_x": float(std_x),
