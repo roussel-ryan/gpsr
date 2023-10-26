@@ -1,0 +1,1348 @@
+0 tensor(4126675.6911, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3804332.7887, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4045087.9270, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4017028.5669, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 000. Probably returned all NaN
+Using device: cpu
+0 tensor(4251744.4722, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3443477.7792, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3522747.3711, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3577752.2111, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3697549.7943, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(3651194.5749, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4989049.4067, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4980002.6254, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4996656.7213, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 001. Probably returned all NaN
+Using device: cpu
+0 tensor(4873151.3744, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3662924.0609, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4080499.7591, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3571134.6590, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3655101.8448, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4723081.3299, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4946526.2985, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4921931.4500, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4986701.1868, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 002. Probably returned all NaN
+Using device: cpu
+0 tensor(3509036.1722, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(4586549.0652, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3902374.7022, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4389152.8863, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4581819.6033, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4923204.5939, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4741876.3663, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(5000412.0395, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(5000411.7245, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(5000411.5207, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(3914114.6338, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3895105.7701, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3948889.1639, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4962859.8787, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4892018.6533, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4995492.6892, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 004. Probably returned all NaN
+Using device: cpu
+0 tensor(4817726.4707, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1761806.9507, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1415398.2165, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1068985.2618, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(882983.9606, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(844872.8469, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(769041.8394, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(693391.8287, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(783492.0920, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(810512.5878, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4980626.2428, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(977606.2291, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(998743.6960, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(987201.9888, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(691914.1936, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(714986.7717, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(710095.8431, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(682988.2463, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(771377.4278, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(827096.1399, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4372718.1018, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3726437.3885, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3704339.5967, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4129246.8403, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(5000413.3824, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 007. Probably returned all NaN
+Using device: cpu
+0 tensor(3940635.6107, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3833667.8473, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3671566.2325, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3825387.1380, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4890485.0043, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4978844.9216, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4991768.0597, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4998467.8770, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 008. Probably returned all NaN
+Using device: cpu
+0 tensor(4890625.8018, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3603011.6819, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+C:\Users\loasis\Desktop\PhaseSpaceReconstructionRepos\Bmad-X\bmadx\plot.py:66: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`).
+  fig, ax = plt.subplots(n_coords, n_coords, figsize=fig_size)
+Error occured at step 009. Probably returned all NaN
+Using device: cpu
+0 tensor(4884919.0903, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3631659.6749, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 010. Probably returned all NaN
+Using device: cpu
+0 tensor(3604824.2956, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1071680.1824, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1088667.6512, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(796009.5738, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(809336.1367, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(748989.0166, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(712206.6630, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(663420.2717, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(674310.3248, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(750525.0865, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4991703.3285, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3607672.8442, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3629841.6754, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 012. Probably returned all NaN
+Using device: cpu
+0 tensor(4545754.9112, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3900365.2730, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4796549.4285, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4942708.1937, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4988491.4934, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4996336.6197, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4984508.1303, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 013. Probably returned all NaN
+Using device: cpu
+0 tensor(4984680.3708, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3601640.8996, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4945624.5408, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4834761.6485, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(5000406.3672, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(5000405.9476, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(5000405.6899, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(5000405.5019, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(5000405.3524, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(5000405.2275, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4035752.6741, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3928853.5966, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3817025.7011, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4238734.3005, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4251301.0050, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4913545.0620, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4985151.3611, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4999310.7123, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4999548.6854, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(5000405.8334, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4984955.3700, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(2001377.0218, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1119126.1604, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1088520.1022, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(815835.4598, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(763046.6328, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(702936.9255, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(740377.9930, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(721986.9291, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(714349.8001, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4809517.5940, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3448430.4701, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3278944.5659, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1156211.6847, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(903552.8603, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(726120.7134, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(731416.3484, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(750811.0542, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(688377.1408, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(760004.1851, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4480256.3888, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1232688.7677, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(948863.8778, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(896157.1504, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(954971.0813, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(748684.0896, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(823796.3761, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(701599.2058, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(777483.1416, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(705429.5812, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4888968.3713, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(4345626.7821, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3437593.2746, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(2386858.4649, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(1279299.9554, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(977932.7220, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(930199.4539, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(1054319.6216, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(956328.4323, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(997550.1618, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 020. Probably returned all NaN
+Using device: cpu
+0 tensor(4079333.5855, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3382520.2350, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1819458.9105, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1368738.2281, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(885209.2548, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(935175.7399, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1040639.3464, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(791435.7248, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(931537.0377, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(783232.2181, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4835898.6323, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3633783.1919, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3598009.7396, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3659406.9950, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3452690.3014, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(2006496.0383, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1399246.6429, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(1345585.4401, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(1392672.7465, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(889328.9048, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4373019.5977, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3646406.1732, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4493528.9786, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3668728.9404, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4181049.0589, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4292944.0674, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(3957362.8354, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4860609.0668, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4823716.2347, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4411817.8469, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4959165.7746, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3673342.6076, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3771431.9571, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3577720.0295, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3565607.7923, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(3628712.5112, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(3650081.8146, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4867332.3381, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(3600590.2803, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4277172.1788, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4930327.6664, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3949836.7470, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4735921.3079, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 025. Probably returned all NaN
+Using device: cpu
+0 tensor(5000371.7412, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 026. Probably returned all NaN
+Using device: cpu
+0 tensor(3969715.2769, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1198973.9147, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(873741.3909, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(998252.4230, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(767492.4410, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(787485.2534, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(882261.1882, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(691185.6179, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(767223.4013, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(670697.0641, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4379175.7771, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1145112.4590, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(976709.6101, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(851103.8605, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(800305.4097, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(855028.2491, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(883253.1585, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(699597.5011, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(733942.9990, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(760216.2216, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4812080.5967, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3488281.4155, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3797630.3029, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4954937.1691, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 029. Probably returned all NaN
+Using device: cpu
+0 tensor(4382110.1928, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3411474.4662, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3600841.0495, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3680148.2894, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4283806.9644, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 030. Probably returned all NaN
+Using device: cpu
+0 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 031. Probably returned all NaN
+Using device: cpu
+0 tensor(4015143.8748, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3153390.7954, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(933429.2935, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(760294.4088, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(790269.1121, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(757108.0423, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(885254.0057, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(716531.0526, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(785619.7895, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(696524.0931, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4725066.7460, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(2736918.4224, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1000864.0769, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(844639.6863, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(771435.6205, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(831183.2476, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(775682.2409, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(799609.1033, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(686415.1203, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(731839.1005, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4599994.4548, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3468156.3846, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(2197944.8707, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1038847.6050, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(844563.4438, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(762540.0552, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(872459.4413, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(834560.7839, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(704439.9995, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(695178.0960, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4960173.5533, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3575823.9108, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3999714.0757, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4894584.1983, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 035. Probably returned all NaN
+Using device: cpu
+0 tensor(4999803.1623, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 036. Probably returned all NaN
+Using device: cpu
+0 tensor(4739811.6762, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1107151.3298, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(870520.2568, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(768701.5847, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(721745.7834, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(671651.3115, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(698276.3637, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(723729.4469, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(667294.7871, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(720260.3571, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(3788487.6495, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1326271.0206, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(892014.8325, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(834134.5813, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(794812.1405, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(677563.3770, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(663716.3025, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(853690.5527, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(761424.5938, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(753409.4439, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4938370.1449, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 039. Probably returned all NaN
+Using device: cpu
+0 tensor(3641445.8543, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1468428.8031, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1054510.3400, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(703575.7560, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(758681.7601, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(761122.5168, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(668721.2122, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(667713.4182, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(678991.2492, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(695065.7053, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4446287.6743, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3511387.9911, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3551957.2584, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3683816.1053, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3710344.2054, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(3737310.1421, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4524517.1794, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4699957.7891, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4999603.7040, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 041. Probably returned all NaN
+Using device: cpu
+0 tensor(4142183.9216, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(2045808.4598, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1933628.6485, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1479831.9659, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(1271443.3382, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(1278520.0854, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1095389.9539, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(1312832.2068, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(937985.4531, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(849563.6147, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4951563.6388, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3542845.8998, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3905228.2076, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3926859.2578, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4593250.0471, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4883752.9359, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4945151.5700, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4859355.0240, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4859607.7131, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4977857.1717, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4927816.3570, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3821634.8118, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4666430.9188, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3963667.8959, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4820432.6399, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4988149.1939, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(5000406.1699, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(5000405.7723, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(5000405.5375, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(5000405.3678, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4858839.6682, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3808787.0635, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3758144.6861, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3546408.0646, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(2171028.7585, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(2051736.2220, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1825389.9353, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(1970177.5293, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(1782207.1915, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(1834953.2598, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4039630.2896, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3569933.6054, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(5000412.1485, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(5000411.1990, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(5000410.9398, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(5000410.7463, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(5000410.5921, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(5000410.4617, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(5000410.3462, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(5000410.2428, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4738894.5803, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3568101.5688, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3837261.5154, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4528578.9318, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4970909.9606, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4996348.1471, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4997184.3011, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(5000236.3776, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 047. Probably returned all NaN
+Using device: cpu
+0 tensor(4929986.5091, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1206440.8873, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(843891.7605, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(840696.4829, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(807797.8195, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(728576.3410, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(744349.2969, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(759841.7417, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(665479.7981, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(730793.5674, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(5000417.4142, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3975859.4059, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 049. Probably returned all NaN
+Using device: cpu
+0 tensor(3814636.0373, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3763956.0895, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4597773.7451, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4599357.6905, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4859125.2014, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(5000407.0403, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4976263.0131, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4999513.7158, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4997956.5278, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(5000404.1346, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(5000418.2681, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3387506.3849, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3586386.9037, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3699446.7018, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4105012.1214, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4774307.4837, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4694472.8871, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4912402.5825, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4953105.7545, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4928589.1715, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4479104.3373, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1293916.7198, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1016777.7044, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(933460.4005, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(840435.1559, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(770294.3774, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(816924.1224, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(942639.7513, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(745989.6266, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(714186.8539, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4983692.8036, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3527799.2086, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1449884.0162, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(886252.0958, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(1032069.2973, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(782257.8826, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(736170.0516, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(849713.0099, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(729530.4339, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(761500.2499, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4653861.6723, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(4001258.5794, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3447776.7392, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3574015.1712, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4390971.7655, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4357154.7081, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4941311.7079, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4993766.7237, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4945918.0385, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4958723.8509, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4770650.5146, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3581393.4053, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4044361.9975, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4932547.6112, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4654841.8898, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 055. Probably returned all NaN
+Using device: cpu
+0 tensor(4416945.4096, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3791584.8105, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4537205.2961, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4004539.4167, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4932016.0920, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 056. Probably returned all NaN
+Using device: cpu
+0 tensor(4993734.9692, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1131823.4607, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(866846.8558, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1020387.6120, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(847354.6402, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(862986.5271, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(836062.9638, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(685937.9168, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(785253.8574, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(675788.7814, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4905856.7547, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(4880169.4703, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4871991.7412, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4994647.7265, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4995849.0229, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4999852.4305, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(5000405.5969, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4999549.7349, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 058. Probably returned all NaN
+Using device: cpu
+0 tensor(4698088.7279, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3479248.6676, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3645857.7199, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4774199.1732, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4392475.4009, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4993140.2269, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4970510.2691, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4996689.0514, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(5000065.8168, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 059. Probably returned all NaN
+Using device: cpu
+0 tensor(5000418.2453, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3770761.0371, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4700678.8726, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4379792.3993, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 060. Probably returned all NaN
+Using device: cpu
+0 tensor(5000416.5392, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(4285353.8902, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4505269.7793, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4585945.9503, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4928817.5678, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(5000207.3880, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4991976.7005, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4978371.1634, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 061. Probably returned all NaN
+Using device: cpu
+0 tensor(4358197.1742, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(4016000.4049, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4390861.1467, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 062. Probably returned all NaN
+Using device: cpu
+0 tensor(4972588.8934, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(4753793.3943, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3828214.8248, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4289326.2804, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4266525.2841, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(5000173.9316, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4999624.0392, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4987904.1599, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 063. Probably returned all NaN
+Using device: cpu
+0 tensor(4964862.8223, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3500769.9193, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4125557.2517, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3767076.4448, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3601321.0607, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(3668351.0585, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4698754.3179, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 064. Probably returned all NaN
+Using device: cpu
+0 tensor(4929481.1515, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3772809.9211, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3734152.5226, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4179443.9098, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4101562.9056, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4897294.5730, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4650395.2710, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 065. Probably returned all NaN
+Using device: cpu
+0 tensor(4006182.2508, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3879132.9627, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4706555.9423, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4042398.1406, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3803993.3286, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4829011.2949, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4940372.4496, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4992481.4583, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4957511.1861, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4745537.4642, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4936517.8959, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3704167.5581, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3982060.0918, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4879966.1089, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4990672.7305, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4998257.9475, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4999234.9912, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4993972.0927, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4999558.1003, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4984667.9667, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4525103.8810, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3620430.4172, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4022520.7533, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4939997.2369, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 068. Probably returned all NaN
+Using device: cpu
+0 tensor(4122572.6358, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1114754.4423, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(796448.0954, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(961982.5886, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(749295.0963, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(729611.3477, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(817009.8003, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(722061.6528, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(703035.8570, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(681663.3489, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4315761.5343, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1228817.0974, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(961709.4848, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(970582.6510, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(937543.5042, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(918709.5773, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1566978.5064, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(940768.1618, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(774047.5261, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(901133.8102, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 071. Probably returned all NaN
+Using device: cpu
+0 tensor(4990493.2099, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3552719.8145, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4906510.3192, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4999894.0134, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4886494.9664, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 072. Probably returned all NaN
+Using device: cpu
+0 tensor(4143632.4581, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3805778.2825, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4823232.6120, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4860487.8672, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 073. Probably returned all NaN
+Using device: cpu
+0 tensor(5000145.2149, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 074. Probably returned all NaN
+Using device: cpu
+0 tensor(4045882.9754, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 075. Probably returned all NaN
+Using device: cpu
+0 tensor(4267598.2057, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3433722.1760, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3417227.5892, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1358823.4020, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(853109.0606, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(815162.1047, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(987187.0336, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(812801.5286, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(678661.2125, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(700312.1823, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(5000302.4774, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3457956.2278, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3816401.3417, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3712925.0930, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(2488665.0938, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(1729740.6973, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1238829.3844, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(1491321.1389, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(1265800.8598, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(1013907.2410, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4621828.6742, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3846490.8610, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 078. Probably returned all NaN
+Using device: cpu
+0 tensor(4635208.7616, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3432237.0344, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3434579.7963, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3528815.6471, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4299969.0211, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4986191.0197, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4982998.9599, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4884374.5059, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 079. Probably returned all NaN
+Using device: cpu
+0 tensor(4084559.0890, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3695871.1469, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3542157.5198, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3540549.9474, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3643209.9018, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(3577950.6581, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(3689341.7089, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(2757622.7496, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(2091946.3079, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(1340571.9933, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(5000417.9429, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3690030.1042, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 081. Probably returned all NaN
+Using device: cpu
+0 tensor(5000418.5961, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3423338.2954, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3978707.1882, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4098334.8803, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 082. Probably returned all NaN
+Using device: cpu
+0 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 083. Probably returned all NaN
+Using device: cpu
+0 tensor(4276489.3137, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(4032488.2455, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3690257.8122, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3549141.3352, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(2957478.7780, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(3527982.4827, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(3626304.6438, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(3614429.8541, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(3717238.4383, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4298459.2237, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(3368749.9696, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3361814.5684, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1392556.9525, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(794331.2128, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(846190.6117, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(779379.7672, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(782170.6727, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(746765.5785, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(665101.7590, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(749887.4238, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4699718.6176, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3506338.8483, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1196352.5313, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(963991.4027, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(795167.9262, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(736441.5014, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(736593.3359, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(709549.3399, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(777842.6714, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(717718.5870, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 087. Probably returned all NaN
+Using device: cpu
+0 tensor(4329928.6059, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3564894.2485, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3863100.4768, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3601322.7489, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3521913.7731, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4722263.8820, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4963515.3424, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4975410.5577, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(4941697.9623, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4993314.8764, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 088. Probably returned all NaN
+Using device: cpu
+0 tensor(4537093.8664, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3787359.0568, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 089. Probably returned all NaN
+Using device: cpu
+0 tensor(4901216.0425, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1542170.7254, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(941957.1904, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1162075.4828, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(871644.1279, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(822468.0983, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1098332.1622, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(1069241.8883, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(835498.3899, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(890505.2136, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(5000419.8226, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3505267.8815, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4061914.7704, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4773175.5885, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4702273.1768, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4988827.9225, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4984392.1677, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(4954502.5100, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(5000410.0156, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(4998521.5112, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4840802.2695, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3809228.4798, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3948617.0217, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4142230.9731, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3578566.2423, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(3699701.8235, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(4991028.2060, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 092. Probably returned all NaN
+Using device: cpu
+0 tensor(4149462.1005, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1376891.5629, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1131285.1849, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(1001757.4890, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(983019.3663, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(724960.4533, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(886505.6131, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(793115.4051, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(758042.1033, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(695903.4483, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4907307.2569, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3532575.3544, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(4197368.7203, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(4299894.8961, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(4594124.3299, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(4941021.3185, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 094. Probably returned all NaN
+Using device: cpu
+0 tensor(5000262.1061, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(nan, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Error occured at step 095. Probably returned all NaN
+Using device: cpu
+0 tensor(4928680.2644, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3567611.8410, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3448566.8834, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3355914.7124, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(3479311.1623, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(3120809.1542, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1481064.5590, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(1096049.3387, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(1198430.4650, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(974719.0640, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4752435.0090, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(3571214.2491, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(3657950.9265, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(3589820.5394, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(2240021.1098, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(1624045.0615, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(1133485.9459, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(1072953.3862, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(1126050.7782, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(985892.1603, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4970480.7530, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1358784.5848, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(1104465.8142, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(965578.1920, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(901479.5688, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(1021143.3895, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(784489.3222, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(748954.0652, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(784374.6823, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(769798.0197, dtype=torch.float64, grad_fn=<MulBackward0>)
+image size = 15 x 15 mm
+test samples boxed in orange
+Using device: cpu
+0 tensor(4692960.3753, dtype=torch.float64, grad_fn=<MulBackward0>)
+100 tensor(1525674.6714, dtype=torch.float64, grad_fn=<MulBackward0>)
+200 tensor(902310.3285, dtype=torch.float64, grad_fn=<MulBackward0>)
+300 tensor(785792.3987, dtype=torch.float64, grad_fn=<MulBackward0>)
+400 tensor(803819.7852, dtype=torch.float64, grad_fn=<MulBackward0>)
+500 tensor(713611.6434, dtype=torch.float64, grad_fn=<MulBackward0>)
+600 tensor(727587.1292, dtype=torch.float64, grad_fn=<MulBackward0>)
+700 tensor(790612.7587, dtype=torch.float64, grad_fn=<MulBackward0>)
+800 tensor(672984.0142, dtype=torch.float64, grad_fn=<MulBackward0>)
+900 tensor(682089.7227, dtype=torch.float64, grad_fn=<MulBackward0>)
