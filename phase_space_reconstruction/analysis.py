@@ -118,3 +118,20 @@ def get_beam_fraction_bmadx_particle(
     )
 
     return frac_particle
+
+def get_beam_fraction_numpy_coords(
+        beam_distribution,
+        beam_fraction
+):
+    """ get core of the beam according to 6D normalized beam coordinates"""
+    data = np.stack(beam_distribution[:6]).T
+    cov = np.cov(data.T)
+
+    # get inverse cholesky decomp
+    t_data = (np.linalg.inv(np.linalg.cholesky(cov)) @ data.T).T
+
+    J = np.linalg.norm(t_data, axis=1)
+    sort_idx = np.argsort(J)
+    frac_coords = data[sort_idx][:int(len(data) * beam_fraction)].T
+    
+    return frac_coords
