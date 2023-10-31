@@ -24,7 +24,8 @@ def train_1d_scan(
         n_particles = 10_000,
         save_as = None,
         lambda_ = 1e11,
-        batch_size = 10
+        batch_size = 10,
+        learning_rate = 0.01
         ):
 
     """
@@ -81,7 +82,7 @@ def train_1d_scan(
     model = model.to(DEVICE)
 
     # train model
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
     loss_fn = MENTLoss(torch.tensor(lambda_))
 
     for i in range(n_epochs):
