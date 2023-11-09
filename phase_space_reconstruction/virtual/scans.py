@@ -260,3 +260,75 @@ def run_t_scan(
         print(f"dataset saved as '{save_as}'")
 
     return dset
+
+#### TEST ##################################################################################
+def run_3d_scan_test(
+        beam,
+        lattice,
+        screen0,
+        screen1,
+        ks,
+        vs,
+        gs,
+        ids = [0, 2, 4],
+        save_as = None
+        ):
+    
+    """
+    Runs virtual quad + transverse deflecting cavity 2d scan and returns
+    image data from the screen downstream.
+
+    Parameters
+    ----------
+    beam : bmadx.Beam
+        ground truth beam
+    lattice: bmadx TorchLattice
+        diagnostics lattice
+    screen: ImageDiagnostic
+        diagnostic screen
+    ids: array like
+        ids of lattice elements to scan in this order: [quad_id, tdc_id, dipole_id]
+    save_as : str
+        filename to store output dataset. Default: None.
+
+    Returns
+    -------
+    dset: ImageDataset
+        output image dataset
+    """
+
+    # base lattices 
+    params = torch.meshgrid(gs, ks, vs, indexing='ij')
+    params = torch.stack(params, dim=-1)
+
+    params0 = params[0].reshape((len(ks)*len(vs),3)).unsqueeze(-1)
+    diagnostics_lattice0 = lattice.copy()
+    diagnostics_lattice0.elements[ids[2]].G.data = params0[:,0].unsqueeze(-1)
+    diagnostics_lattice0.elements[ids[0]].K1.data = params0[:,1].unsqueeze(-1)
+    diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params0[:,2].unsqueeze(-1)
+
+    params1 = params[1].reshape((len(ks)*len(vs),3)).unsqueeze(-1)
+    diagnostics_lattice1 = lattice.copy()
+    diagnostics_lattice1.elements[ids[2]].G.data = params1[:,0].unsqueeze(-1)
+    diagnostics_lattice1.elements[ids[0]].K1.data = params1[:,1].unsqueeze(-1)
+    diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params1[:,2].unsqueeze(-1)
+
+    # track through lattice
+    output_beam0 = diagnostics_lattice0(beam)
+    output_beam1 = diagnostics_lattice1(beam)
+
+    # histograms at screen
+    images0 = screen0(output_beam0)
+    images1 = screen1(output_beam1)
+    images_stack = torch.stack((images0, images1), dim=1)
+    params_stack = torch.stack((params0, params1), dim=1)
+
+    # create image dataset
+    dset = ImageDataset3D(params_stack, images_stack)
+    
+    # save scan data if wanted
+    if save_as is not None:
+        torch.save(dset, save_as)
+        print(f"dataset0 saved as '{save_as}'")
+
+    return dset
