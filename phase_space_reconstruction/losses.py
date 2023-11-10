@@ -145,8 +145,8 @@ class MENTLoss_test(Module):
         observations = outputs[0]
         #observations = torch.cat((observations[:,0], observations[:,1]), dim=0)
         #target_image = torch.cat((target_image_original[:,0], target_image_original[:,1]), dim=0)
-        observations = observations[:,0]
-        target_image = target_image_original[:,0]
+        observations = observations
+        target_image = target_image_original
         
         assert observations.shape == target_image.shape
         target_image = normalize_images(target_image)
