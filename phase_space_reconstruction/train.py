@@ -8,7 +8,7 @@ from phase_space_reconstruction.modeling import (
     InitialBeam,
     PhaseSpaceReconstructionModel,
     ImageDataset,
-    PhaseSpaceReconstructionModel3D, PhaseSpaceReconstructionModel3D_test,
+    PhaseSpaceReconstructionModel3D, PhaseSpaceReconstructionModel3D_2screens,
     ImageDataset3D, 
     SextPhaseSpaceReconstructionModel
 )
@@ -488,7 +488,7 @@ def train_3d_scan_parallel_gpus(
 
 ### TEST ###
 
-def train_3d_scan_test(
+def train_3d_scan_2screens(
         train_dset,
         lattice,
         p0c,
@@ -533,6 +533,7 @@ def train_3d_scan_test(
     
     params = train_dset.params.to(DEVICE)
     imgs = train_dset.images.to(DEVICE)
+    n_imgs_per_param = imgs.shape[2]
 
     train_dset_device = ImageDataset3D(params, imgs)
     train_dataloader = DataLoader(
@@ -549,7 +550,7 @@ def train_3d_scan_test(
         n_particles,
         p0c=torch.tensor(p0c),
     )
-    model = PhaseSpaceReconstructionModel3D_test(
+    model = PhaseSpaceReconstructionModel3D_2screens(
         lattice.copy(),
         screen0,
         screen1,
@@ -560,13 +561,13 @@ def train_3d_scan_test(
 
     # train model
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = MENTLoss_test(torch.tensor(lambda_))
+    loss_fn = MENTLoss(torch.tensor(lambda_))
 
     for i in range(n_epochs):
         for elem in train_dataloader:
             params_i, target_images = elem[0], elem[1]
             optimizer.zero_grad()
-            output = model(params_i, ids)
+            output = model(params_i,n_imgs_per_param, ids)
             loss = loss_fn(output, target_images)
             loss.mean().backward()
             optimizer.step()

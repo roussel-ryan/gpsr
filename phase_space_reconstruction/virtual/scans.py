@@ -262,7 +262,7 @@ def run_t_scan(
     return dset
 
 #### TEST ##################################################################################
-def run_3d_scan_test(
+def run_3d_scan_2screens(
         beam,
         lattice,
         screen0,
@@ -270,6 +270,7 @@ def run_3d_scan_test(
         ks,
         vs,
         gs,
+        n_imgs_per_param = 1,
         ids = [0, 2, 4],
         save_as = None
         ):
@@ -318,13 +319,14 @@ def run_3d_scan_test(
     output_beam1 = diagnostics_lattice1(beam)
 
     # histograms at screen
-    images0 = screen0(output_beam0)
-    images1 = screen1(output_beam1)
+    images0 = screen0(output_beam0).squeeze()
+    images1 = screen1(output_beam1).squeeze()
     images_stack = torch.stack((images0, images1), dim=1)
     params_stack = torch.stack((params0, params1), dim=1)
 
     # create image dataset
-    dset = ImageDataset3D(params_stack, images_stack)
+    copied_images = torch.stack([images_stack]*n_imgs_per_param, dim=2)
+    dset = ImageDataset3D(params_stack, copied_images)
     
     # save scan data if wanted
     if save_as is not None:

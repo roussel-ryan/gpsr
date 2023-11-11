@@ -251,16 +251,16 @@ class ImageDataset3D(Dataset):
     
 #### test ####
     
-class PhaseSpaceReconstructionModel3D_test(torch.nn.Module):
+class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
     def __init__(self, lattice, diagnostic0, diagnostic1, beam):
-        super(PhaseSpaceReconstructionModel3D_test, self).__init__()
+        super(PhaseSpaceReconstructionModel3D_2screens, self).__init__()
 
         self.base_lattice = lattice
         self.diagnostic0 = diagnostic0
         self.diagnostic1 = diagnostic1
         self.beam = deepcopy(beam)
 
-    def track_and_observe_beam(self, beam, params, ids):
+    def track_and_observe_beam(self, beam, params, n_imgs_per_param,ids):
         # lattice dipole off:
         lattice0 = deepcopy(self.base_lattice)
         lattice0.elements[ids[0]].K1.data = params[:,0,1].unsqueeze(-1)
@@ -279,17 +279,18 @@ class PhaseSpaceReconstructionModel3D_test(torch.nn.Module):
         final_beam1 = lattice1(beam)
 
         # analyze beams with coprrespoding diagnostic screen
-        observations0 = self.diagnostic0(final_beam0)
-        observations1 = self.diagnostic1(final_beam1)
+        observations0 = self.diagnostic0(final_beam0).squeeze()
+        observations1 = self.diagnostic1(final_beam1).squeeze()
         observations_stack = torch.stack((observations0, observations1), dim=1)
+        copied_observations = torch.stack([observations_stack]*n_imgs_per_param, dim=2)
 
-        return observations_stack
+        return copied_observations
 
-    def forward(self, params, ids):
+    def forward(self, params, n_imgs_per_param, ids):
         proposal_beam = self.beam() 
 
         # track beam
-        observations = self.track_and_observe_beam(proposal_beam, params, ids)
+        observations = self.track_and_observe_beam(proposal_beam, params, n_imgs_per_param, ids)
 
         # get entropy
         entropy = calculate_beam_entropy(proposal_beam)
