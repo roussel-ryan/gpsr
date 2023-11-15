@@ -2,7 +2,7 @@ import torch
 from torch.utils.data import DataLoader
 
 from phase_space_reconstruction.diagnostics import ImageDiagnostic
-from phase_space_reconstruction.losses import MENTLoss, MENTLoss_test
+from phase_space_reconstruction.losses import MENTLoss
 from phase_space_reconstruction.modeling import (
     NNTransform,
     InitialBeam,
@@ -494,37 +494,14 @@ def train_3d_scan_2screens(
         p0c,
         screen0,
         screen1,
-        ids = [0, 2, 4],
+        ids,
         n_epochs = 100,
         device = 'cpu',
         n_particles = 10_000,
         save_as = None,
         lambda_ = 1e11,
-        batch_size = 10
+        batch_size = 5
         ):
-    
-    """
-    Trains beam model by scanning an arbitrary lattice.
-    Note: as of now, the quadrupole that is scanned should 
-    be the first element of the lattice. 
-
-    Parameters
-    ----------
-    train_data: ImageDataset
-        training data
-
-    lattice: bmadx TorchLattice
-        diagnostics lattice. First element is the scanned quad.
-
-    screen: ImageDiagnostic
-        screen diagnostics
-
-    Returns
-    -------
-    predicted_beam: bmadx Beam
-        reconstructed beam
-        
-    """
     
     # Device selection: 
     DEVICE = torch.device(device)
@@ -533,7 +510,7 @@ def train_3d_scan_2screens(
     
     params = train_dset.params.to(DEVICE)
     imgs = train_dset.images.to(DEVICE)
-    n_imgs_per_param = imgs.shape[2]
+    n_imgs_per_param = imgs.shape[-3]
 
     train_dset_device = ImageDataset3D(params, imgs)
     train_dataloader = DataLoader(

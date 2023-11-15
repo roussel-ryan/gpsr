@@ -299,34 +299,37 @@ def run_3d_scan_2screens(
     """
 
     # base lattices 
-    params = torch.meshgrid(gs, ks, vs, indexing='ij')
+    params = torch.meshgrid(ks, vs, gs, indexing='ij')
     params = torch.stack(params, dim=-1)
 
-    params0 = params[0].reshape((len(ks)*len(vs),3)).unsqueeze(-1)
+    params_dipole_off = params[:,:,0].unsqueeze(-1)
     diagnostics_lattice0 = lattice.copy()
-    diagnostics_lattice0.elements[ids[2]].G.data = params0[:,0].unsqueeze(-1)
-    diagnostics_lattice0.elements[ids[0]].K1.data = params0[:,1].unsqueeze(-1)
-    diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params0[:,2].unsqueeze(-1)
+    diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:,:,0]
+    diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params_dipole_off[:,:,1]
+    diagnostics_lattice0.elements[ids[2]].G.data = params_dipole_off[:,:,2]
 
-    params1 = params[1].reshape((len(ks)*len(vs),3)).unsqueeze(-1)
+    params_dipole_on = params[:,:,1].unsqueeze(-1)
     diagnostics_lattice1 = lattice.copy()
-    diagnostics_lattice1.elements[ids[2]].G.data = params1[:,0].unsqueeze(-1)
-    diagnostics_lattice1.elements[ids[0]].K1.data = params1[:,1].unsqueeze(-1)
-    diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params1[:,2].unsqueeze(-1)
+    diagnostics_lattice1.elements[ids[0]].K1.data = params_dipole_on[:,:,0]
+    diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params_dipole_on[:,:,1]
+    diagnostics_lattice1.elements[ids[2]].G.data = params_dipole_on[:,:,2]
 
-    # track through lattice
+    # track through lattice for dipole off(0) and dipole on (1)
     output_beam0 = diagnostics_lattice0(beam)
     output_beam1 = diagnostics_lattice1(beam)
 
-    # histograms at screen
-    images0 = screen0(output_beam0).squeeze()
-    images1 = screen1(output_beam1).squeeze()
-    images_stack = torch.stack((images0, images1), dim=1)
-    params_stack = torch.stack((params0, params1), dim=1)
+    # histograms at screens for dipole off(0) and dipole on (1)
+    images_dipole_off = screen0(output_beam0).squeeze()
+    images_dipole_on = screen1(output_beam1).squeeze()
+
+    # stack on dipole dimension:
+    images_stack = torch.stack((images_dipole_off, images_dipole_on), dim=2)
+    
+    # create images copies simulating multi-shot per parameter config:
+    copied_images = torch.stack([images_stack]*n_imgs_per_param, dim=-3)
 
     # create image dataset
-    copied_images = torch.stack([images_stack]*n_imgs_per_param, dim=2)
-    dset = ImageDataset3D(params_stack, copied_images)
+    dset = ImageDataset3D(params, copied_images)
     
     # save scan data if wanted
     if save_as is not None:

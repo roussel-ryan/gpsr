@@ -255,37 +255,40 @@ class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
     def __init__(self, lattice, diagnostic0, diagnostic1, beam):
         super(PhaseSpaceReconstructionModel3D_2screens, self).__init__()
 
-        self.base_lattice = lattice
+        self.lattice = lattice
         self.diagnostic0 = diagnostic0
         self.diagnostic1 = diagnostic1
         self.beam = deepcopy(beam)
 
     def track_and_observe_beam(self, beam, params, n_imgs_per_param,ids):
-        # lattice dipole off:
-        lattice0 = deepcopy(self.base_lattice)
-        lattice0.elements[ids[0]].K1.data = params[:,0,1].unsqueeze(-1)
-        lattice0.elements[ids[1]].VOLTAGE.data = params[:,0,2].unsqueeze(-1)
-        lattice0.elements[ids[2]].G.data = params[:,0,0].unsqueeze(-1)
+        params_dipole_off = params[:,:,0].unsqueeze(-1)
+        diagnostics_lattice0 = self.lattice.copy()
+        diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:,:,0]
+        diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params_dipole_off[:,:,1]
+        diagnostics_lattice0.elements[ids[2]].G.data = params_dipole_off[:,:,2]
 
-        #lattice dipole on:
-        lattice1 = deepcopy(self.base_lattice)
-        lattice1.elements[ids[0]].K1.data = params[:,1,1].unsqueeze(-1)
-        lattice1.elements[ids[1]].VOLTAGE.data = params[:,1,2].unsqueeze(-1)
-        lattice1.elements[ids[2]].G.data = params[:,1,0].unsqueeze(-1)
+        params_dipole_on = params[:,:,1].unsqueeze(-1)
+        diagnostics_lattice1 = self.lattice.copy()
+        diagnostics_lattice1.elements[ids[0]].K1.data = params_dipole_on[:,:,0]
+        diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params_dipole_on[:,:,1]
+        diagnostics_lattice1.elements[ids[2]].G.data = params_dipole_on[:,:,2]
 
+        # track through lattice for dipole off(0) and dipole on (1)
+        output_beam0 = diagnostics_lattice0(beam)
+        output_beam1 = diagnostics_lattice1(beam)
 
-        # track beam through lattices
-        final_beam0 = lattice0(beam)
-        final_beam1 = lattice1(beam)
+        # histograms at screens for dipole off(0) and dipole on (1)
+        images_dipole_off = self.diagnostic0(output_beam0).squeeze()
+        images_dipole_on = self.diagnostic1(output_beam1).squeeze()
 
-        # analyze beams with coprrespoding diagnostic screen
-        observations0 = self.diagnostic0(final_beam0).squeeze()
-        observations1 = self.diagnostic1(final_beam1).squeeze()
-        observations_stack = torch.stack((observations0, observations1), dim=1)
-        copied_observations = torch.stack([observations_stack]*n_imgs_per_param, dim=2)
+        # stack on dipole dimension:
+        images_stack = torch.stack((images_dipole_off, images_dipole_on), dim=2)
+        
+        # create images copies simulating multi-shot per parameter config:
+        copied_images = torch.stack([images_stack]*n_imgs_per_param, dim=-3)
 
-        return copied_observations
-
+        return copied_images
+    
     def forward(self, params, n_imgs_per_param, ids):
         proposal_beam = self.beam() 
 

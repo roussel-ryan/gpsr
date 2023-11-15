@@ -257,6 +257,51 @@ def plot_3d_scan_data(
 
     return fig, ax
 
+def plot_3d_scan_data_2screens(dset, select_img = 0):
+    params = dset.params
+    imgs = dset.images[:,:,:,select_img,:,:]
+    n_k = params.shape[0]
+    n_v = params.shape[1]
+    n_g = params.shape[2]
+    fig, ax = plt.subplots(
+        n_v * n_g + 1,
+        n_k + 1,
+        figsize=( (n_k+1)*2, (n_v*n_g+1)*2 )
+    )
+    ax[0, 0].set_axis_off()
+    ax[0, 0].text(1, 0, '$k_1$ (1/m$^2$)', va='bottom', ha='right')
+    for i in range(n_k):
+        ax[0, i + 1].set_axis_off()
+        ax[0, i + 1].text(
+            0.5, 0, f'{params[i, 0, 0, 0]:.1f}', va='bottom', ha='center'
+        )
+        for j in range(n_g):
+            for k in range(n_v):
+                ax[2 * j + k + 1, i + 1].imshow(
+                    imgs[i, k, j].T, origin='lower', interpolation='none'
+                )
+                ax[2 * j + k + 1, i + 1].tick_params(
+                    bottom=False, left=False,
+                    labelbottom=False, labelleft=False
+                )
+
+                if k == 0:
+                    v_lbl = "off"
+                else:
+                    v_lbl = "on"
+                if j == 0:
+                    g_lbl = "off"
+                else:
+                    g_lbl = "on"
+
+                ax[2 * j + k + 1, 0].set_axis_off()
+                ax[2 * j + k + 1, 0].text(
+                    1, 0.5, f'T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}',
+                    va='center', ha='right'
+                )
+
+    return fig, ax
+
 #--------------------------------------------------------------------------
 
 def add_image_projection(ax, image, bins, axis, scale_x=1, c="r"):
