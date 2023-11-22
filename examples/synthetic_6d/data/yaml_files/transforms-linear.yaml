@@ -32,13 +32,12 @@ rot_xy:
     units: degree
 rot_xz:
   type: rotate2d x:z
-  angle:
-    value: -30
+  angle: 
+    value: -70
     units: degree
-
 order: 
+  - rot_xz
   - shear_zpz
   - twiss_x
   - twiss_y
   - rot_xy
-  - rot_xz
