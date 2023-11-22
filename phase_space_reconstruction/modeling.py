@@ -249,7 +249,7 @@ class ImageDataset3D(Dataset):
     def __getitem__(self, idx):
         return self.params[idx], self.images[idx]
     
-#### test ####
+#### 2 screen adaptation: ####
     
 class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
     def __init__(self, lattice, diagnostic0, diagnostic1, beam):

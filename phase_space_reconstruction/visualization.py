@@ -258,6 +258,36 @@ def plot_3d_scan_data(
     return fig, ax
 
 def plot_3d_scan_data_2screens(dset, select_img = 0):
+    """
+    Plots 3D scan dataset for 6D phase space reconstruction
+    with 2 screens. 
+    
+    Parameters
+    ----------
+    train_dset: ImageDataset
+        training data. 
+        train_dset.images should be a 6D tensor of shape
+        [number of quad strengths, 
+        number of tdc voltages (2, off/on), 
+        number of dipole angles (2, off/on), 
+        number of images per parameter configuration, 
+        screen width in pixels, 
+        screen height in pixels]
+        train_dset.params should be a 4D tensor of shape
+        [number of quad strengths, 
+        number of tdc voltages (2, off/on), 
+        number of dipole angles (2, off/on), 
+        number of scanning elements (3: quad, tdc, dipole) ]
+    
+    select_img: int
+        index of image to plot for each parameter configuration
+
+    Returns
+    -------
+    fig: matplotlib figure
+        figure object
+    """
+    
     params = dset.params
     imgs = dset.images[:,:,:,select_img,:,:]
     n_k = params.shape[0]

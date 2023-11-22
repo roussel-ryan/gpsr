@@ -1,7 +1,6 @@
 import torch
 from torch.utils.data import DataLoader
 
-from phase_space_reconstruction.diagnostics import ImageDiagnostic
 from phase_space_reconstruction.losses import MENTLoss
 from phase_space_reconstruction.modeling import (
     NNTransform,
@@ -30,8 +29,6 @@ def train_1d_scan(
 
     """
     Trains beam model by scanning an arbitrary lattice.
-    Note: as of now, the quadrupole that is scanned should
-    be the first element of the lattice.
 
     Parameters
     ----------
@@ -122,8 +119,6 @@ def train_1d_scan_sext(
 ):
     """
     Trains beam model by scanning an arbitrary lattice.
-    Note: as of now, the quadrupole that is scanned should
-    be the first element of the lattice.
 
     Parameters
     ----------
@@ -214,8 +209,6 @@ def train_1d_scan_multi_gpu(
     
     """
     Trains beam model by scanning an arbitrary lattice.
-    Note: as of now, the quadrupole that is scanned should 
-    be the first element of the lattice. 
 
     Parameters
     ----------
@@ -310,20 +303,42 @@ def train_3d_scan(
         ):
     
     """
-    Trains beam model by scanning an arbitrary lattice.
-    Note: as of now, the quadrupole that is scanned should 
-    be the first element of the lattice. 
+    Trains 6D phase space reconstruction model by using 3D scan data.
 
     Parameters
     ----------
-    train_data: ImageDataset
-        training data
+    train_dset: ImageDataset
+        training data.
 
     lattice: bmadx TorchLattice
-        diagnostics lattice. First element is the scanned quad.
+        6D diagnostics lattice with quadrupole, TDC and dipole
+
+    p0c: float
+        beam momentum
 
     screen: ImageDiagnostic
-        screen diagnostics
+        Screen (same pixel size and dimensions for both dipole on and off)
+
+    ids: list of ints
+        Indices of the elements to be scanned: [quad_id, tdc_id, dipole_id]
+    
+    n_epochs: int
+        number of epochs for the optimizer
+    
+    device: 'cpu' or 'cuda:0'
+        device to train the model on
+    
+    n_particles: int
+        number of particles in the reconstructed beam
+
+    save_as: str or None
+        path to save the reconstructed beam
+
+    lambda_: float
+        image divergence parameter for the loss function
+    
+    batch_size: int
+        batch size for the dataloader
 
     Returns
     -------
@@ -502,7 +517,54 @@ def train_3d_scan_2screens(
         lambda_ = 1e11,
         batch_size = 5
         ):
-    
+    """
+    Trains 6D phase space reconstruction model by using 3D scan data.
+
+    Parameters
+    ----------
+    train_dset: ImageDataset
+        training data. 
+        train_dset.images should be a 6D tensor of shape
+        [number of quad strengths, 
+        number of tdc voltages (2, off/on), 
+        number of dipole angles (2, off/on), 
+        number of images per parameter configuration, 
+        screen width in pixels, 
+        screen height in pixels]
+        train_dset.params should be a 4D tensor of shape
+        [number of quad strengths, 
+        number of tdc voltages (2, off/on), 
+        number of dipole angles (2, off/on), 
+        number of scanning elements (3: quad, tdc, dipole) ]
+    lattice: bmadx TorchLattice
+        6D diagnostics lattice with quadrupole, TDC and dipole
+    p0c: float
+        beam momentum
+    screen0: ImageDiagnostic
+        Screen corresponding to dipole off
+    screen1: ImageDiagnostic
+        Screen corresponding to dipole on
+    ids: list of ints
+        Indices of the elements to be scanned: [quad_id, tdc_id, dipole_id]
+    n_epochs: int
+        number of epochs for the optimizer
+    device: 'cpu' or 'cuda:0'
+        device to train the model on
+    n_particles: int
+        number of particles in the reconstructed beam
+    save_as: str or None
+        path to save the reconstructed beam
+    lambda_: float
+        image divergence parameter for the loss function
+    batch_size: int
+        batch size for the dataloader
+
+    Returns
+    -------
+    predicted_beam: bmadx Beam
+        reconstructed beam
+        
+    """
     # Device selection: 
     DEVICE = torch.device(device)
     print(f'Using device: {DEVICE}')

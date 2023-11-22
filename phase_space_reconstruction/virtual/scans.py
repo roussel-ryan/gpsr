@@ -276,26 +276,47 @@ def run_3d_scan_2screens(
         ):
     
     """
-    Runs virtual quad + transverse deflecting cavity 2d scan and returns
-    image data from the screen downstream.
+    Runs 3D virtual scan (quad + TDC + dipole) and returns
+    image dataset from the screen downstream.
 
     Parameters
     ----------
     beam : bmadx.Beam
         ground truth beam
     lattice: bmadx TorchLattice
-        diagnostics lattice
-    screen: ImageDiagnostic
-        diagnostic screen
-    ids: array like
-        ids of lattice elements to scan in this order: [quad_id, tdc_id, dipole_id]
+        6D diagnostics lattice with quadrupole, TDC and dipole
+    screen0: ImageDiagnostic
+        Screen corresponding to dipole off
+    screen1: ImageDiagnostic
+        Screen corresponding to dipole on
+    ks: torch.Tensor
+        quadrupole strengths.
+    vs: torch.Tensor
+        TDC voltages.
+    gs: torch.Tensor
+        Dipole angles.
+    n_imgs_per_param: int
+        Number of images per parameter configuration.
+    ids: list of ints
+        Indices of the elements to be scanned: [quad_id, tdc_id, dipole_id]
     save_as : str
         filename to store output dataset. Default: None.
 
     Returns
     -------
     dset: ImageDataset
-        output image dataset
+        scan dataset.images should be a 6D tensor of shape
+        [number of quad strengths, 
+        number of tdc voltages (2, off/on), 
+        number of dipole angles (2, off/on), 
+        number of images per parameter configuration, 
+        screen width in pixels, 
+        screen height in pixels]
+        train_dset.params should be a 4D tensor of shape
+        [number of quad strengths, 
+        number of tdc voltages (2, off/on), 
+        number of dipole angles (2, off/on), 
+        number of scanning elements (3: quad, tdc, dipole) ]
     """
 
     # base lattices 
