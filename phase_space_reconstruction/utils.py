@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from phase_space_reconstruction.modeling import ImageDataset3D
 
 
 def calculate_centroid(images, x, y):
@@ -75,3 +76,12 @@ def get_core_fraction(beam_coords, frac=0.9, dims=slice(0, 4), normalized_output
     else:
         sorted_coords = beam_coords[torch.argsort(origin_dist)]
         return sorted_coords[: int(beam_coords.shape[0] * frac)]
+
+
+def split_2screen_dset(dset):
+    n = dset.__len__()
+    train_dset_params, train_dset_imgs = dset.__getitem__(np.arange(0, n, 2))
+    train_dset = ImageDataset3D(train_dset_params, train_dset_imgs)
+    test_dset_params, train_dset_imgs = dset.__getitem__(np.arange(1, n, 2))
+    test_dset = ImageDataset3D(test_dset_params, train_dset_imgs)
+    return train_dset, test_dset
