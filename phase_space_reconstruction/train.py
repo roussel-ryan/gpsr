@@ -505,7 +505,8 @@ def train_3d_scan_parallel_gpus(
 
 def train_3d_scan_2screens(
         train_dset,
-        lattice,
+        lattice0,
+        lattice1,
         p0c,
         screen0,
         screen1,
@@ -590,7 +591,8 @@ def train_3d_scan_2screens(
         p0c=torch.tensor(p0c),
     )
     model = PhaseSpaceReconstructionModel3D_2screens(
-        lattice.copy(),
+        lattice0.copy(),
+        lattice1.copy(),
         screen0,
         screen1,
         nn_beam

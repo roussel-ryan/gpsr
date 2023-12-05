@@ -252,23 +252,24 @@ class ImageDataset3D(Dataset):
 #### 2 screen adaptation: ####
     
 class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
-    def __init__(self, lattice, diagnostic0, diagnostic1, beam):
+    def __init__(self, lattice0, lattice1, diagnostic0, diagnostic1, beam):
         super(PhaseSpaceReconstructionModel3D_2screens, self).__init__()
 
-        self.lattice = lattice
+        self.lattice0 = lattice0
+        self.lattice1 = lattice1
         self.diagnostic0 = diagnostic0
         self.diagnostic1 = diagnostic1
         self.beam = deepcopy(beam)
 
     def track_and_observe_beam(self, beam, params, n_imgs_per_param,ids):
         params_dipole_off = params[:,:,0].unsqueeze(-1)
-        diagnostics_lattice0 = self.lattice.copy()
+        diagnostics_lattice0 = self.lattice0.copy()
         diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:,:,0]
         diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params_dipole_off[:,:,1]
         diagnostics_lattice0.elements[ids[2]].G.data = params_dipole_off[:,:,2]
 
         params_dipole_on = params[:,:,1].unsqueeze(-1)
-        diagnostics_lattice1 = self.lattice.copy()
+        diagnostics_lattice1 = self.lattice1.copy()
         diagnostics_lattice1.elements[ids[0]].K1.data = params_dipole_on[:,:,0]
         diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params_dipole_on[:,:,1]
         diagnostics_lattice1.elements[ids[2]].G.data = params_dipole_on[:,:,2]
