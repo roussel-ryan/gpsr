@@ -75,11 +75,12 @@ def quad_tdc_bend(p0c, dipole_on=False):
     p_design = p0c # eV/c
     
     # Quadrupole parameters
-    l_q = 0.1
+    #l_q = 0.08585
+    l_q = 0.11
     k1 = 0.0
     
     # transverse deflecting cavity (TDC) parameters
-    l_tdc = 0.23
+    l_tdc = 0.01
     #k_tdc = 2.00 # m^-1
     f_tdc = 1.3e9
     #v_tdc = p_design * k_tdc * C_LIGHT / ( 2 * PI * f_tdc )
@@ -89,7 +90,7 @@ def quad_tdc_bend(p0c, dipole_on=False):
      
     # Bend parameters
     # fixed: 
-    l_bend = 0.365
+    l_bend = 0.3018
     # variable when on/off: 
     if dipole_on:
         theta = 20.0 * PI / 180.0
@@ -103,13 +104,13 @@ def quad_tdc_bend(p0c, dipole_on=False):
     # Drifts with geometrical corrections: 
 
     # Drift from Quad to TDC (0.5975)
-    l_d1 = 0.7625 - l_q/2 - l_tdc/2
+    l_d1 = 0.790702 - l_q/2 - l_tdc/2
 
     # Drift from TDC to Bend (0.3392)
-    l_d2 = 0.633 - l_tdc/2 - l_bend/2
+    l_d2 = 0.631698 - l_tdc/2 - l_bend/2
 
     # Drift from Bend to YAG 2 (corrected for dipole on/off)
-    l_d3 = 0.895 - l_bend/2/np.cos(theta)
+    l_d3 = 0.889 - l_bend/2/np.cos(theta)
     
     # Elements:
     q = TorchQuadrupole(
@@ -234,19 +235,22 @@ def quadlet_tdc_bend(p0c, dipole_on = False):
     p_design = p0c # eV/c
     
     # Quadrupole parameters
-    l_q = 0.1
+    l_q = 0.08585
     k1 = 0.0 
-    d_q = 0.1 #distance between quads in triplet
+    l1 = 1.209548 - l_q
+    l2 = 0.19685 - l_q
+    l3 = 0.18415 - l_q
+    
     
     # transverse deflecting cavity (TDC) parameters
-    l_tdc = 0.23
+    l_tdc = 0.01
     f_tdc = 1.3e9
     phi_tdc = 0.0 # zero-crossing phase
     v_tdc = 0.0 # scan parameter
      
     # Bend parameters
     # fixed: 
-    l_bend = 0.365
+    l_bend = 0.3018
     # variable when on/off: 
     if dipole_on:
         theta = 20.0 * PI / 180.0
@@ -258,13 +262,13 @@ def quadlet_tdc_bend(p0c, dipole_on = False):
         l_arc = theta/g
 
     # Drift from Quad to TDC
-    l_d4 = 0.7625 - l_q/2 - l_tdc/2
+    l_d4 = 0.790702 - l_q/2 - l_tdc/2
 
     # Drift from TDC to Bend
-    l_d5 = 0.633 - l_tdc/2 - l_bend/2
+    l_d5 = 0.631698 - l_tdc/2 - l_bend/2
 
     # Drift from Bend to YAG 2 (corrected for dipole on/off)
-    l_d6 = 0.895 - l_bend/2/np.cos(theta)
+    l_d6 = 0.889 - l_bend/2/np.cos(theta)
     
     # Elements:
     q1 = TorchQuadrupole(
@@ -273,7 +277,7 @@ def quadlet_tdc_bend(p0c, dipole_on = False):
         NUM_STEPS = 5
         )
     
-    d1 = TorchDrift( L = torch.tensor(d_q) )
+    d1 = TorchDrift( L = torch.tensor(l1) )
 
     q2 = TorchQuadrupole(
         L = torch.tensor(l_q),
@@ -281,7 +285,7 @@ def quadlet_tdc_bend(p0c, dipole_on = False):
         NUM_STEPS = 5
         )
     
-    d2 = TorchDrift( L = torch.tensor(d_q) )
+    d2 = TorchDrift( L = torch.tensor(l2) )
 
     q3 = TorchQuadrupole(
         L = torch.tensor(l_q),
@@ -289,7 +293,7 @@ def quadlet_tdc_bend(p0c, dipole_on = False):
         NUM_STEPS = 5
         )
     
-    d3 = TorchDrift( L = torch.tensor(d_q) )
+    d3 = TorchDrift( L = torch.tensor(l3) )
 
     q4 = TorchQuadrupole(
         L = torch.tensor(l_q),
@@ -331,19 +335,24 @@ def quadlet_quad_tdc_bend(p0c, dipole_on = False):
     p_design = p0c # eV/c
     
     # Quadrupole parameters
-    l_q = 0.1
+    l_q = 0.08585
     k1 = 0.0 
-    d_q = 0.1 #distance between quads in quadlet
+    l1 = 0.200152 - l_q
+    l2 = 1.209548 - l_q
+    l3 = 0.19685 - l_q
+    l4 = 0.18415 - l_q
+    
+    
     
     # transverse deflecting cavity (TDC) parameters
-    l_tdc = 0.23
+    l_tdc = 0.01
     f_tdc = 1.3e9
     phi_tdc = 0.0 # zero-crossing phase
     v_tdc = 0.0 # scan parameter
      
     # Bend parameters
     # fixed: 
-    l_bend = 0.365
+    l_bend = 0.3018
     # variable when on/off: 
     if dipole_on:
         theta = 20.0 * PI / 180.0
@@ -354,17 +363,14 @@ def quadlet_quad_tdc_bend(p0c, dipole_on = False):
         theta = 2*np.arcsin(l_bend*g/2)
         l_arc = theta/g
 
-    # Drift from quad 4 to scanning quad
-    l_d4 = 0.1
-
     # Drift from Quad to TDC
-    l_d5 = 0.7625 - l_q/2 - l_tdc/2
+    l_d5 = 0.790702 - l_q/2 - l_tdc/2
 
     # Drift from TDC to Bend
-    l_d6 = 0.633 - l_tdc/2 - l_bend/2
+    l_d6 = 0.631698 - l_tdc/2 - l_bend/2
 
     # Drift from Bend to YAG 2 (corrected for dipole on/off)
-    l_d7 = 0.895 - l_bend/2/np.cos(theta)
+    l_d7 = 0.889 - l_bend/2/np.cos(theta)
     
     # Elements:
     q1 = TorchQuadrupole(
@@ -373,7 +379,7 @@ def quadlet_quad_tdc_bend(p0c, dipole_on = False):
         NUM_STEPS = 5
         )
     
-    d1 = TorchDrift( L = torch.tensor(d_q) )
+    d1 = TorchDrift( L = torch.tensor(l1) )
 
     q2 = TorchQuadrupole(
         L = torch.tensor(l_q),
@@ -381,7 +387,7 @@ def quadlet_quad_tdc_bend(p0c, dipole_on = False):
         NUM_STEPS = 5
         )
     
-    d2 = TorchDrift( L = torch.tensor(d_q) )
+    d2 = TorchDrift( L = torch.tensor(l2) )
 
     q3 = TorchQuadrupole(
         L = torch.tensor(l_q),
@@ -389,17 +395,19 @@ def quadlet_quad_tdc_bend(p0c, dipole_on = False):
         NUM_STEPS = 5
         )
     
-    d3 = TorchDrift( L = torch.tensor(d_q) )
-
+    d3 = TorchDrift( L = torch.tensor(l3) )
+    
     q4 = TorchQuadrupole(
         L = torch.tensor(l_q),
         K1 = torch.tensor(k1),
         NUM_STEPS = 5
         )
     
-    d4 = TorchDrift( L = torch.tensor(l_d4) )
+    d4 = TorchDrift( L = torch.tensor(l4) )
+    
 
-    q_scan = TorchQuadrupole(
+
+    q5 = TorchQuadrupole(
         L = torch.tensor(l_q),
         K1 = torch.tensor(k1),
         NUM_STEPS = 5
@@ -429,7 +437,7 @@ def quadlet_quad_tdc_bend(p0c, dipole_on = False):
     d7 = TorchDrift( L = torch.tensor(l_d7) )
     
     lattice = TorchLattice(
-        [q1, d1, q2, d2, q3, d3, q4, d4, q_scan, d5, tdc, d6, bend, d7]
+        [q1, d1, q2, d2, q3, d3, q4, d4, q5, d5, tdc, d5, bend, d6]
         )
     
     return lattice
