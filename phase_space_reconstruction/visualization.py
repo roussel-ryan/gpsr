@@ -4,6 +4,8 @@ import torch
 from matplotlib import transforms
 from matplotlib.patches import Ellipse
 
+from phase_space_reconstruction.utils import split_2screen_dset
+
 #--------------------------------------------------------------------------
 
 def plot_scan_data(
@@ -257,23 +259,23 @@ def plot_3d_scan_data(
 
     return fig, ax
 
-def plot_3d_scan_data_2screens(dset, select_img = 0):
+def plot_3d_scan_data_2screens(dset, select_img = 0, splitted = True):
     """
     Plots 3D scan dataset for 6D phase space reconstruction
     with 2 screens. 
     
     Parameters
     ----------
-    train_dset: ImageDataset
-        training data. 
-        train_dset.images should be a 6D tensor of shape
+    dset: ImageDataset
+        scan data. 
+        dset.images should be a 6D tensor of shape
         [number of quad strengths, 
         number of tdc voltages (2, off/on), 
         number of dipole angles (2, off/on), 
         number of images per parameter configuration, 
         screen width in pixels, 
         screen height in pixels]
-        train_dset.params should be a 4D tensor of shape
+        dset.params should be a 4D tensor of shape
         [number of quad strengths, 
         number of tdc voltages (2, off/on), 
         number of dipole angles (2, off/on), 
@@ -282,12 +284,14 @@ def plot_3d_scan_data_2screens(dset, select_img = 0):
     select_img: int
         index of image to plot for each parameter configuration
 
+    splitted: bool
+        if True, data is assumed to be splitted into train and test data. 
+        dset.images
     Returns
     -------
     fig: matplotlib figure
         figure object
     """
-    
     params = dset.params
     imgs = dset.images[:,:,:,select_img,:,:]
     n_k = params.shape[0]
@@ -331,6 +335,8 @@ def plot_3d_scan_data_2screens(dset, select_img = 0):
                 )
 
     return fig, ax
+
+
 
 #--------------------------------------------------------------------------
 
