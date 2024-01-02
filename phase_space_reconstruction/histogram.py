@@ -1,6 +1,8 @@
 # modified from kornia.enhance.histogram
-from typing import Tuple
+import math
+from typing import Tuple, Optional, Union
 
+import matplotlib.pyplot as plt
 import torch
 from torch import Tensor
 from torch import nn
@@ -11,7 +13,7 @@ def marginal_pdf(
         values: torch.Tensor,
         bins: torch.Tensor,
         sigma: torch.Tensor,
-        epsilon: float = 1e-10,
+        weights: Optional[Union[Tensor, float]] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Calculate the marginal probability distribution function of the input tensor based on the number of
     histogram bins.
@@ -47,14 +49,18 @@ def marginal_pdf(
             "Input sigma must be a of the shape 1" " Got {}".format(sigma.shape)
         )
 
+    if type(weights) == float:
+        weights = torch.ones(values.shape[:-1])
+    elif weights is None:
+        weights = 1.0
+
     residuals = values - bins.repeat(*values.shape)
-    kernel_values = torch.exp(-0.5 * (residuals / sigma).pow(2))
+    kernel_values = weights * torch.exp(
+        -0.5 * (residuals / sigma).pow(2)
+    ) / torch.sqrt(2*math.pi*sigma**2)
 
-    pdf = torch.mean(kernel_values, dim=-2)
-    normalization = torch.sum(pdf, dim=-1).unsqueeze(-1) + epsilon
-    pdf = pdf / normalization
-
-    return pdf, kernel_values
+    prob_mass = torch.sum(kernel_values, dim=-2)
+    return prob_mass, kernel_values
 
 
 def joint_pdf(
@@ -84,11 +90,11 @@ def joint_pdf(
         )
 
     joint_kernel_values = torch.matmul(kernel_values1.transpose(-2, -1), kernel_values2)
-    normalization = (
-            torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
-            + epsilon
-    )
-    pdf = joint_kernel_values / normalization
+    # normalization = (
+    #        torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
+    #        + epsilon
+    #)
+    pdf = joint_kernel_values
 
     return pdf
 
@@ -129,7 +135,7 @@ def histogram2d(
         bins1: torch.Tensor,
         bins2: torch.Tensor,
         bandwidth: torch.Tensor,
-        epsilon: float = 1e-10,
+        weights = None,
 ) -> torch.Tensor:
     """Estimate the 2d histogram of the input tensor.
 
@@ -154,8 +160,8 @@ def histogram2d(
         torch.Size([2, 128, 128])
     """
 
-    _, kernel_values1 = marginal_pdf(x1.unsqueeze(-1), bins1, bandwidth, epsilon)
-    _, kernel_values2 = marginal_pdf(x2.unsqueeze(-1), bins2, bandwidth, epsilon)
+    _, kernel_values1 = marginal_pdf(x1.unsqueeze(-1), bins1, bandwidth, weights)
+    _, kernel_values2 = marginal_pdf(x2.unsqueeze(-1), bins2, bandwidth, weights)
 
     pdf = joint_pdf(kernel_values1, kernel_values2)
 
@@ -190,22 +196,34 @@ class KDEGaussian(nn.Module):
 
 if __name__ == "__main__":
     # 2d histogram
-    x = torch.linspace(0.0, 1.0, 100)
+    x = torch.linspace(-0.5, 0.5, 100)
     mesh_x = torch.meshgrid(x, x)
     test_x = torch.stack(mesh_x, dim=-1)
 
     # samples ( `batch_size x n_particles x coord_dim`)
-    samples = torch.rand(10, 10000, 2)
+    samples = torch.rand(100000, 2)
 
-    kde = KDEGaussian(0.01)
+    prob_mass = histogram2d(
+        samples[..., 0], samples[..., 1], bins1=x, bins2=x,
+        bandwidth=(x[1]-x[0])
+    )
+    print(prob_mass.sum(dim=[-2,-1]))
 
-    with profile(activities=[ProfilerActivity.CPU],
-                 profile_memory=True) as prof:
-        out = []
-        for ele in samples:
-            out += [kde(ele, test_x)]
-            print(out[-1].shape)
+    fig,ax = plt.subplots()
+    c = ax.imshow(prob_mass)
+    fig.colorbar(c)
+    plt.show()
 
 
-    prof.export_chrome_trace("kde_rectangle.json")
-    print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
+    #kde = KDEGaussian(0.01)
+
+    #with profile(activities=[ProfilerActivity.CPU],
+    #             profile_memory=True) as prof:
+    #    out = []
+    #    for ele in samples:
+    #        out += [kde(ele, test_x)]
+    #        print(out[-1].shape)
+
+
+    #prof.export_chrome_trace("kde_rectangle.json")
+    #print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
