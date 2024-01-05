@@ -337,6 +337,99 @@ def plot_3d_scan_data_2screens(dset, select_img = 0, splitted = True):
     return fig, ax
 
 
+def get_beam_fraction_hist2d(hist2d, fraction: float):
+    levels = np.linspace(hist2d.max(), 0.0, 100)
+    total = hist2d.sum()
+    final_beam = np.copy(hist2d)
+    for level in levels:
+        test_beam = np.where(hist2d>=level, hist2d, 0.0)
+        test_frac = test_beam.sum() / total
+        if test_frac > fraction:
+            final_beam = test_beam
+            break
+
+    return final_beam
+
+def plot_test_vs_pred_2screens(
+        test_dset, 
+        pred_dset, 
+        select_img = 0,
+        contour_percentiles = [50, 95]
+):
+    """
+    sadf
+    
+    Parameters
+    ----------
+    test_dset: ImageDataset
+        test data. 
+        dset.images should be a 6D tensor of shape
+        [number of quad strengths, 
+        number of tdc voltages (2, off/on), 
+        number of dipole angles (2, off/on), 
+        number of images per parameter configuration, 
+        screen width in pixels, 
+        screen height in pixels]
+        dset.params should be a 4D tensor of shape
+        [number of quad strengths, 
+        number of tdc voltages (2, off/on), 
+        number of dipole angles (2, off/on), 
+        number of scanning elements (3: quad, tdc, dipole) ]
+    
+    select_img: int
+        index of image to plot for each parameter configuration
+
+    Returns
+    -------
+    fig: matplotlib figure
+        figure object
+    """
+    params = pred_dset.params
+    imgs = pred_dset.images[:,:,:,select_img,:,:]
+    test_imgs = test_dset.images[:,:,:,select_img,:,:]
+    n_k = params.shape[0]
+    n_v = params.shape[1]
+    n_g = params.shape[2]
+    fig, ax = plt.subplots(
+        n_v * n_g + 1,
+        n_k + 1,
+        figsize=( (n_k+1)*2, (n_v*n_g+1)*2 )
+    )
+    ax[0, 0].set_axis_off()
+    ax[0, 0].text(1, 0, '$k_1$ (1/m$^2$)', va='bottom', ha='right')
+    for i in range(n_k):
+        ax[0, i + 1].set_axis_off()
+        ax[0, i + 1].text(
+            0.5, 0, f'{params[i, 0, 0, 0]:.1f}', va='bottom', ha='center'
+        )
+        for j in range(n_g):
+            for k in range(n_v):
+                ax[2 * j + k + 1, i + 1].imshow(
+                    imgs[i, k, j].T, origin='lower', interpolation='none'
+                )
+                
+                ax[2 * j + k + 1, i + 1].tick_params(
+                    bottom=False, left=False,
+                    labelbottom=False, labelleft=False
+                )
+
+                if k == 0:
+                    v_lbl = "off"
+                else:
+                    v_lbl = "on"
+                if j == 0:
+                    g_lbl = "off"
+                else:
+                    g_lbl = "on"
+
+                ax[2 * j + k + 1, 0].set_axis_off()
+                ax[2 * j + k + 1, 0].text(
+                    1, 0.5, f'T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}',
+                    va='center', ha='right'
+                )
+
+    return fig, ax
+
 
 #--------------------------------------------------------------------------
 
