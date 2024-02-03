@@ -94,11 +94,11 @@ def quad_tdc_bend(p0c, dipole_on=False):
     # variable when on/off: 
     if dipole_on:
         theta = 20.0 * PI / 180.0
-        l_arc = l_bend * theta / (2 * np.sin(theta/2))
+        l_arc = l_bend * theta / np.sin(theta)
         g = theta / l_arc 
     if not dipole_on:
         g = 2.22e-16 # machine epsilon to avoid numerical error
-        theta = 2*np.arcsin(l_bend*g/2)
+        theta = np.arcsin(l_bend*g)
         l_arc = theta/g
     
     # Drifts with geometrical corrections: 
@@ -135,8 +135,10 @@ def quad_tdc_bend(p0c, dipole_on=False):
         L = torch.tensor(l_arc),
         P0C = torch.tensor(p_design),
         G = torch.tensor(g),
-        E1 = torch.tensor(theta/2),
-        E2 = torch.tensor(theta/2),
+        #E1 = torch.tensor(theta/2), #double check geometry
+        #E2 = torch.tensor(theta/2),
+        E1 = torch.tensor(0.0),
+        E2 = torch.tensor(theta),
         FRINGE_AT = "no_end"
     )
 
