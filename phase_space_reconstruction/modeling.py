@@ -64,20 +64,21 @@ class NNTransform(torch.nn.Module):
         dropout=0.0,
         activation=torch.nn.Tanh(),
         output_scale=1e-2,
+        phase_space_dim=6
     ):
         """
         Nonparametric transformation - NN
         """
         super(NNTransform, self).__init__()
 
-        layer_sequence = [nn.Linear(6, width), activation]
+        layer_sequence = [nn.Linear(phase_space_dim, width), activation]
 
         for i in range(n_hidden):
             layer_sequence.append(torch.nn.Linear(width, width))
             layer_sequence.append(torch.nn.Dropout(dropout))
             layer_sequence.append(activation)
 
-        layer_sequence.append(torch.nn.Linear(width, 6))
+        layer_sequence.append(torch.nn.Linear(width, phase_space_dim))
 
         self.stack = torch.nn.Sequential(*layer_sequence)
         self.register_buffer("output_scale", torch.tensor(output_scale))
@@ -103,6 +104,31 @@ class InitialBeam(torch.nn.Module):
         return Beam(
             transformed_beam, self.base_beam.p0c, self.base_beam.s, self.base_beam.mc2
         )
+
+
+class OffsetBeam(torch.nn.Module):
+    """
+    Define a beam distribution that has learnable parameters for centroid offset for
+    each shot to represent jitter in the beam centroid. This implies several assumptions
+    - the beam profile is independent of the beam centroid location, this ignores
+    higher order changes in the beam distribution -- this could eventually be
+    replaced by a more complex transformer
+
+    This should provide more detail in the reconstruction
+
+    """
+    def __init__(self, offset, base_beam):
+        super(OffsetBeam, self).__init__()
+        self.offset = offset
+        self.base_beam = base_beam
+
+    def forward(self):
+        transformed_beam = self.base_beam().data + self.offset
+        return Beam(
+            transformed_beam, self.base_beam.p0c, self.base_beam.s, self.base_beam.mc2
+        )
+
+
 
 
 def calculate_covariance(beam):
@@ -237,7 +263,8 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
         cov = calculate_covariance(proposal_beam)
 
         return observations, entropy, cov
-    
+
+
 class ImageDataset3D(Dataset):
     def __init__(self, params, images):
         self.params = params
