@@ -90,11 +90,11 @@ def joint_pdf(
         )
 
     joint_kernel_values = torch.matmul(kernel_values1.transpose(-2, -1), kernel_values2)
-    # normalization = (
-    #        torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
-    #        + epsilon
-    #)
-    pdf = joint_kernel_values
+    normalization = (
+            torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
+            + epsilon
+    )
+    pdf = joint_kernel_values / normalization
 
     return pdf
 
