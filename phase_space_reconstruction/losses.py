@@ -57,6 +57,7 @@ class MENTLoss(Module):
     def forward(self, outputs, target_image_original):
         assert outputs[0].shape == target_image_original.shape
         target_image = normalize_images(target_image_original)
+        #target_image = target_image_original
         pred_image = normalize_images(outputs[0])
         entropy = outputs[1]
         cov = outputs[2]
@@ -75,7 +76,7 @@ class MENTLoss(Module):
 
         # image_loss = kl_div(target_image, pred_image).mean()
         image_loss = mae_loss(target_image, pred_image)
-        total_loss = -entropy + self.lambda_ * image_loss + self.beta_ * \
+        total_loss = -0*entropy + self.lambda_ * image_loss + self.beta_ * \
                      centroid_loss + self.alpha_ * cov_loss
 
         """

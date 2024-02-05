@@ -264,7 +264,8 @@ def run_t_scan(
 #### TEST ##################################################################################
 def run_3d_scan_2screens(
         beam,
-        lattice,
+        lattice0,
+        lattice1,
         screen0,
         screen1,
         ks,
@@ -324,13 +325,13 @@ def run_3d_scan_2screens(
     params = torch.stack(params, dim=-1)
 
     params_dipole_off = params[:,:,0].unsqueeze(-1)
-    diagnostics_lattice0 = lattice.copy()
+    diagnostics_lattice0 = lattice0.copy()
     diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:,:,0]
     diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params_dipole_off[:,:,1]
     diagnostics_lattice0.elements[ids[2]].G.data = params_dipole_off[:,:,2]
 
     params_dipole_on = params[:,:,1].unsqueeze(-1)
-    diagnostics_lattice1 = lattice.copy()
+    diagnostics_lattice1 = lattice1.copy()
     diagnostics_lattice1.elements[ids[0]].K1.data = params_dipole_on[:,:,0]
     diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params_dipole_on[:,:,1]
     diagnostics_lattice1.elements[ids[2]].G.data = params_dipole_on[:,:,2]

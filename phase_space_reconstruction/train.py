@@ -1,4 +1,7 @@
+import os
+
 import torch
+import copy
 from torch.utils.data import DataLoader
 
 from phase_space_reconstruction.losses import MENTLoss
@@ -505,7 +508,8 @@ def train_3d_scan_parallel_gpus(
 
 def train_3d_scan_2screens(
         train_dset,
-        lattice,
+        lattice0,
+        lattice1,
         p0c,
         screen0,
         screen1,
@@ -514,8 +518,10 @@ def train_3d_scan_2screens(
         device = 'cpu',
         n_particles = 10_000,
         save_as = None,
+        save_dir = '',
         lambda_ = 1e11,
-        batch_size = 5
+        batch_size = 5,
+        saving_interval=None
         ):
     """
     Trains 6D phase space reconstruction model by using 3D scan data.
@@ -583,6 +589,7 @@ def train_3d_scan_2screens(
 
     # create phase space reconstruction model
     nn_transformer = NNTransform(2, 20, output_scale=1e-2)
+    #nn_transformer = NNTransform(4, 40, output_scale=1e-2)
     nn_beam = InitialBeam(
         nn_transformer,
         torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),
@@ -590,7 +597,8 @@ def train_3d_scan_2screens(
         p0c=torch.tensor(p0c),
     )
     model = PhaseSpaceReconstructionModel3D_2screens(
-        lattice.copy(),
+        lattice0.copy(),
+        lattice1.copy(),
         screen0,
         screen1,
         nn_beam
@@ -613,12 +621,19 @@ def train_3d_scan_2screens(
 
         if i % 100 == 0:
             print(i, loss)
+            
+        if i % saving_interval == 0:
+            temp_model = copy.deepcopy(model)
+            temp_model = temp_model.to('cpu')
+            temp_beam = temp_model.beam.forward().detach_clone()
+            torch.save(temp_beam, os.path.join(save_dir, f'tmp_beam{i}.pt'))
+            print(f'saving tmp_beam{i}.pt')
 
     model = model.to('cpu')
 
     predicted_beam = model.beam.forward().detach_clone()
 
     if save_as is not None:
-        torch.save(predicted_beam, save_as)
+        torch.save(predicted_beam, os.path.join(save_dir, save_as))
     
     return predicted_beam
