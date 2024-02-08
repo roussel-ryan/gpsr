@@ -403,7 +403,7 @@ def train_3d_scan(
     if save_as is not None:
         torch.save(predicted_beam, save_as)
     
-    return predicted_beam
+    return predicted_beam, copy.deepcopy(model)
 
 def train_3d_scan_parallel_gpus(
         train_dset,

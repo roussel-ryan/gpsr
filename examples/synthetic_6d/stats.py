@@ -237,7 +237,7 @@ def plot_projections_with_contours(
                         linewidths=1
                     )  
 
-            ax[j,i].get_shared_x_axes().join(ax[j,i], ax[i,i])
+            #ax[j,i].get_shared_x_axes().join(ax[j,i], ax[i,i])
             ax[i,j].set_visible(False)
 
             if i != 0:

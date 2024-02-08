@@ -94,10 +94,10 @@ class InitialBeam(torch.nn.Module):
         self.base_dist = base_dist
         self.base_beam = None
 
-        self.set_base_beam(base_dist, n_particles, **kwargs)
+        self.set_base_beam(n_particles, **kwargs)
 
-    def set_base_beam(self, base_dist, n_particles, **kwargs):
-        self.base_beam = Beam(base_dist.sample([n_particles]), **kwargs)
+    def set_base_beam(self, n_particles, **kwargs):
+        self.base_beam = Beam(self.base_dist.sample([n_particles]), **kwargs)
 
     def forward(self):
         transformed_beam = self.transformer(self.base_beam.data)

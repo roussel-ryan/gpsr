@@ -6,7 +6,7 @@ from typing import Callable, Dict
 
 import pandas as pd
 from xopt import Evaluator, Xopt, VOCS
-from xopt.generators import ExpectedImprovementGenerator
+from xopt.generators.bayesian import ExpectedImprovementGenerator
 import numpy as np
 
 def change_triplet_params(lat, k1, k2, k3):
@@ -41,7 +41,8 @@ def output(input, beam, lattice):
     # outputs
     std_x = final_beam.x.std()
     std_y = final_beam.y.std()
-    total_size = torch.sqrt((std_x-0.001)**2 + (std_y-0.001)**2)
+    # total_size = torch.sqrt((std_x-0.001)**2 + (std_y-0.001)**2)
+    total_size = torch.sqrt(std_x**2 + std_y**2)
 
     return {
         "std_x": float(std_x),
@@ -102,7 +103,6 @@ def optimize_function(
         generator=generator,
         evaluator=beamsize_evaluator
     )
-    X.options.strict = True
 
     # evaluate random intial points
     X.random_evaluate(n_initial)
