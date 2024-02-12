@@ -156,13 +156,21 @@ def plot_projections_with_contours(
             coords should be a subset of ('x', 'px', 'y', 'py', 'z', 'pz')
             """)
 
-        x_array = getattr(reconstruction, x_coord)*scale
-        ax[n_coords-1,i].set_xlabel(f'{x_coord} ({x_coord_unit})')
-        min_x = coord_min[i]*scale
-        max_x = coord_max[i]*scale
+        if x_coord=='pz':
+            x_array = getattr(particles, x_coord)*100
+            ax[n_coords-1,i].set_xlabel(f'{x_coord} (%)')
+            min_x = coord_min[i]*100
+            max_x = coord_max[i]*100
+            if i>0:
+                ax[i,0].set_ylabel(f'{x_coord} (%)')
 
-        if i>0:
-            ax[i,0].set_ylabel(f'{x_coord} ({x_coord_unit})')
+        else:
+            x_array = getattr(particles, x_coord)*scale
+            ax[n_coords-1,i].set_xlabel(f'{x_coord} ({x_coord_unit})')
+            min_x = coord_min[i]*scale
+            max_x = coord_max[i]*scale
+            if i>0:
+                ax[i,0].set_ylabel(f'{x_coord} ({x_coord_unit})')
 
         ax[i,i].hist(
             x_array,

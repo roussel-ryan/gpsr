@@ -300,9 +300,11 @@ def train_3d_scan(
         n_epochs = 100,
         device = 'cpu',
         n_particles = 10_000,
-        save_as = None,
+        save_dir = None,
         lambda_ = 1e11,
-        batch_size = 10
+        batch_size = 10,
+        distribution_dump_frequency=1000,
+        distribution_dump_n_particles=100_000,
         ):
     
     """
@@ -384,7 +386,7 @@ def train_3d_scan(
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
     loss_fn = MENTLoss(torch.tensor(lambda_))
 
-    for i in range(n_epochs):
+    for i in range(n_epochs + 1):
         for elem in train_dataloader:
             params_i, target_images = elem[0], elem[1]
             optimizer.zero_grad()
@@ -395,13 +397,26 @@ def train_3d_scan(
 
         if i % 100 == 0:
             print(i, loss)
+            
+        # dump current particle distribution to file
+        if i % distribution_dump_frequency == 0:
+            if save_dir is not None:
+                model_copy = copy.deepcopy(model).to("cpu")
+                model_copy.beam.set_base_beam(
+                    distribution_dump_n_particles,
+                    p0c=torch.tensor(p0c)
+                )
+                torch.save(
+                    model_copy.beam.forward().detach_clone(), 
+                    os.path.join(save_dir, f"dist_{i}.pt")
+                )
 
     model = model.to('cpu')
 
     predicted_beam = model.beam.forward().detach_clone()
 
-    if save_as is not None:
-        torch.save(predicted_beam, save_as)
+    if save_dir is not None:
+        torch.save(predicted_beam, "3d_scan_result.pt")
     
     return predicted_beam, copy.deepcopy(model)
 
