@@ -3,8 +3,9 @@ import numpy as np
 import torch
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
-from phase_space_reconstruction.analysis import get_beam_fraction_numpy_coords
-
+from scipy.signal import medfilt
+from phase_space_reconstruction.analysis import get_beam_fraction_numpy_coords 
+from copy import deepcopy
 
 def read_reconstructed_particle(dr, i):
     
@@ -87,33 +88,62 @@ def get_beam_fraction_hist2d(hist2d, fraction: float):
 
     return final_beam
     
+def scale_beam_coords(particles, scale_dict):
+    """ return a copy of `particles` scaled by scale_dict"""
+    particles_copy = deepcopy(particles)
+    particles_copy.data = particles.data * torch.tensor(
+        [scale_dict[ele] for ele in particles.keys]
+    )
+        
+    return particles_copy
+    
+from stats import scale_beam_coords, get_beam_fraction_hist2d
+import os
+import numpy as np
+import torch
+import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
+from scipy.signal import medfilt
+from phase_space_reconstruction.analysis import get_beam_fraction_numpy_coords 
+from copy import deepcopy
+
 def plot_projections_with_contours(
         reconstruction,
         ground_truth = None,
         contour_percentiles = [50, 95],
-        contour_smoothing_r = 1,
-        contour_smoothing_gt = 1,
+        contour_smoothing = 0.0,
         coords = ('x', 'px', 'y', 'py', 'z', 'pz'),
-        bins = 200,
-        scale = 1e3,
+        n_bins = 200,
         background = 0,
         same_lims = False,
-        custom_lims = None
-        ):
+        custom_lims = None,
+        use_pz_percentage_units = True,
+        scale=1e3,
+        ):    
     
     SPACE_COORDS = ('x', 'y', 'z')
     MOMENTUM_COORDS = ('px', 'py', 'pz')
 
+    # set up plot objects
     n_coords = len(coords)
     n_contours = len(contour_percentiles)
     COLORS = ["white", "gray", "black"]
     COLORS = COLORS * (n_contours // int(len(COLORS)+0.1) + 1)
     fig_size = (n_coords*2,) * 2
 
-    fig, ax = plt.subplots(n_coords, n_coords, figsize=fig_size, dpi=300)
+    fig, ax = plt.subplots(n_coords, n_coords, figsize=fig_size, dpi=300, sharex="col")
     mycmap = plt.get_cmap('viridis')
     mycmap.set_under(color='white') # map 0 to this color
 
+    # scale beam distribution to correct units
+    scale_dict = {ele:scale for ele in coords}
+    if use_pz_percentage_units:
+        scale_dict["pz"] = 1e2
+        
+    reconstruction = scale_beam_coords(reconstruction, scale_dict)
+    if ground_truth is not None:
+        ground_truth = scale_beam_coords(ground_truth, scale_dict)
+    
     all_coords = []
     
     for coord in coords:
@@ -155,37 +185,46 @@ def plot_projections_with_contours(
             raise ValueError("""scales should be 1 or 1e3,
             coords should be a subset of ('x', 'px', 'y', 'py', 'z', 'pz')
             """)
+            
+        if x_coord == "pz" and use_pz_percentage_units:
+            x_coord_unit = "%"
 
-        if x_coord=='pz':
-            x_array = getattr(particles, x_coord)*100
-            ax[n_coords-1,i].set_xlabel(f'{x_coord} (%)')
-            min_x = coord_min[i]*100
-            max_x = coord_max[i]*100
-            if i>0:
-                ax[i,0].set_ylabel(f'{x_coord} (%)')
+        x_array = getattr(reconstruction, x_coord).numpy()
+        ax[n_coords-1,i].set_xlabel(f'{x_coord} ({x_coord_unit})')
+        min_x = coord_min[i]
+        max_x = coord_max[i]
 
-        else:
-            x_array = getattr(particles, x_coord)*scale
-            ax[n_coords-1,i].set_xlabel(f'{x_coord} ({x_coord_unit})')
-            min_x = coord_min[i]*scale
-            max_x = coord_max[i]*scale
-            if i>0:
-                ax[i,0].set_ylabel(f'{x_coord} ({x_coord_unit})')
+        if i>0:
+            l = x_coord
+            if "p" in x_coord:
+                l = f"$p_{x_coord[-1]}$"
+            ax[i,0].set_ylabel(f'{l} ({x_coord_unit})')
 
-        ax[i,i].hist(
+        print(min_x, max_x)
+        h, bins = np.histogram(
             x_array,
-            bins=bins,
-            range=([min_x, max_x]),
+            range=(float(min_x), float(max_x)),
+            bins=int(n_bins),
             density=True,
-            histtype = 'step'
         )
+        binc = (bins[:-1] + bins[1:])/2
+
+        ax[i,i].plot(
+            binc,h,"C1--",alpha=1, lw=2,zorder=5
+        )
+        #ax[i,i].set_ylim(0,1.1*np.max(h))
+        
         if ground_truth is not None:
-            ax[i,i].hist(
-                getattr(ground_truth, x_coord)*scale,
-                bins = bins,
-                range = ([min_x, max_x]),
-                density = True,
-                histtype = 'step'
+            h,bins=np.histogram(
+                getattr(ground_truth, x_coord),
+                range=(float(min_x), float(max_x)),
+                bins=int(n_bins),
+                density=True,
+            )
+            
+            binc = (bins[:-1] + bins[1:])/2
+            ax[i,i].plot(
+                binc,h,"C0-",alpha=1,lw=2
             )
         
         ax[i,i].yaxis.set_tick_params(left=False, labelleft=False)
@@ -195,18 +234,21 @@ def plot_projections_with_contours(
 
         for j in range(i+1, n_coords):
             y_coord = coords[j]
-            y_array = getattr(reconstruction, y_coord)*scale
-            min_y = coord_min[j]*scale
-            max_y = coord_max[j]*scale
+            y_array = getattr(reconstruction, y_coord)
+            min_y = coord_min[j]
+            max_y = coord_max[j]
             rng=[[min_x, max_x],[min_y, max_y]]
+            print(x_coord, y_coord)
+            print(rng)
             
             hist, x_edges, y_edges, _ = ax[j,i].hist2d(
                 x_array,
                 y_array,
-                bins = bins,
+                bins=int(n_bins),
                 range = rng,
                 cmap = mycmap,
-                vmin = background
+                vmin = background,
+                rasterized=True
             )
             
             x_centers = (x_edges[:-1] + x_edges[1:]) / 2
@@ -217,19 +259,22 @@ def plot_projections_with_contours(
                 ax[j,i].contour(
                     x_centers, 
                     y_centers, 
-                    gaussian_filter(h_r_fractions, contour_smoothing_r).T,
+                    medfilt(
+                        gaussian_filter(h_r_fractions, contour_smoothing), 5
+                    ).T,                    
                     #h_r_fractions.T,
                     levels=[1],
-                    linestyles="-",
+                    linestyles="--",
                     colors=COLORS[k],
-                    linewidths=1
+                    linewidths=1,
+                    zorder=10
                 )
 
                 if ground_truth is not None:
                     h_gt, _, _ = np.histogram2d(
-                        getattr(ground_truth, x_coord)*scale,
-                        getattr(ground_truth, y_coord)*scale,
-                        bins = bins,
+                        getattr(ground_truth, x_coord),
+                        getattr(ground_truth, y_coord),
+                        bins = int(n_bins),
                         range = rng
                     )
                     h_gt_fractions = get_beam_fraction_hist2d(h_gt, percentile/100)
@@ -237,15 +282,20 @@ def plot_projections_with_contours(
                     ax[j,i].contour(
                         x_centers, 
                         y_centers, 
-                        gaussian_filter(h_gt_fractions, contour_smoothing_gt).T,
+                        medfilt(
+                            gaussian_filter(h_gt_fractions, contour_smoothing), 5
+                        ).T,
                         #h_gt_fractions.T,
                         levels=[1],
-                        linestyles="--",
+                        linestyles="-",
                         colors=COLORS[k],
-                        linewidths=1
+                        linewidths=1,
                     )  
 
-            #ax[j,i].get_shared_x_axes().join(ax[j,i], ax[i,i])
+            ax[j,i].set_xlim(min_x, max_x)
+            ax[j,i].set_ylim(min_y, max_y)
+            #ax[i,i].set_xlim(min_x, max_x)
+
             ax[i,j].set_visible(False)
 
             if i != 0:
@@ -253,7 +303,8 @@ def plot_projections_with_contours(
             
             if j != n_coords-1:
                 ax[j,i].xaxis.set_tick_params(labelbottom=False)
-
+        #ax[i,i].set_xlim(min_x, max_x)
+        
     fig.tight_layout()
 
     return fig, ax
