@@ -1,0 +1,220 @@
+//============================================================================
+//
+//  AWA EEX beamline input script
+//  Edited on September 7th, 2022
+//
+//============================================================================
+
+OPTION, PSDUMPFREQ = 1000;	// How often 6d info is dumped to .h5
+OPTION, STATDUMPFREQ = 1000;	// How often beam stats dumped to .stat.  
+OPTION, AUTOPHASE=0;		// Always leave this on, unless doing a phase scan
+OPTION, VERSION=10900; 
+Title, string="OPAL simulation for EEX beamline";
+Value,{OPALVERSION};
+
+//============================================================================
+//Global Parameters
+//============================================================================
+
+REAL rf_freq         	     = 1.3e9;       	//[Hz] RF frequency
+REAL n_particles             = 1E5  ;         	//Number of particles in simulation
+REAL Q_bunch                 = 1e-9;   	    //[C] Charge of bunch
+REAL CSR_ON                  = 0.0;             // CSR flag
+STRING INITIAL_BEAM_FNAME = "./initial_beam_1e5par.data" ; // filename of initial beam
+
+//============================================================================
+//Fieldsolver configuration
+//============================================================================
+
+REAL MX   = 8;
+REAL MY   = 8;   
+REAL MZ   = 8;
+REAL BINS =  5;
+
+//============================================================================
+// Design momentum and energy
+//============================================================================
+
+REAL P0      = 43.4*1e6; //[eV/c]
+REAL E0 = (P0^2 + (EMASS*1e9)^2)^0.5; // in [eV] unit
+value , {E0, P0}; 
+
+//============================================================================
+// Dogleg lattice
+//============================================================================
+
+REAL DIP1_POS   = 1.0 ; 
+REAL DIP2_POS   = 1.0 + 1.808 ;
+REAL DIP3_POS   = 1.0 + 1.808 + 0.991 + 0.72 ;
+REAL DIP4_POS   = 1.0 + 1.808 + 0.991 + 0.72 + 1.808 ;
+REAL DIP_E      = E0*1e-6; // In MeV unit
+REAL DIP_LEN    = 0.3; // Length of the dipole magnet (Physical length)
+
+if (CSR_ON == 1.0){
+
+	CSR_FILTER: 
+		FILTER,
+		TYPE = "Savitzky-Golay",
+		NPOINTS = 20, 
+		NLEFT = 4,
+		NRIGHT = 4,
+		POLYORDER = 4;
+
+	CSR_WK: 
+		WAKE,
+		TYPE="1D-CSR",
+		NBIN=300,
+		FILTERS=CSR_FILTER;
+
+	EEXDIP1:	
+		RBend, 	
+		ANGLE = 20.00 * (Pi / 180.0), 
+		FMAPFN = "./EEXDIP30cm.opal",
+		ELEMEDGE = DIP1_POS, 
+		DESIGNENERGY = DIP_E, 
+		E1=0, 
+		L = DIP_LEN, 
+		GAP = 0.05, 
+		WAKEF = CSR_WK;
+
+	EEXDIP2:	
+		RBend, 	
+		ANGLE = -20.00 * (Pi / 180.0), 
+		FMAPFN = "./EEXDIP30cm.opal", 
+		ELEMEDGE = DIP2_POS, 
+		DESIGNENERGY= DIP_E, 
+		E1=-20.00*(Pi / 180.0),
+		L = DIP_LEN, 
+		GAP = 0.05, 
+		WAKEF = CSR_WK;
+
+	EEXDIP3:	
+		RBend, 	
+		ANGLE = 20.00 * (Pi / 180.0), 
+		FMAPFN = "./EEXDIP30cm.opal", 
+		ELEMEDGE = DIP3_POS, 
+		DESIGNENERGY = DIP_E,
+		E1=0, 
+		L = DIP_LEN, 
+		GAP = 0.05, 
+		WAKEF = CSR_WK;
+
+	EEXDIP4:	
+		RBend, 	
+		ANGLE = -20.00 * (Pi / 180.0), 
+		FMAPFN = "./EEXDIP30cm.opal", 
+		ELEMEDGE = DIP4_POS, 
+		DESIGNENERGY= DIP_E, 
+		E1=-20.00*(Pi / 180.0),
+		L = DIP_LEN, 
+		GAP = 0.05, 
+		WAKEF = CSR_WK;
+
+}
+else{
+
+	EEXDIP1:	
+		RBend, 	
+		ANGLE = 20.00 * (Pi / 180.0), 
+		FMAPFN = "./EEXDIP30cm.opal",
+		ELEMEDGE = DIP1_POS, 
+		DESIGNENERGY = DIP_E, 
+		E1=0, 
+		L = DIP_LEN, 
+		GAP = 0.05;
+
+	EEXDIP2:	
+		RBend, 	
+		ANGLE = -20.00 * (Pi / 180.0), 
+		FMAPFN = "./EEXDIP30cm.opal", 
+		ELEMEDGE = DIP2_POS, 
+		DESIGNENERGY= DIP_E, 
+		E1=-20.00*(Pi / 180.0),
+		L = DIP_LEN, 
+		GAP = 0.05;
+
+	EEXDIP3:	
+		RBend, 	
+		ANGLE = 20.00 * (Pi / 180.0), 
+		FMAPFN = "./EEXDIP30cm.opal", 
+		ELEMEDGE = DIP3_POS, 
+		DESIGNENERGY = DIP_E, 
+		E1=0, 
+		L = DIP_LEN, 
+		GAP = 0.05;
+
+	EEXDIP4:	
+		RBend, 	
+		ANGLE = -20.00 * (Pi / 180.0), 
+		FMAPFN = "./EEXDIP30cm.opal", 
+		ELEMEDGE = DIP4_POS, 
+		DESIGNENERGY= DIP_E, 
+		E1=-20.00*(Pi / 180.0),
+		L = DIP_LEN, 
+		GAP = 0.05;
+
+}
+
+// ================================================================================
+// Beamline description (EYG not included)
+// ================================================================================
+
+MyLine: 
+	Line = (EEXDIP1, EEXDIP2, EEXDIP3, EEXDIP4);
+
+// ================================================================================
+// Beam distribution
+// ================================================================================
+
+Dist: 
+	DISTRIBUTION, 
+	TYPE = FROMFILE,
+    FNAME = INITIAL_BEAM_FNAME,
+    EMITTED = False,    
+    WRITETOFILE = True;
+
+BEAM1: 
+	BEAM, 
+	PARTICLE = ELECTRON,
+	pc = P0*1e-9, 
+	NPART = n_particles, 
+	BFREQ = rf_freq*1e-6,
+	BCURRENT = Q_bunch*rf_freq, 
+	CHARGE = -1;
+
+// ================================================================================
+// Define Field solvers
+// ================================================================================
+
+FS_SC: 
+	Fieldsolver, 
+	FSTYPE = NONE, 
+	MX= MX, MY= MY, MT= MZ,
+	PARFFTX = true, 
+	PARFFTY = true, 
+	PARFFTT = true,
+	BCFFTX = open, 
+	BCFFTY = open, 
+	BCFFTT = open,
+	BBOXINCR = 1, 
+	GREENSF = INTEGRATED;
+
+// ================================================================================
+// Run beamline
+// ================================================================================
+
+TRACK, 
+	LINE = MyLine, 
+	BEAM = BEAM1, 
+	MAXSTEPS = 1900000, 
+	DT  = {1.0e-13, 1.0e-14, 1.0e-13, 1.0e-14, 1.0e-13, 1.0e-14, 1.0e-13, 1.0e-14, 1.0e-13},
+	ZSTOP={1.0, 1.3, 2.802, 3.102, 4.507, 4.807, 6.309, 6.609, 7.68};
+
+RUN, 
+	METHOD = "PARALLEL-T", 
+	BEAM = BEAM1, 
+	FIELDSOLVER = FS_SC, 
+	DISTRIBUTION = Dist;
+
+ENDTRACK;
+
