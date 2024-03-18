@@ -1,4 +1,4 @@
-n_particle: 100_000
+n_particle: 10_000
 total_charge:
   units: nC
   value: 1
@@ -8,7 +8,7 @@ random_type: pseudo
 r_dist:
   sigma_xy:
     units: mm
-    value: 3
+    value: 1
   type: radial_gaussian
 px_dist:
   sigma_px:

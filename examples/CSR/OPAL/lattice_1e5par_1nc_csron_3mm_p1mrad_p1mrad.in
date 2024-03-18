@@ -17,10 +17,10 @@ Value,{OPALVERSION};
 //============================================================================
 
 REAL rf_freq         	     = 1.3e9;       	//[Hz] RF frequency
-REAL n_particles             = 1E5  ;         	//Number of particles in simulation
+REAL n_particles             = 1E4  ;         	//Number of particles in simulation
 REAL Q_bunch                 = 1e-9;   	    //[C] Charge of bunch
 REAL CSR_ON                  = 1.0;             // CSR flag
-STRING INITIAL_BEAM_FNAME = "./initial_beam_1e5_3mm_p1mrad_p1mrad_par.data" ; // filename of initial beam
+STRING INITIAL_BEAM_FNAME = "./initial_beam_1e4_3mm_p1mrad_p1mrad.data" ; // filename of initial beam
 
 //============================================================================
 //Fieldsolver configuration
