@@ -23,8 +23,13 @@ twiss_y:
 set_pz:
   type: set_std pz
   sigma_pz:
-    value: 0.4
+    value: 0.76
     units: MeV/c
+set_z:
+  type: set_std z
+  sigma_z:
+    value: 1.16
+    units: mm
 rot_xy:
   type: rotate2d x:y
   angle:
@@ -35,9 +40,33 @@ rot_xz:
   angle: 
     value: -70
     units: degree
+scale_x:
+  type: scale x
+  scale: 0.5
+scale_y:
+  type: scale y
+  scale: 0.5
+scale_px:
+  type: scale px
+  scale: 0.5
+scale_py:
+  type: scale py
+  scale: 0.5
+scale_z:
+  type: scale z
+  scale: 0.5
+scale_pz:
+  type: scale pz
+  scale: 0.5
+  fix_average: True
 order:
   - set_pz
+  - set_z
   - rot_xz
   - twiss_x
   - twiss_y
   - rot_xy
+  - scale_x
+  - scale_px
+  - scale_y
+  - scale_py

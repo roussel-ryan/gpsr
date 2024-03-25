@@ -19,7 +19,7 @@ def plot_3d_scan_data_2screens(dset, select_img = 'avg', vmax1=None, vmax2=None)
     fig, ax = plt.subplots(
         n_v * n_g + 1,
         n_k + 1,
-        figsize=( (n_k+1)*2, (n_v*n_g+1)*2 )
+        figsize=( (n_k+1)*2, (n_v*n_g+1)*2 ),
     )
     ax[0, 0].set_axis_off()
     ax[0, 0].text(1, 0, '$k_1$ (1/m$^2$)', va='bottom', ha='right')
@@ -108,7 +108,7 @@ def plot_3d_scan_data_2screens_contour(
     fig, ax = plt.subplots(
         n_v * n_g + 1,
         n_k + 1,
-        figsize=( (n_k+1)*2, (n_v*n_g+1)*2 )
+        figsize=( (n_k+1)*2, (n_v*n_g+1)*2 ),
     )
     ax[0, 0].set_axis_off()
     ax[0, 0].text(1, 0, '$k_1$ (1/m$^2$)', va='bottom', ha='right')
@@ -164,6 +164,8 @@ def plot_3d_scan_data_2screens_contour(
                         vmin=0, 
                         vmax=vmax
                     )
+                    
+                ax[2 * j + k + 1, i + 1].set_axis_off()
                 
                 proj_y = pred_imgs[i, k, j].sum(axis=0)
                 proj_y_gt = test_imgs[i, k, j].sum(axis=0)
@@ -174,9 +176,10 @@ def plot_3d_scan_data_2screens_contour(
                 else:
                     bin_y = np.linspace(0, len(proj_y)-1, len(proj_y), dtype=int)
                 
-                ax_y.plot(proj_y, bin_y)
-                ax_y.plot(proj_y_gt, bin_y)
-                ax_y.set_xlim(0.0, proj_y.max()*5)
+                ax_y.plot(proj_y_gt, bin_y,"C0")
+                ax_y.plot(proj_y, bin_y,"C1--")
+
+                ax_y.set_xlim(0.0, proj_y.max()*6)
                 ax_y.set_axis_off()
                 
                 #print(pred_imgs[i, k, j].sum())
@@ -193,9 +196,9 @@ def plot_3d_scan_data_2screens_contour(
                 else:
                     bin_x = np.linspace(0, len(proj_x)-1, len(proj_x), dtype=int)
                 
-                ax_x.plot(bin_x, proj_x)
-                ax_x.plot(bin_x, proj_x_gt)
-                ax_x.set_ylim(0.0, proj_x.max()*5)
+                ax_x.plot(bin_x, proj_x_gt,"C0")
+                ax_x.plot(bin_x, proj_x,"C1--")
+                ax_x.set_ylim(0.0, proj_x.max()*6)
                 ax_x.set_axis_off()
                 
                 
@@ -210,7 +213,7 @@ def plot_3d_scan_data_2screens_contour(
                             centers,
                             gaussian_filter(h_r_fractions, contour_smoothing_r).T,
                             levels=[0],
-                            linestyles="-",
+                            linestyles="--",
                             colors=COLORS[l],
                             linewidths=1
                         )  
@@ -220,7 +223,7 @@ def plot_3d_scan_data_2screens_contour(
                             centers,
                             gaussian_filter(h_gt_fractions, contour_smoothing_gt).T,
                             levels=[0],
-                            linestyles="--",
+                            linestyles="-",
                             colors=COLORS[l],
                             linewidths=1
                         ) 
@@ -229,7 +232,7 @@ def plot_3d_scan_data_2screens_contour(
                             #h_r_fractions.T,
                             gaussian_filter(h_r_fractions, contour_smoothing_r).T,
                             levels=[0],
-                            linestyles="-",
+                            linestyles="--",
                             colors=COLORS[l],
                             linewidths=1
                         )  
@@ -237,7 +240,7 @@ def plot_3d_scan_data_2screens_contour(
                             #h_gt_fractions.T,
                             gaussian_filter(h_gt_fractions, contour_smoothing_gt).T,
                             levels=[0],
-                            linestyles="--",
+                            linestyles="-",
                             colors=COLORS[l],
                             linewidths=1
                         ) 
@@ -252,15 +255,15 @@ def plot_3d_scan_data_2screens_contour(
                     va='center', ha='right'
                 )
 
-    custom_lines = [Line2D([0], [0], color=COLORS[0], lw=1),
-                    Line2D([0], [0], color=COLORS[0], lw=1, linestyle='--'),
-                    Line2D([0], [0], color=COLORS[1], lw=1),
-                    Line2D([0], [0], color=COLORS[1], lw=1, linestyle='--')]
-    ax[1,1].legend(
-        custom_lines, 
-        ['prediction 50 %ile', 'measured 50 %ile', 'prediction 95 %ile', 'measured 95 %ile'],
-        fontsize=5
-    )
+    #custom_lines = [Line2D([0], [0], color=COLORS[0], lw=1),
+    #                Line2D([0], [0], color=COLORS[0], lw=1, linestyle='--'),
+    #                Line2D([0], [0], color=COLORS[1], lw=1),
+    #                Line2D([0], [0], color=COLORS[1], lw=1, linestyle='--')]
+    #ax[1,1].legend(
+    #    custom_lines, 
+    #    ['prediction 50 %ile', 'measured 50 %ile', 'prediction 95 %ile', 'measured 95 %ile'],
+    #    fontsize=5
+    #)
     for i in range(4):
         ax[-1, i+1].tick_params(
                     bottom=True,

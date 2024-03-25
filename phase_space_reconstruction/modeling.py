@@ -3,8 +3,8 @@ from copy import deepcopy
 
 import matplotlib.pyplot as plt
 import torch
-from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchQuadrupole
 from bmadx import Particle
+from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchQuadrupole
 from torch import nn
 from torch.utils.data import Dataset
 from tqdm import trange
@@ -18,7 +18,7 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
         self.diagnostic = diagnostic
         self.beam = deepcopy(beam)
 
-    def track_and_observe_beam(self, beam, K, scan_quad_id = 0):
+    def track_and_observe_beam(self, beam, K, scan_quad_id=0):
         # alter quadrupole strength
         lattice = deepcopy(self.base_lattice)
         lattice.elements[scan_quad_id].K1.data = K
@@ -31,11 +31,13 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
 
         return observations, final_beam
 
-    def forward(self, K, scan_quad_id = 0):
+    def forward(self, K, scan_quad_id=0):
         proposal_beam = self.beam()
 
         # track beam
-        observations, final_beam = self.track_and_observe_beam(proposal_beam, K, scan_quad_id)
+        observations, final_beam = self.track_and_observe_beam(
+            proposal_beam, K, scan_quad_id
+        )
 
         # get entropy
         entropy = calculate_beam_entropy(proposal_beam)
@@ -47,7 +49,7 @@ class PhaseSpaceReconstructionModel(torch.nn.Module):
 
 
 class VariationalPhaseSpaceReconstructionModel(PhaseSpaceReconstructionModel):
-    def forward(self, K, scan_quad_id = 0):
+    def forward(self, K, scan_quad_id=0):
         proposal_beam = self.beam()
 
         # track beam
@@ -64,7 +66,7 @@ class NNTransform(torch.nn.Module):
         dropout=0.0,
         activation=torch.nn.Tanh(),
         output_scale=1e-2,
-        phase_space_dim=6
+        phase_space_dim=6,
     ):
         """
         Nonparametric transformation - NN
@@ -117,6 +119,7 @@ class OffsetBeam(torch.nn.Module):
     This should provide more detail in the reconstruction
 
     """
+
     def __init__(self, offset, base_beam):
         super(OffsetBeam, self).__init__()
         self.offset = offset
@@ -127,8 +130,6 @@ class OffsetBeam(torch.nn.Module):
         return Beam(
             transformed_beam, self.base_beam.p0c, self.base_beam.s, self.base_beam.mc2
         )
-
-
 
 
 def calculate_covariance(beam):
@@ -175,16 +176,16 @@ class NormalizedQuadScan(nn.Module):
         norm_k = 1 + self.d * self.l * k
         norm_c = torch.tanh(self.c)
         norm_s11 = (
-            norm_k ** 2 * self.lambda_1 ** 2
+            norm_k**2 * self.lambda_1**2
             + 2 * self.d * norm_k * self.lambda_1 * self.lambda_2 * norm_c
-            + self.lambda_2 ** 2 * self.d ** 2
+            + self.lambda_2**2 * self.d**2
         )
-        return norm_s11 * self.A ** 2
+        return norm_s11 * self.A**2
 
     def emittance(self):
         norm_c = torch.tanh(self.c)
         norm_emit = (self.lambda_1**2 * self.lambda_2**2 * (1 - norm_c**2)).sqrt()
-        return norm_emit * self.A ** 2
+        return norm_emit * self.A**2
 
 
 def predict_images(beam, lattice, screen):
@@ -201,7 +202,7 @@ class SextPhaseSpaceReconstructionModel(torch.nn.Module):
         self.diagnostic = diagnostic
         self.beam = deepcopy(beam)
 
-    def track_and_observe_beam(self, beam, K2, scan_quad_id = 0):
+    def track_and_observe_beam(self, beam, K2, scan_quad_id=0):
         lattice = deepcopy(self.base_lattice)
         lattice.elements[0].K2.data = K2
 
@@ -217,7 +218,9 @@ class SextPhaseSpaceReconstructionModel(torch.nn.Module):
         proposal_beam = self.beam()
 
         # track beam
-        observations, final_beam = self.track_and_observe_beam(proposal_beam, params, ids)
+        observations, final_beam = self.track_and_observe_beam(
+            proposal_beam, params, ids
+        )
 
         # get entropy
         entropy = calculate_beam_entropy(proposal_beam)
@@ -238,9 +241,9 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
 
     def track_and_observe_beam(self, beam, params, ids):
         lattice = deepcopy(self.base_lattice)
-        lattice.elements[ids[0]].K1.data = params[:,0].unsqueeze(-1)
-        lattice.elements[ids[1]].VOLTAGE.data = params[:,1].unsqueeze(-1)
-        lattice.elements[ids[2]].G.data = params[:,2].unsqueeze(-1)
+        lattice.elements[ids[0]].K1.data = params[:, 0].unsqueeze(-1)
+        lattice.elements[ids[1]].VOLTAGE.data = params[:, 1].unsqueeze(-1)
+        lattice.elements[ids[2]].G.data = params[:, 2].unsqueeze(-1)
 
         # track beam through lattice
         final_beam = lattice(beam)
@@ -251,10 +254,12 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
         return observations, final_beam
 
     def forward(self, params, ids):
-        proposal_beam = self.beam() 
+        proposal_beam = self.beam()
 
         # track beam
-        observations, final_beam = self.track_and_observe_beam(proposal_beam, params, ids)
+        observations, final_beam = self.track_and_observe_beam(
+            proposal_beam, params, ids
+        )
 
         # get entropy
         entropy = calculate_beam_entropy(proposal_beam)
@@ -275,9 +280,11 @@ class ImageDataset3D(Dataset):
 
     def __getitem__(self, idx):
         return self.params[idx], self.images[idx]
-    
+
+
 #### 2 screen adaptation: ####
-    
+
+
 class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
     def __init__(self, lattice0, lattice1, diagnostic0, diagnostic1, beam):
         super(PhaseSpaceReconstructionModel3D_2screens, self).__init__()
@@ -288,18 +295,18 @@ class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
         self.diagnostic1 = diagnostic1
         self.beam = deepcopy(beam)
 
-    def track_and_observe_beam(self, beam, params, n_imgs_per_param,ids):
-        params_dipole_off = params[:,:,0].unsqueeze(-1)
+    def track_and_observe_beam(self, beam, params, n_imgs_per_param, ids):
+        params_dipole_off = params[:, :, 0].unsqueeze(-1)
         diagnostics_lattice0 = self.lattice0.copy()
-        diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:,:,0]
-        diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params_dipole_off[:,:,1]
-        diagnostics_lattice0.elements[ids[2]].G.data = params_dipole_off[:,:,2]
+        diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:, :, 0]
+        diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params_dipole_off[:, :, 1]
+        diagnostics_lattice0.elements[ids[2]].G.data = params_dipole_off[:, :, 2]
 
-        params_dipole_on = params[:,:,1].unsqueeze(-1)
+        params_dipole_on = params[:, :, 1].unsqueeze(-1)
         diagnostics_lattice1 = self.lattice1.copy()
-        diagnostics_lattice1.elements[ids[0]].K1.data = params_dipole_on[:,:,0]
-        diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params_dipole_on[:,:,1]
-        diagnostics_lattice1.elements[ids[2]].G.data = params_dipole_on[:,:,2]
+        diagnostics_lattice1.elements[ids[0]].K1.data = params_dipole_on[:, :, 0]
+        diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params_dipole_on[:, :, 1]
+        diagnostics_lattice1.elements[ids[2]].G.data = params_dipole_on[:, :, 2]
 
         # track through lattice for dipole off(0) and dipole on (1)
         output_beam0 = diagnostics_lattice0(beam)
@@ -311,17 +318,19 @@ class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
 
         # stack on dipole dimension:
         images_stack = torch.stack((images_dipole_off, images_dipole_on), dim=2)
-        
+
         # create images copies simulating multi-shot per parameter config:
-        copied_images = torch.stack([images_stack]*n_imgs_per_param, dim=-3)
+        copied_images = torch.stack([images_stack] * n_imgs_per_param, dim=-3)
 
         return copied_images
-    
+
     def forward(self, params, n_imgs_per_param, ids):
-        proposal_beam = self.beam() 
+        proposal_beam = self.beam()
 
         # track beam
-        observations = self.track_and_observe_beam(proposal_beam, params, n_imgs_per_param, ids)
+        observations = self.track_and_observe_beam(
+            proposal_beam, params, n_imgs_per_param, ids
+        )
 
         # get entropy
         entropy = calculate_beam_entropy(proposal_beam)
@@ -330,4 +339,3 @@ class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
         cov = calculate_covariance(proposal_beam)
 
         return observations, entropy, cov
-    

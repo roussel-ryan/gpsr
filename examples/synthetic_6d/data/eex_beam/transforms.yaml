@@ -1,13 +1,13 @@
 twiss_x:
   type: set_twiss x
   beta:
-    value: 3.0
+    value: 5.0
     units: m
   alpha: 
-    value: 1.0
+    value: 0.0
     units: 
   emittance:
-    value: 0.5
+    value: 0.1
     units: um
 twiss_y:
   type: set_twiss y
@@ -18,7 +18,7 @@ twiss_y:
     value: 1.0
     units:
   emittance:
-    value: 0.5
+    value: 0.05
     units: um
 linear_z:
   type: polynomial x:pz
