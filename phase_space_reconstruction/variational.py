@@ -4,12 +4,12 @@ from torch import nn
 
 class VariationalNNTransform(torch.nn.Module):
     def __init__(
-            self,
-            n_hidden,
-            width,
-            dropout=0.0,
-            activation=torch.nn.Tanh(),
-            output_scale=1e-2,
+        self,
+        n_hidden,
+        width,
+        dropout=0.0,
+        activation=torch.nn.Tanh(),
+        output_scale=1e-2,
     ):
         """
         Nonparametric transformation - NN

@@ -8,9 +8,9 @@ from phase_space_reconstruction.utils import calculate_centroid, calculate_ellip
 
 def normalize_images(images):
     """
-    Normalizes images tensor so that the 
+    Normalizes images tensor so that the
     image pixel intensities add up to 1
-    
+
     Parameters
     ----------
     images: torch.Tensor
@@ -21,8 +21,9 @@ def normalize_images(images):
     normalized images
     """
 
-    sums = images.sum(dim = (-1, -2), keepdim=True)
+    sums = images.sum(dim=(-1, -2), keepdim=True)
     return images / sums
+
 
 def kl_div(target, pred):
     eps = 1e-10
@@ -33,16 +34,23 @@ def log_mse(target, pred):
     eps = 1e-10
     return mse_loss((target + eps).log(), (pred + eps).log())
 
+
 def mae_loss(target, pred):
     return torch.mean(torch.abs(target - pred))
+
 
 def mae_log_loss(target, pred):
     return torch.mean(torch.abs(torch.log(target + 1e-8) - torch.log(pred + 1e-8)))
 
+
 class MENTLoss(Module):
     def __init__(
-        self, lambda_, beta_=torch.tensor(0.0), gamma_=torch.tensor(1.0),
-            alpha_=torch.tensor(0.0), debug=False
+        self,
+        lambda_,
+        beta_=torch.tensor(0.0),
+        gamma_=torch.tensor(1.0),
+        alpha_=torch.tensor(0.0),
+        debug=False,
     ):
         super(MENTLoss, self).__init__()
 
@@ -57,7 +65,7 @@ class MENTLoss(Module):
     def forward(self, outputs, target_image_original):
         assert outputs[0].shape == target_image_original.shape
         target_image = normalize_images(target_image_original)
-        #target_image = target_image_original
+        # target_image = target_image_original
         pred_image = normalize_images(outputs[0])
         entropy = outputs[1]
         cov = outputs[2]
@@ -76,8 +84,12 @@ class MENTLoss(Module):
 
         # image_loss = kl_div(target_image, pred_image).mean()
         image_loss = mae_loss(target_image, pred_image)
-        total_loss = -0*entropy + self.lambda_ * image_loss + self.beta_ * \
-                     centroid_loss + self.alpha_ * cov_loss
+        total_loss = (
+            -0 * entropy
+            + self.lambda_ * image_loss
+            + self.beta_ * centroid_loss
+            + self.alpha_ * cov_loss
+        )
 
         """
         if 0:

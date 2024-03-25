@@ -35,9 +35,36 @@ rot_xz:
   angle: 
     value: -70
     units: degree
+scale_x:
+  type: scale x
+  scale: 0.5
+scale_y:
+  type: scale y
+  scale: 0.5
+scale_px:
+  type: scale px
+  scale: 0.5
+scale_py:
+  type: scale py
+  scale: 0.5
+scale_z:
+  type: scale z
+  scale: 1.0
+scale_pz:
+  type: scale pz
+  scale: 1.0
+  fix_average: True
 order: 
   - rot_xz
-  - shear_zpz
   - twiss_x
   - twiss_y
   - rot_xy
+  - scale_x
+  - scale_px
+  - scale_y
+  - scale_py
+  - scale_z
+  - scale_pz
+  - shear_zpz
+
+  

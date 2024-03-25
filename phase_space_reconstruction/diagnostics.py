@@ -1,12 +1,19 @@
 import torch
+from bmadx.bmad_torch.track_torch import Beam
 from torch.nn import Module
 
 from phase_space_reconstruction.histogram import histogram2d
-from bmadx.bmad_torch.track_torch import Beam
 
 
 class ImageDiagnostic(Module):
-    def __init__(self, bins_x: torch.Tensor, bins_y: torch.Tensor, bandwidth: torch.Tensor, x="x", y="y"):
+    def __init__(
+        self,
+        bins_x: torch.Tensor,
+        bins_y: torch.Tensor,
+        bandwidth: torch.Tensor,
+        x="x",
+        y="y",
+    ):
         """
         Parameters
         ----------
