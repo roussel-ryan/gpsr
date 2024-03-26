@@ -1,18 +1,20 @@
 # optimizes triplet for minimal beam size when scan elements are off
 
-import torch
-
 from typing import Callable, Dict
 
-import pandas as pd
-from xopt import Evaluator, Xopt, VOCS
-from xopt.generators import ExpectedImprovementGenerator
 import numpy as np
+
+import pandas as pd
+import torch
+from xopt import Evaluator, VOCS, Xopt
+from xopt.generators.bayesian import ExpectedImprovementGenerator
+
 
 def change_triplet_params(lat, k1, k2, k3):
     lat.elements[0].K1.data = k1
     lat.elements[2].K1.data = k2
     lat.elements[4].K1.data = k3
+
 
 def output(input, beam, lattice):
     """
@@ -28,11 +30,11 @@ def output(input, beam, lattice):
     ------
     dict with beamsizes
     """
-    
+
     # triplet strengths
     K = torch.tensor(np.array([input[f"k{i}"] for i in range(1, 4)]))
 
-    # update lattice 
+    # update lattice
     change_triplet_params(lattice, *K)
 
     # output beam
@@ -41,21 +43,23 @@ def output(input, beam, lattice):
     # outputs
     std_x = final_beam.x.std()
     std_y = final_beam.y.std()
-    total_size = torch.sqrt((std_x-0.001)**2 + (std_y-0.001)**2)
+    # total_size = torch.sqrt((std_x-0.001)**2 + (std_y-0.001)**2)
+    total_size = torch.sqrt(std_x**2 + std_y**2) + 100.0 * torch.abs(std_x - std_y)
 
     return {
         "std_x": float(std_x),
         "std_y": float(std_y),
-        "total_size": float(total_size)
+        "total_size": float(total_size),
     }
 
+
 def optimize_function(
-        vocs: VOCS,
-        evaluator_function: Callable,
-        n_iterations: int = 5,
-        n_initial: int = 5,
-        function_kwargs = None,
-        generator_kwargs: Dict = None
+    vocs: VOCS,
+    evaluator_function: Callable,
+    n_iterations: int = 5,
+    n_initial: int = 5,
+    function_kwargs=None,
+    generator_kwargs: Dict = None,
 ) -> Xopt:
     """
     Function to minimize a given function using Xopt's ExpectedImprovementGenerator.
@@ -93,16 +97,12 @@ def optimize_function(
 
     # set up Xopt object
     generator_kwargs = generator_kwargs or {}
-    beamsize_evaluator = Evaluator(function=evaluator_function,
-                                   function_kwargs=function_kwargs)
+    beamsize_evaluator = Evaluator(
+        function=evaluator_function, function_kwargs=function_kwargs
+    )
     generator = ExpectedImprovementGenerator(vocs=vocs, **generator_kwargs)
 
-    X = Xopt(
-        vocs=vocs,
-        generator=generator,
-        evaluator=beamsize_evaluator
-    )
-    X.options.strict = True
+    X = Xopt(vocs=vocs, generator=generator, evaluator=beamsize_evaluator)
 
     # evaluate random intial points
     X.random_evaluate(n_initial)
@@ -115,8 +115,6 @@ def optimize_function(
     best_config = X.data[X.vocs.variable_names + X.vocs.constant_names].iloc[
         np.argmin(X.data[X.vocs.objective_names].to_numpy())
     ]
-    X.evaluate_data(pd.DataFrame(
-        best_config.to_dict(), index=[1]
-    ))
+    X.evaluate_data(pd.DataFrame(best_config.to_dict(), index=[1]))
 
     return X

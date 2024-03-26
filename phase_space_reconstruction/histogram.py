@@ -1,19 +1,18 @@
 # modified from kornia.enhance.histogram
 import math
-from typing import Tuple, Optional, Union
+from typing import Optional, Tuple, Union
 
 import matplotlib.pyplot as plt
 import torch
-from torch import Tensor
-from torch import nn
+from torch import nn, Tensor
 from torch.profiler import profile, ProfilerActivity
 
 
 def marginal_pdf(
-        values: torch.Tensor,
-        bins: torch.Tensor,
-        sigma: torch.Tensor,
-        weights: Optional[Union[Tensor, float]] = None,
+    values: torch.Tensor,
+    bins: torch.Tensor,
+    sigma: torch.Tensor,
+    weights: Optional[Union[Tensor, float]] = None,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Calculate the marginal probability distribution function of the input tensor based on the number of
     histogram bins.
@@ -55,17 +54,18 @@ def marginal_pdf(
         weights = 1.0
 
     residuals = values - bins.repeat(*values.shape)
-    kernel_values = weights * torch.exp(
-        -0.5 * (residuals / sigma).pow(2)
-    ) / torch.sqrt(2*math.pi*sigma**2)
+    kernel_values = (
+        weights
+        * torch.exp(-0.5 * (residuals / sigma).pow(2))
+        / torch.sqrt(2 * math.pi * sigma**2)
+    )
 
     prob_mass = torch.sum(kernel_values, dim=-2)
     return prob_mass, kernel_values
 
 
 def joint_pdf(
-        kernel_values1: torch.Tensor, kernel_values2: torch.Tensor,
-        epsilon: float = 1e-10
+    kernel_values1: torch.Tensor, kernel_values2: torch.Tensor, epsilon: float = 1e-10
 ) -> torch.Tensor:
     """Calculate the joint probability distribution function of the input tensors based on the number of histogram
     bins.
@@ -91,8 +91,8 @@ def joint_pdf(
 
     joint_kernel_values = torch.matmul(kernel_values1.transpose(-2, -1), kernel_values2)
     normalization = (
-            torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
-            + epsilon
+        torch.sum(joint_kernel_values, dim=(-2, -1)).unsqueeze(-1).unsqueeze(-1)
+        + epsilon
     )
     pdf = joint_kernel_values / normalization
 
@@ -100,8 +100,7 @@ def joint_pdf(
 
 
 def histogram(
-        x: torch.Tensor, bins: torch.Tensor, bandwidth: torch.Tensor,
-        epsilon: float = 1e-10
+    x: torch.Tensor, bins: torch.Tensor, bandwidth: torch.Tensor, epsilon: float = 1e-10
 ) -> torch.Tensor:
     """Estimate the histogram of the input tensor.
 
@@ -130,12 +129,12 @@ def histogram(
 
 
 def histogram2d(
-        x1: torch.Tensor,
-        x2: torch.Tensor,
-        bins1: torch.Tensor,
-        bins2: torch.Tensor,
-        bandwidth: torch.Tensor,
-        weights = None,
+    x1: torch.Tensor,
+    x2: torch.Tensor,
+    bins1: torch.Tensor,
+    bins2: torch.Tensor,
+    bandwidth: torch.Tensor,
+    weights=None,
 ) -> torch.Tensor:
     """Estimate the 2d histogram of the input tensor.
 
@@ -188,7 +187,7 @@ class KDEGaussian(nn.Module):
             samples - locations,
             dim=-1,
         )
-        out = (-diff ** 2 / (2.0 * self.bandwidth ** 2)).exp().sum(dim=-1)
+        out = (-(diff**2) / (2.0 * self.bandwidth**2)).exp().sum(dim=-1)
         norm = out.flatten(end_dim=-len(sample_batch_shape) - 1).sum(dim=0)
         pdf = out / norm.reshape(1, 1, *sample_batch_shape)
         return pdf
@@ -204,26 +203,23 @@ if __name__ == "__main__":
     samples = torch.rand(100000, 2)
 
     prob_mass = histogram2d(
-        samples[..., 0], samples[..., 1], bins1=x, bins2=x,
-        bandwidth=(x[1]-x[0])
+        samples[..., 0], samples[..., 1], bins1=x, bins2=x, bandwidth=(x[1] - x[0])
     )
-    print(prob_mass.sum(dim=[-2,-1]))
+    print(prob_mass.sum(dim=[-2, -1]))
 
-    fig,ax = plt.subplots()
+    fig, ax = plt.subplots()
     c = ax.imshow(prob_mass)
     fig.colorbar(c)
     plt.show()
 
+    # kde = KDEGaussian(0.01)
 
-    #kde = KDEGaussian(0.01)
-
-    #with profile(activities=[ProfilerActivity.CPU],
+    # with profile(activities=[ProfilerActivity.CPU],
     #             profile_memory=True) as prof:
     #    out = []
     #    for ele in samples:
     #        out += [kde(ele, test_x)]
     #        print(out[-1].shape)
 
-
-    #prof.export_chrome_trace("kde_rectangle.json")
-    #print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
+    # prof.export_chrome_trace("kde_rectangle.json")
+    # print(prof.key_averages().table(sort_by="self_cpu_memory_usage", row_limit=10))
