@@ -273,22 +273,6 @@ def train_1d_scan_multi_gpu(
 
 
 def train_3d_scan(
-<<<<<<< HEAD
-        train_dset,
-        lattice,
-        p0c,
-        screen,
-        ids = [0, 2, 4],
-        n_epochs = 100,
-        device = 'cpu',
-        n_particles = 10_000,
-        save_as = None,
-        lambda_ = 1e11,
-        lr = 0.01,
-        batch_size = 10
-        ):
-    
-=======
     train_dset,
     lattice,
     p0c,
@@ -304,7 +288,6 @@ def train_3d_scan(
     distribution_dump_n_particles=100_000,
     use_decay=False,
 ):
->>>>>>> main
     """
     Trains 6D phase space reconstruction model by using 3D scan data.
 
@@ -375,15 +358,11 @@ def train_3d_scan(
     model = model.to(DEVICE)
 
     # train model
-<<<<<<< HEAD
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-=======
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 
     if use_decay:
         gamma = 0.999  # final learning rate will be gamma * lr
         scheduler = ExponentialLR(optimizer, gamma)
->>>>>>> main
     loss_fn = MENTLoss(torch.tensor(lambda_))
 
     for i in range(n_epochs + 1):

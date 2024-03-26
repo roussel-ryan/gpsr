@@ -84,19 +84,13 @@ class MENTLoss(Module):
 
         # image_loss = kl_div(target_image, pred_image).mean()
         image_loss = mae_loss(target_image, pred_image)
-<<<<<<< HEAD
-        #total_loss = -0*entropy + self.lambda_ * image_loss + self.beta_ * \
-        #             centroid_loss + self.alpha_ * cov_loss
-=======
         total_loss = (
             -0 * entropy
             + self.lambda_ * image_loss
             + self.beta_ * centroid_loss
             + self.alpha_ * cov_loss
         )
->>>>>>> main
 
-        total_loss = image_loss 
         """
         if 0:
             fig, ax = plt.subplots(4, 2, sharex="all", sharey="all")
