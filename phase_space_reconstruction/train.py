@@ -302,6 +302,7 @@ def train_3d_scan(
         n_particles = 10_000,
         save_as = None,
         lambda_ = 1e11,
+        lr = 0.01,
         batch_size = 10
         ):
     
@@ -381,7 +382,7 @@ def train_3d_scan(
     model = model.to(DEVICE)
 
     # train model
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
     loss_fn = MENTLoss(torch.tensor(lambda_))
 
     for i in range(n_epochs):
