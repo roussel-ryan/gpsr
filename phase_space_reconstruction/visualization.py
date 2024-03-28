@@ -209,7 +209,7 @@ def plot_predicted_screens(prediction_dset, train_dset, test_dset, bins_x, bins_
     return fig, ax
 
 
-def plot_3d_scan_data(train_dset, publication_size=False):
+def plot_3d_scan_data(train_dset, bins, publication_size=False):
     # reshape data into parameter 3D mesh:
     n_k = len(
         torch.unique(train_dset.params.squeeze(-1)[:, 0])
@@ -223,6 +223,9 @@ def plot_3d_scan_data(train_dset, publication_size=False):
     images = train_dset.images.reshape(
         (n_k, n_v, n_g, image_shape[-2], image_shape[-1])
     )
+    
+    xx = torch.meshgrid(bins*1e3,bins*1e3)
+    print(xx[0].shape)
 
     vmax = torch.max(images)
     # plot
@@ -238,9 +241,9 @@ def plot_3d_scan_data(train_dset, publication_size=False):
     else:
         figsize = ((n_k + 1) * 2, (n_v + n_g + 1) * 2)
         kwargs = {"right": 0.9}
-    fig, ax = plt.subplots(n_v + n_g, n_k, figsize=figsize, gridspec_kw=kwargs)
+    fig, ax = plt.subplots(n_v + n_g, n_k, figsize=figsize, gridspec_kw=kwargs,sharex="all",sharey="all")
 
-    ax[0, 0].set_axis_off()
+    #ax[0, 0].set_axis_off()
     ax[0, 0].text(
         -0.1,
         1.1,
@@ -250,7 +253,7 @@ def plot_3d_scan_data(train_dset, publication_size=False):
         transform=ax[0, 0].transAxes,
     )
     for i in range(n_k):
-        ax[0, i].set_axis_off()
+        #ax[0, i].set_axis_off()
         ax[0, i].text(
             0.5,
             1.1,
@@ -261,18 +264,19 @@ def plot_3d_scan_data(train_dset, publication_size=False):
         )
         for j in range(n_v):
             for k in range(n_g):
-                ax[2 * j + k, i].imshow(
+                ax[2 * j + k, i].pcolormesh(
+                    xx[0].numpy(), xx[1].numpy(),
                     images[i, j, k].T / images[i, j, k].max(),
-                    origin="lower",
+                    #origin="lower",
                     # extent = extent,
-                    interpolation="none",
+                    # interpolation="none",
                     rasterized=True,
                     vmax=1.0,
                     vmin=0,
                 )
-                ax[2 * j + k, i].tick_params(
-                    bottom=False, left=False, labelbottom=False, labelleft=False
-                )
+                #ax[2 * j + k, i].tick_params(
+                #    bottom=False, left=False, labelbottom=False, labelleft=False
+                #)
 
                 if j == 0:
                     v_lbl = "off"
@@ -283,10 +287,10 @@ def plot_3d_scan_data(train_dset, publication_size=False):
                 else:
                     g_lbl = "on"
 
-                ax[2 * j + k, 0].set_axis_off()
+                #ax[2 * j + k, 0].set_axis_off()
                 if i == 0:
                     ax[2 * j + k, 0].text(
-                        -0.1,
+                        -0.6,
                         0.5,
                         f"T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}",
                         va="center",
@@ -294,6 +298,10 @@ def plot_3d_scan_data(train_dset, publication_size=False):
                         transform=ax[2 * j + k, 0].transAxes,
                     )
     # fig.tight_layout()
+    for ele in ax[-1]:
+        ele.set_xlabel("x (mm)")
+    for ele in ax[:,0]:
+        ele.set_ylabel("y (mm)")
     return fig, ax
 
 

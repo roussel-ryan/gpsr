@@ -284,6 +284,7 @@ def train_3d_scan(
     save_dir=None,
     lambda_=1e11,
     batch_size=10,
+    nn_transform=None,
     distribution_dump_frequency=1000,
     distribution_dump_n_particles=100_000,
     use_decay=False,
@@ -346,7 +347,7 @@ def train_3d_scan(
     )
 
     # create phase space reconstruction model
-    nn_transformer = NNTransform(2, 20, output_scale=1e-2)
+    nn_transformer = nn_transform or NNTransform(2, 20, output_scale=1e-2)
     nn_beam = InitialBeam(
         nn_transformer,
         torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),

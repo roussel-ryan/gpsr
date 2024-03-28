@@ -272,17 +272,17 @@ def facet_ii_SC20(p0c, dipole_on=False):
     l_d6 = 8.8313
 
     # Elements:
-    q1 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(k1), NUM_STEPS=5)
+    #q1 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(k1), NUM_STEPS=5)
 
-    d1 = TorchDrift(L=torch.tensor(l1))
+    #d1 = TorchDrift(L=torch.tensor(l1))
 
-    q2 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(k1), NUM_STEPS=5)
+    #q2 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(k1), NUM_STEPS=5)
 
-    d2 = TorchDrift(L=torch.tensor(l2))
+    #d2 = TorchDrift(L=torch.tensor(l2))
 
-    q3 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(k1), NUM_STEPS=5)
+    #q3 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(k1), NUM_STEPS=5)
 
-    d3 = TorchDrift(L=torch.tensor(l3))
+    #d3 = TorchDrift(L=torch.tensor(l3))
 
     q4 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(k1), NUM_STEPS=5)
 
@@ -299,18 +299,19 @@ def facet_ii_SC20(p0c, dipole_on=False):
     d5 = TorchDrift(L=torch.tensor(l_d5))
 
     bend = TorchSBend(
-        L=torch.tensor(l_arc),
+        L=torch.tensor(l_bend),
         P0C=torch.tensor(p_design),
         G=torch.tensor(g),
         # E1 = torch.tensor(theta/2), #double check geometry
         # E2 = torch.tensor(theta/2),
-        E1=torch.tensor(0.0),
-        E2=torch.tensor(theta),
+        E1=torch.tensor(e1),
+        E2=torch.tensor(e2),
         FRINGE_AT="no_end",
     )
 
     d6 = TorchDrift(L=torch.tensor(l_d6))
 
-    lattice = TorchLattice([q1, d1, q2, d2, q3, d3, q4, d4, tdc, d5, bend, d6])
+    #lattice = TorchLattice([q1, d1, q2, d2, q3, d3, q4, d4, tdc, d5, bend, d6])
+    lattice = TorchLattice([q4, d4, tdc, d5, bend, d6])
 
     return lattice
