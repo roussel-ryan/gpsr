@@ -106,12 +106,14 @@ def plot_3d_scan_data_2screens_contour(
     n_v = params.shape[1]
     n_g = params.shape[2]
     fig, ax = plt.subplots(
-        n_v * n_g + 1,
-        n_k + 1,
-        figsize=( (n_k+1)*2, (n_v*n_g+1)*2 ),
+        n_v * n_g,
+        n_k,
+        figsize=( (n_k)*2, (n_v*n_g)*2 ),
+        sharex="row",
+        sharey="row",
     )
-    ax[0, 0].set_axis_off()
-    ax[0, 0].text(1, 0, '$k_1$ (1/m$^2$)', va='bottom', ha='right')
+    ax[0, 0].text(-0.1, 1.1, '$k_1$ (1/m$^2$)', va='bottom', ha='right',
+                  transform=ax[0, 0].transAxes,)
     corners=None
     centers=None
     if screen_0_len is not None:
@@ -119,9 +121,10 @@ def plot_3d_scan_data_2screens_contour(
         corners_1 = torch.linspace(-screen_1_len/2, screen_1_len/2, test_imgs.shape[-1]+1)*1e3
     
     for i in range(n_k):
-        ax[0, i + 1].set_axis_off()
-        ax[0, i + 1].text(
-            0.5, 0, f'{params[i, 0, 0, 0]:.1f}', va='bottom', ha='center'
+        ax[0, i].text(
+            0.5, 1.1, f'{params[i, 0, 0, 0]:.1f}', va='bottom', ha='center',
+            transform=ax[0, i].transAxes,
+
         )
         for j in range(n_g):
             for k in range(n_v):
@@ -151,26 +154,26 @@ def plot_3d_scan_data_2screens_contour(
                 )
                 '''
                 if screen_0_len is not None:
-                    ax[2 * j + k + 1, i + 1].pcolormesh(
+                    ax[2 * j + k, i].pcolormesh(
                         corners,
                         corners,
                         pred_imgs[i, k, j].T, 
                         vmin=0, 
-                        vmax=vmax
+                        vmax=vmax,
+                        rasterized=True
                     )
                 else:
-                    ax[2 * j + k + 1, i + 1].pcolormesh(
+                    ax[2 * j + k, i].pcolormesh(
                         pred_imgs[i, k, j].T, 
                         vmin=0, 
-                        vmax=vmax
+                        vmax=vmax,
+                        rasterized=True
                     )
-                    
-                ax[2 * j + k + 1, i + 1].set_axis_off()
-                
+                                    
                 proj_y = pred_imgs[i, k, j].sum(axis=0)
                 proj_y_gt = test_imgs[i, k, j].sum(axis=0)
                 hist_y ,_ = np.histogram(proj_y)
-                ax_y = ax[2 * j + k + 1, i + 1].twiny()
+                ax_y = ax[2 * j + k, i].twiny()
                 if screen_0_len is not None:
                     bin_y = centers
                 else:
@@ -182,15 +185,12 @@ def plot_3d_scan_data_2screens_contour(
                 ax_y.set_xlim(0.0, proj_y.max()*6)
                 ax_y.set_axis_off()
                 
-                #print(pred_imgs[i, k, j].sum())
-                #print(test_imgs[i, k, j].sum())
-                #print('----------------------')
                 
                 
                 proj_x = pred_imgs[i, k, j].sum(axis=1)
                 proj_x_gt = test_imgs[i, k, j].sum(axis=1)
                 hist_x ,_ = np.histogram(proj_x)
-                ax_x = ax[2 * j + k + 1, i + 1].twinx()
+                ax_x = ax[2 * j + k, i].twinx()
                 if screen_0_len is not None:
                     bin_x = centers
                 else:
@@ -207,7 +207,7 @@ def plot_3d_scan_data_2screens_contour(
                     h_r_fractions = get_beam_fraction_hist2d(pred_imgs[i, k, j], percentile/100)
                     h_gt_fractions = get_beam_fraction_hist2d(test_imgs[i,k,j], percentile/100)
                     if screen_0_len is not None:
-                        ax[2 * j + k + 1, i + 1].contour(
+                        ax[2 * j + k, i].contour(
                             #h_r_fractions.T,
                             centers,
                             centers,
@@ -217,7 +217,7 @@ def plot_3d_scan_data_2screens_contour(
                             colors=COLORS[l],
                             linewidths=1
                         )  
-                        ax[2 * j + k + 1, i + 1].contour(
+                        ax[2 * j + k, i].contour(
                             #h_gt_fractions.T,
                             centers,
                             centers,
@@ -228,7 +228,7 @@ def plot_3d_scan_data_2screens_contour(
                             linewidths=1
                         ) 
                     else:
-                        ax[2 * j + k + 1, i + 1].contour(
+                        ax[2 * j + k, i].contour(
                             #h_r_fractions.T,
                             gaussian_filter(h_r_fractions, contour_smoothing_r).T,
                             levels=[0],
@@ -236,7 +236,7 @@ def plot_3d_scan_data_2screens_contour(
                             colors=COLORS[l],
                             linewidths=1
                         )  
-                        ax[2 * j + k + 1, i + 1].contour(
+                        ax[2 * j + k, i].contour(
                             #h_gt_fractions.T,
                             gaussian_filter(h_gt_fractions, contour_smoothing_gt).T,
                             levels=[0],
@@ -244,41 +244,29 @@ def plot_3d_scan_data_2screens_contour(
                             colors=COLORS[l],
                             linewidths=1
                         ) 
-                ax[2 * j + k + 1, i + 1].tick_params(
-                    bottom=False, left=False,
-                    labelbottom=False, labelleft=False
-                )
+                #ax[2 * j + k + 1, i + 1].tick_params(
+                #    bottom=False, left=False,
+                #    labelbottom=False, labelleft=False
+                #)
 
-                ax[2 * j + k + 1, 0].set_axis_off()
-                ax[2 * j + k + 1, 0].text(
-                    1, 0.5, f'T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}',
-                    va='center', ha='right'
-                )
-
-    #custom_lines = [Line2D([0], [0], color=COLORS[0], lw=1),
-    #                Line2D([0], [0], color=COLORS[0], lw=1, linestyle='--'),
-    #                Line2D([0], [0], color=COLORS[1], lw=1),
-    #                Line2D([0], [0], color=COLORS[1], lw=1, linestyle='--')]
-    #ax[1,1].legend(
-    #    custom_lines, 
-    #    ['prediction 50 %ile', 'measured 50 %ile', 'prediction 95 %ile', 'measured 95 %ile'],
-    #    fontsize=5
-    #)
-    for i in range(4):
-        ax[-1, i+1].tick_params(
-                    bottom=True,
-                    labelbottom=True
-        )
-        ax[-3, i+1].tick_params(
-                    bottom=True,
-                    labelbottom=True
-        )
-        ax[i + 1, -1].tick_params(
-                    right=True,
-                    labelright=True
-        )
+                #ax[2 * j + k + 1, 0].set_axis_off()
+                if i == 0:
+                    ax[2 * j + k, 0].text(
+                        -0.6, 0.5, 
+                        f'T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}',
+                        va='center', ha='right', 
+                        transform=ax[2 * j + k, 0].transAxes,
+                    )
     
-
+    for a in ax[:,0]:
+        a.set_ylabel("y (mm)")
+        
+    for a in ax[-1,:]:
+        a.set_xlabel("x (mm)")
+        
+    for a in ax[::2,:].flatten():
+        a.set_xticklabels([])
+    
     return fig, ax
 
 def clip_imgs(imgs, center, width):
