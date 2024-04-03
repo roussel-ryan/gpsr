@@ -266,7 +266,7 @@ def plot_3d_scan_data(train_dset, bins, publication_size=False):
             for k in range(n_g):
                 ax[2 * j + k, i].pcolormesh(
                     xx[0].numpy(), xx[1].numpy(),
-                    images[i, j, k].T / images[i, j, k].max(),
+                    images[i, j, k] / images[i, j, k].max(),
                     #origin="lower",
                     # extent = extent,
                     # interpolation="none",

@@ -89,11 +89,11 @@ def quad_tdc_bend(p0c, dipole_on=False):
     l_bend = 0.3018
     # variable when on/off:
     if dipole_on:
-        theta = 20.0 * PI / 180.0
+        theta = -20.0 * PI / 180.0
         l_arc = l_bend * theta / np.sin(theta)
         g = theta / l_arc
     if not dipole_on:
-        g = 2.22e-16  # machine epsilon to avoid numerical error
+        g = -2.22e-16  # machine epsilon to avoid numerical error
         theta = np.arcsin(l_bend * g)
         l_arc = theta / g
 
@@ -131,7 +131,8 @@ def quad_tdc_bend(p0c, dipole_on=False):
         # E2 = torch.tensor(theta/2),
         E1=torch.tensor(0.0),
         E2=torch.tensor(theta),
-        FRINGE_AT="no_end",
+        FRINGE_AT="both_ends",
+        FRINGE_TYPE="linear_edge"
     )
 
     d3 = TorchDrift(L=torch.tensor(l_d3))
@@ -167,11 +168,11 @@ def quadlet_tdc_bend(p0c, dipole_on=False):
     l_bend = 0.3018
     # variable when on/off:
     if dipole_on:
-        theta = 20.0 * PI / 180.0
+        theta = -20.0 * PI / 180.0
         l_arc = l_bend * theta / np.sin(theta)
         g = theta / l_arc
     if not dipole_on:
-        g = 2.22e-16  # machine epsilon to avoid numerical error
+        g = -2.22e-16  # machine epsilon to avoid numerical error
         theta = np.arcsin(l_bend * g)
         l_arc = theta / g
 
@@ -221,7 +222,8 @@ def quadlet_tdc_bend(p0c, dipole_on=False):
         # E2 = torch.tensor(theta/2),
         E1=torch.tensor(0.0),
         E2=torch.tensor(theta),
-        FRINGE_AT="no_end",
+        FRINGE_AT="both_ends",
+        FRINGE_TYPE="linear_edge"
     )
 
     d6 = TorchDrift(L=torch.tensor(l_d6))
@@ -251,7 +253,7 @@ def facet_ii_SC20(p0c, dipole_on=False):
     l_bend = 0.9779
     # variable when on/off:
     if dipole_on:
-        g = 6.1356e-3
+        g = -6.1356e-3
         e1 = 3e-3
         e2 = 3e-3
 
@@ -306,7 +308,8 @@ def facet_ii_SC20(p0c, dipole_on=False):
         # E2 = torch.tensor(theta/2),
         E1=torch.tensor(e1),
         E2=torch.tensor(e2),
-        FRINGE_AT="no_end",
+        FRINGE_AT="both_ends",
+        FRINGE_TYPE="linear_edge"
     )
 
     d6 = TorchDrift(L=torch.tensor(l_d6))
