@@ -262,21 +262,16 @@ def plot_3d_scan_data(train_dset, bins, publication_size=False):
             ha="center",
             transform=ax[0, i].transAxes,
         )
-        for j in range(n_v):
-            for k in range(n_g):
-                ax[2 * j + k, i].pcolormesh(
+        for k in range(n_v):
+            for j in range(n_g):
+                row_number = 2 * k + j
+                ax[row_number, i].pcolormesh(
                     xx[0].numpy(), xx[1].numpy(),
                     images[i, j, k] / images[i, j, k].max(),
-                    #origin="lower",
-                    # extent = extent,
-                    # interpolation="none",
                     rasterized=True,
                     vmax=1.0,
                     vmin=0,
                 )
-                #ax[2 * j + k, i].tick_params(
-                #    bottom=False, left=False, labelbottom=False, labelleft=False
-                #)
 
                 if j == 0:
                     v_lbl = "off"
@@ -287,15 +282,14 @@ def plot_3d_scan_data(train_dset, bins, publication_size=False):
                 else:
                     g_lbl = "on"
 
-                #ax[2 * j + k, 0].set_axis_off()
                 if i == 0:
-                    ax[2 * j + k, 0].text(
+                    ax[row_number, 0].text(
                         -0.6,
                         0.5,
                         f"T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}",
                         va="center",
                         ha="right",
-                        transform=ax[2 * j + k, 0].transAxes,
+                        transform=ax[row_number, 0].transAxes,
                     )
     # fig.tight_layout()
     for ele in ax[-1]:

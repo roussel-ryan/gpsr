@@ -282,7 +282,6 @@ def train_3d_scan(
     device="cpu",
     n_particles=10_000,
     save_dir=None,
-    lambda_=1e11,
     batch_size=10,
     nn_transform=None,
     distribution_dump_frequency=1000,
@@ -364,7 +363,7 @@ def train_3d_scan(
     if use_decay:
         gamma = 0.999  # final learning rate will be gamma * lr
         scheduler = ExponentialLR(optimizer, gamma)
-    loss_fn = MENTLoss(torch.tensor(lambda_))
+    loss_fn = MAELoss()
 
     for i in range(n_epochs + 1):
         for elem in train_dataloader:

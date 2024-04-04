@@ -43,6 +43,23 @@ def mae_log_loss(target, pred):
     return torch.mean(torch.abs(torch.log(target + 1e-8) - torch.log(pred + 1e-8)))
 
 
+class MAELoss(Module):
+    def __init__(self):
+        super(MAELoss, self).__init__()
+        
+        self.loss_record = []
+        
+    def forward(self, outputs, target_image_original):
+        assert outputs[0].shape == target_image_original.shape
+        target_image = normalize_images(target_image_original)
+        pred_image = normalize_images(outputs[0])
+        
+        image_loss = mae_loss(target_image, pred_image)
+        
+        return image_loss
+
+
+
 class MENTLoss(Module):
     def __init__(
         self,
