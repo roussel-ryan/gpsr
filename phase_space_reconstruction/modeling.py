@@ -243,7 +243,7 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
         lattice = deepcopy(self.base_lattice)
         lattice.elements[ids[0]].K1.data = params[:, 0].unsqueeze(-1)
         lattice.elements[ids[1]].VOLTAGE.data = params[:, 1].unsqueeze(-1)
-         # change the dipole attributes + drift attribute
+        # change the dipole attributes + drift attribute
         G = params[:, 2].unsqueeze(-1)
         l_bend = 0.3018
         theta = torch.arcsin(l_bend * G) # AWA parameters
