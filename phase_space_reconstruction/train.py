@@ -5,7 +5,7 @@ import torch
 from torch.optim.lr_scheduler import ExponentialLR
 from torch.utils.data import DataLoader
 
-from phase_space_reconstruction.losses import MENTLoss
+from phase_space_reconstruction.losses import MENTLoss, MAELoss
 from phase_space_reconstruction.modeling import (
     ImageDataset,
     ImageDataset3D,
@@ -277,7 +277,7 @@ def train_3d_scan(
     lattice,
     p0c,
     screen,
-    ids=[0, 2, 4],
+    ids,
     n_epochs=100,
     device="cpu",
     n_particles=10_000,
@@ -286,7 +286,7 @@ def train_3d_scan(
     nn_transform=None,
     distribution_dump_frequency=1000,
     distribution_dump_n_particles=100_000,
-    use_decay=False,
+    use_decay=False
 ):
     """
     Trains 6D phase space reconstruction model by using 3D scan data.
@@ -507,12 +507,12 @@ def train_3d_scan_2screens(
     n_epochs=100,
     device="cpu",
     n_particles=10_000,
-    save_as=None,
     save_dir=None,
-    lambda_=1e11,
     batch_size=10,
+    nn_transform=None,
     distribution_dump_frequency=1000,
     distribution_dump_n_particles=100_000,
+    use_decay=False
 ):
     """
     Trains 6D phase space reconstruction model by using 3D scan data.
@@ -576,8 +576,7 @@ def train_3d_scan_2screens(
     )
 
     # create phase space reconstruction model
-    nn_transformer = NNTransform(2, 20, output_scale=1e-2)
-    # nn_transformer = NNTransform(4, 40, output_scale=1e-2)
+    nn_transformer = nn_transform or NNTransform(2, 20, output_scale=1e-2)
     nn_beam = InitialBeam(
         nn_transformer,
         torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),
@@ -592,15 +591,19 @@ def train_3d_scan_2screens(
 
     # train model
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = MENTLoss(torch.tensor(lambda_))
+    
+    if use_decay:
+        gamma = 0.999  # final learning rate will be gamma * lr
+        scheduler = ExponentialLR(optimizer, gamma)
+    loss_fn = MAELoss()
 
-    for i in range(n_epochs):
+    for i in range(n_epochs + 1):
         for elem in train_dataloader:
             params_i, target_images = elem[0], elem[1]
             optimizer.zero_grad()
             output = model(params_i, n_imgs_per_param, ids)
             loss = loss_fn(output, target_images)
-            loss.mean().backward()
+            loss.backward()
             optimizer.step()
 
         if i % 100 == 0:
@@ -617,12 +620,16 @@ def train_3d_scan_2screens(
                     model_copy.beam.forward().detach_clone(),
                     os.path.join(save_dir, f"dist_{i}.pt"),
                 )
+        if use_decay:
+            scheduler.step()
+            if i % 100 == 0:
+                print(scheduler.get_last_lr())
 
     model = model.to("cpu")
 
     predicted_beam = model.beam.forward().detach_clone()
 
-    if save_as is not None:
-        torch.save(predicted_beam, os.path.join(save_dir, save_as))
+    if save_dir is not None:
+        torch.save(predicted_beam, "3d_scan_result.pt")
 
-    return predicted_beam
+    return predicted_beam, copy.deepcopy(model)

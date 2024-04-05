@@ -243,7 +243,15 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
         lattice = deepcopy(self.base_lattice)
         lattice.elements[ids[0]].K1.data = params[:, 0].unsqueeze(-1)
         lattice.elements[ids[1]].VOLTAGE.data = params[:, 1].unsqueeze(-1)
-        lattice.elements[ids[2]].G.data = params[:, 2].unsqueeze(-1)
+        # change the dipole attributes + drift attribute
+        G = params[:, 2].unsqueeze(-1)
+        l_bend = 0.3018
+        theta = torch.arcsin(l_bend * G) # AWA parameters
+        l_arc = theta / G
+        diagnostics_lattice.elements[ids[2]].G.data = G
+        diagnostics_lattice.elements[ids[2]].L.data = l_arc
+        diagnostics_lattice.elements[ids[2]].E2.data = theta
+        diagnostics_lattice.elements[-1].L.data = 0.889 - l_bend / 2 / torch.cos(theta)
 
         # track beam through lattice
         final_beam = lattice(beam)
@@ -300,13 +308,29 @@ class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
         diagnostics_lattice0 = self.lattice0.copy()
         diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:, :, 0]
         diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params_dipole_off[:, :, 1]
-        diagnostics_lattice0.elements[ids[2]].G.data = params_dipole_off[:, :, 2]
+        # change the dipole attributes + drift attribute
+        G = params_dipole_off[:, :, 2]
+        l_bend = 0.3018
+        theta = torch.arcsin(l_bend * G) # AWA parameters
+        l_arc = theta / G
+        diagnostics_lattice0.elements[ids[2]].G.data = G
+        diagnostics_lattice0.elements[ids[2]].L.data = l_arc
+        diagnostics_lattice0.elements[ids[2]].E2.data = theta
+        diagnostics_lattice0.elements[-1].L.data = 0.889 - l_bend / 2 / torch.cos(theta)
 
         params_dipole_on = params[:, :, 1].unsqueeze(-1)
         diagnostics_lattice1 = self.lattice1.copy()
         diagnostics_lattice1.elements[ids[0]].K1.data = params_dipole_on[:, :, 0]
         diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params_dipole_on[:, :, 1]
-        diagnostics_lattice1.elements[ids[2]].G.data = params_dipole_on[:, :, 2]
+        # change the dipole attributes + drift attribute
+        G = params_dipole_on[:, :, 2]
+        l_bend = 0.3018
+        theta = torch.arcsin(l_bend * G) # AWA parameters
+        l_arc = theta / G
+        diagnostics_lattice1.elements[ids[2]].G.data = G
+        diagnostics_lattice1.elements[ids[2]].L.data = l_arc
+        diagnostics_lattice1.elements[ids[2]].E2.data = theta
+        diagnostics_lattice1.elements[-1].L.data = 0.889 - l_bend / 2 / torch.cos(theta)
 
         # track through lattice for dipole off(0) and dipole on (1)
         output_beam0 = diagnostics_lattice0(beam)
