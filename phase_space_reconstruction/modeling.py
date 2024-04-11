@@ -248,10 +248,10 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
         l_bend = 0.3018
         theta = torch.arcsin(l_bend * G) # AWA parameters
         l_arc = theta / G
-        diagnostics_lattice.elements[ids[2]].G.data = G
-        diagnostics_lattice.elements[ids[2]].L.data = l_arc
-        diagnostics_lattice.elements[ids[2]].E2.data = theta
-        diagnostics_lattice.elements[-1].L.data = 0.889 - l_bend / 2 / torch.cos(theta)
+        lattice.elements[ids[2]].G.data = G
+        lattice.elements[ids[2]].L.data = l_arc
+        lattice.elements[ids[2]].E2.data = theta
+        lattice.elements[-1].L.data = 0.889 - l_bend / 2 / torch.cos(theta)
 
         # track beam through lattice
         final_beam = lattice(beam)
