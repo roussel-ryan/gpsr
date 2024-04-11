@@ -248,9 +248,10 @@ def run_3d_scan_2screens(
     lattice1,
     screen0,
     screen1,
-    ks,
-    vs,
-    gs,
+    #ks,
+    #vs,
+    #gs,
+    params,
     n_imgs_per_param=1,
     ids=[0, 2, 4],
     save_as=None,
@@ -300,9 +301,8 @@ def run_3d_scan_2screens(
     """
 
     # base lattices
-    params = torch.meshgrid(ks, vs, gs, indexing="ij")
-    params = torch.stack(params, dim=-1)
-
+    #params = torch.meshgrid(ks, vs, gs, indexing="ij")
+    #params = torch.stack(params, dim=-1)
     params_dipole_off = params[:, :, 0].unsqueeze(-1)
     diagnostics_lattice0 = lattice0.copy()
     diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:, :, 0]
