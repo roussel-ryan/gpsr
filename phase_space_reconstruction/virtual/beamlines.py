@@ -257,22 +257,78 @@ def quadlet_tdc_bend(
     ld3 = lq34 - l_q
 
     # Elements:
-    q1 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(0.0), NUM_STEPS=5)
+    qq1 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(0.0), NUM_STEPS=5)
 
-    d1 = TorchDrift(L=torch.tensor(ld1))
+    dd1 = TorchDrift(L=torch.tensor(ld1))
 
-    q2 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(0.0), NUM_STEPS=5)
+    qq2 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(0.0), NUM_STEPS=5)
 
-    d2 = TorchDrift(L=torch.tensor(ld2))
+    dd2 = TorchDrift(L=torch.tensor(ld2))
 
-    q3 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(0.0), NUM_STEPS=5)
+    qq3 = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(0.0), NUM_STEPS=5)
 
-    d3 = TorchDrift(L=torch.tensor(ld3))
+    dd3 = TorchDrift(L=torch.tensor(ld3))
     
-    q_tdc_b = quad_tdc_bend(p0c, dipole_on)
+    #q_tdc_b = list(quad_tdc_bend(p0c, dipole_on).elements)
+    #print(q_tdc_b)
+    #print([q1, d1, q2, d2, q3, d3] + q_tdc_b)
     
-    lattice = TorchLattice([q1, d1, q2, d2, q3, d3] + q_tdc_b)
+    #lattice = TorchLattice([q1, d1, q2, d2, q3, d3] + q_tdc_b)
+    
+    #################
+    
+    # initialize dipole params when on/off:
+    if dipole_on:
+        theta = theta_on # negative deflects in +x
+        l_arc = l_bend * theta / np.sin(theta)
+        g = theta / l_arc
+    if not dipole_on:
+        g = -2.22e-16  # machine epsilon to avoid numerical error
+        theta = np.arcsin(l_bend * g)
+        l_arc = theta / g
 
+    # Drifts with geometrical corrections:
+
+    # Drift from Quad to TDC (0.5975)
+    l_d1 = l1 - l_q / 2 - l_tdc / 2
+
+    # Drift from TDC to Bend (0.3392)
+    l_d2 = l2 - l_tdc / 2 - l_bend / 2
+
+    # Drift from Bend to YAG 2 (corrected for dipole on/off)
+    l_d3 = l3 - l_bend / 2 / np.cos(theta)
+
+    # Elements:
+    q = TorchQuadrupole(L=torch.tensor(l_q), K1=torch.tensor(0.0), NUM_STEPS=5)
+
+    d1 = TorchDrift(L=torch.tensor(l_d1))
+
+    tdc = TorchCrabCavity(
+        L=torch.tensor(l_tdc),
+        VOLTAGE=torch.tensor(0.0),
+        RF_FREQUENCY=torch.tensor(f_tdc),
+        PHI0=torch.tensor(phi_tdc),
+        TILT=torch.tensor(PI / 2),
+    )
+
+    d2 = TorchDrift(L=torch.tensor(l_d2))
+
+    bend = TorchSBend(
+        L=torch.tensor(l_arc),
+        P0C=torch.tensor(p0c),
+        G=torch.tensor(g),
+        E1=torch.tensor(0.0),
+        E2=torch.tensor(theta),
+        FRINGE_AT="both_ends",
+        FRINGE_TYPE="linear_edge"
+    )
+
+    d3 = TorchDrift(L=torch.tensor(l_d3))
+    
+    ###############
+    
+    lattice = TorchLattice([qq1, dd1, qq2, dd2, qq3, dd3, q, d1, tdc, d2, bend, d3])
+        
     return lattice
 
 
