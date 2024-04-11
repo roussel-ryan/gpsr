@@ -5,7 +5,6 @@ from matplotlib.lines import Line2D
 from scipy.ndimage import gaussian_filter
 from phase_space_reconstruction.modeling import ImageDataset3D
 
-
 def plot_3d_scan_data_2screens(dset, select_img = 'avg', vmax1=None, vmax2=None):
     if select_img == 'avg':
         imgs = dset.images.sum(dim=-3)
@@ -259,10 +258,10 @@ def plot_3d_scan_data_2screens_contour(
                     )
     
     for a in ax[:,0]:
-        a.set_ylabel("y (mm)")
+        a.set_ylabel("$y$ (mm)")
         
     for a in ax[-1,:]:
-        a.set_xlabel("x (mm)")
+        a.set_xlabel("$x$ (mm)")
         
     for a in ax[::2,:].flatten():
         a.set_xticklabels([])
@@ -279,56 +278,3 @@ def create_clipped_dset(dset, width):
     center = imgs.shape[-1] // 2
     clipped_imgs = clip_imgs(imgs, center, width)
     return ImageDataset3D(params, clipped_imgs)
-
-def run_3d_scan_2screens(
-    beam,
-    lattice0,
-    lattice1,
-    screen0,
-    screen1,
-    params,
-    n_imgs_per_param = 1,
-    ids = [0, 2, 4],
-    save_as = None
-):
-
-    # base lattices 
-    #params = torch.meshgrid(ks, vs, gs, indexing='ij')
-    #params = torch.stack(params, dim=-1)
-    print(params.shape)
-    params_dipole_off = params[:,:,0].unsqueeze(-1)
-    print(params_dipole_off.shape)
-    diagnostics_lattice0 = lattice0.copy()
-    diagnostics_lattice0.elements[ids[0]].K1.data = params_dipole_off[:,:,0]
-    diagnostics_lattice0.elements[ids[1]].VOLTAGE.data = params_dipole_off[:,:,1]
-    diagnostics_lattice0.elements[ids[2]].G.data = params_dipole_off[:,:,2]
-
-    params_dipole_on = params[:,:,1].unsqueeze(-1)
-    diagnostics_lattice1 = lattice1.copy()
-    diagnostics_lattice1.elements[ids[0]].K1.data = params_dipole_on[:,:,0]
-    diagnostics_lattice1.elements[ids[1]].VOLTAGE.data = params_dipole_on[:,:,1]
-    diagnostics_lattice1.elements[ids[2]].G.data = params_dipole_on[:,:,2]
-
-    # track through lattice for dipole off(0) and dipole on (1)
-    output_beam0 = diagnostics_lattice0(beam)
-    output_beam1 = diagnostics_lattice1(beam)
-
-    # histograms at screens for dipole off(0) and dipole on (1)
-    images_dipole_off = screen0(output_beam0).squeeze()
-    images_dipole_on = screen1(output_beam1).squeeze()
-
-    # stack on dipole dimension:
-    images_stack = torch.stack((images_dipole_off, images_dipole_on), dim=2)
-    
-    # create images copies simulating multi-shot per parameter config:
-    copied_images = torch.stack([images_stack]*n_imgs_per_param, dim=-3)
-
-    # create image dataset
-    dset = ImageDataset3D(params, copied_images)
-    
-    # save scan data if wanted
-    if save_as is not None:
-        torch.save(dset, save_as)
-        print(f"dataset0 saved as '{save_as}'")
-
-    return dset
