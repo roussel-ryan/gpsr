@@ -286,7 +286,8 @@ def train_3d_scan(
     nn_transform=None,
     distribution_dump_frequency=1000,
     distribution_dump_n_particles=100_000,
-    use_decay=False
+    use_decay=False,
+    lr=0.01,
 ):
     """
     Trains 6D phase space reconstruction model by using 3D scan data.
@@ -346,7 +347,7 @@ def train_3d_scan(
     )
 
     # create phase space reconstruction model
-    nn_transformer = nn_transform or NNTransform(2, 20, output_scale=1e-2)
+    nn_transformer = nn_transform or NNTransform(2, 20, output_scale=1e-3)
     nn_beam = InitialBeam(
         nn_transformer,
         torch.distributions.MultivariateNormal(torch.zeros(6), torch.eye(6)),
@@ -358,7 +359,7 @@ def train_3d_scan(
     model = model.to(DEVICE)
 
     # train model
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
     if use_decay:
         gamma = 0.999  # final learning rate will be gamma * lr
