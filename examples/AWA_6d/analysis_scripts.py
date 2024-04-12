@@ -86,7 +86,8 @@ def plot_3d_scan_data_2screens_contour(
     screen_0_len = None,
     screen_1_len = None,
     vmax1=None,
-    vmax2=None
+    vmax2=None,
+    rasterized = True
 ):
 
     n_contours = len(contour_percentiles)
@@ -159,14 +160,14 @@ def plot_3d_scan_data_2screens_contour(
                         pred_imgs[i, k, j].T, 
                         vmin=0, 
                         vmax=vmax,
-                        rasterized=True
+                        rasterized=rasterized
                     )
                 else:
                     ax[2 * j + k, i].pcolormesh(
                         pred_imgs[i, k, j].T, 
                         vmin=0, 
                         vmax=vmax,
-                        rasterized=True
+                        rasterized=rasterized
                     )
                                     
                 proj_y = pred_imgs[i, k, j].sum(axis=0)
