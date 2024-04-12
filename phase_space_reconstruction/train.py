@@ -111,9 +111,10 @@ def train_1d_scan_sext(
     n_epochs=100,
     device="cpu",
     n_particles=10_000,
-    save_as=None,
-    lambda_=1e11,
+    save_dir=None,
     batch_size=10,
+    distribution_dump_frequency=500,
+    distribution_dump_n_particles=100_000,
 ):
     """
     Trains beam model by scanning an arbitrary lattice.
@@ -162,9 +163,9 @@ def train_1d_scan_sext(
 
     # train model
     optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-    loss_fn = MENTLoss(torch.tensor(lambda_))
+    loss_fn = MAELoss()
 
-    for i in range(n_epochs):
+    for i in range(n_epochs + 1):
         for elem in train_dataloader:
             k, target_images = elem[0], elem[1]
             optimizer.zero_grad()
@@ -172,6 +173,18 @@ def train_1d_scan_sext(
             loss = loss_fn(output, target_images)
             loss.backward()
             optimizer.step()
+            
+        # dump current particle distribution to file
+        if i % distribution_dump_frequency == 0:
+            if save_dir is not None:
+                model_copy = copy.deepcopy(model).to("cpu")
+                model_copy.beam.set_base_beam(
+                    distribution_dump_n_particles, p0c=torch.tensor(p0c)
+                )
+                torch.save(
+                    model_copy.beam.forward().detach_clone(),
+                    os.path.join(save_dir, f"dist_{i}.pt"),
+                )
 
         if i % 100 == 0:
             print(i, loss)
@@ -180,8 +193,6 @@ def train_1d_scan_sext(
 
     predicted_beam = model.beam.forward().detach_clone()
 
-    if save_as is not None:
-        torch.save(predicted_beam, save_as)
 
     return predicted_beam
 

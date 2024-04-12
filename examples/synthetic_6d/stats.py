@@ -293,7 +293,10 @@ def plot_projections_with_contours(
         binc = (bins[:-1] + bins[1:]) / 2
 
         ax[i, i].plot(binc, h, "C1--", alpha=1, lw=2, zorder=5)
-        ax[i, i].set_ylim(0, 1.1 * np.max(h))
+        try:
+            ax[i, i].set_ylim(0, 1.1 * np.max(h))
+        except ValueError:
+            pass
 
         if ground_truth is not None:
             h, bins = np.histogram(
