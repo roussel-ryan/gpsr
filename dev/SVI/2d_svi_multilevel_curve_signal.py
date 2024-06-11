@@ -43,7 +43,7 @@ def model(xcoords, ycoords, data=None):
         "sigma", Exponential(100.0)
     )
 
-    d_size = 5 if data is None else data.shape[-1]
+    d_size = 10 if data is None else data.shape[-1]
 
     with pyro.plate("shots", d_size):
         x_offset = pyro.sample(
@@ -71,7 +71,7 @@ xx = torch.meshgrid([test_x, test_y])
 samples = model(*xx)
 
 # create data samples -- corrupt with noise
-n_samples = 5
+n_samples = 10
 xoffset = Normal(torch.tensor(-1.0), torch.tensor(0.75)).rsample([n_samples])
 yoffset = Normal(torch.tensor(0.0), torch.tensor(0.1)).rsample([n_samples])
 y = mapping(xx[0].unsqueeze(-1), xx[1].unsqueeze(-1), xoffset, yoffset)
