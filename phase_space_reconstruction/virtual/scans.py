@@ -161,7 +161,7 @@ def run_awa_3d_scan(beam, lattice, screen, ks, vs, gs, ids=[0, 2, 4], save_as=No
     return dset
 
 
-def run_t_scan(beam, lattice, screen, ks, vs, gs, ids=[0, 2, 4], save_as=None):
+def run_awa_t_scan(beam, lattice, screen, ks, vs, gs, ids=[0, 2, 4], save_as=None):
     """
     Runs virtual quad + transverse deflecting cavity 2d scan and returns
     image data from the screen downstream.
@@ -220,9 +220,19 @@ def run_t_scan(beam, lattice, screen, ks, vs, gs, ids=[0, 2, 4], save_as=None):
 
     print(params.shape)
     print(params[:, :, 0])
-    diagnostics_lattice.elements[ids[0]].K1.data = params[:, 0].unsqueeze(-1)
-    diagnostics_lattice.elements[ids[1]].VOLTAGE.data = params[:, 1].unsqueeze(-1)
-    diagnostics_lattice.elements[ids[2]].G.data = params[:, 2].unsqueeze(-1)
+    
+    diagnostics_lattice.elements[ids[0]].K1.data =  params[:, 0].unsqueeze(-1)
+    diagnostics_lattice.elements[ids[1]].VOLTAGE.data =  params[:, 1].unsqueeze(-1)
+    
+    G = params[:, 2].unsqueeze(-1)
+    l_bend = 0.3018
+    theta = torch.arcsin(l_bend * G) # AWA parameters
+    l_arc = theta / G
+    diagnostics_lattice.elements[ids[2]].G.data = G
+    diagnostics_lattice.elements[ids[2]].L.data = l_arc
+    diagnostics_lattice.elements[ids[2]].E2.data = theta
+    
+    diagnostics_lattice.elements[-1].L.data = 0.889 - l_bend / 2 / torch.cos(theta)
 
     # track through lattice
     output_beam = diagnostics_lattice(beam)

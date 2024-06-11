@@ -18,7 +18,7 @@ px_dist:
 py_dist:
   sigma_py:
     units: MeV/c
-    value: 0.01
+    value: 0.001
   type: gaussian
 z_dist:
   avg_z:

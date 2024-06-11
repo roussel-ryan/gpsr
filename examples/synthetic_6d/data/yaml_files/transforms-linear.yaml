@@ -20,6 +20,16 @@ twiss_y:
   emittance:
     value: 2.0
     units: um
+set_pz:
+  type: set_std pz
+  sigma_pz:
+    value: 0.3
+    units: MeV/c
+set_z:
+  type: set_std z
+  sigma_z:
+    value: 0.25
+    units: mm    
 shear_zpz:
   type: shear z:pz
   shear_coefficient: 
@@ -33,7 +43,7 @@ rot_xy:
 rot_xz:
   type: rotate2d x:z
   angle: 
-    value: -70
+    value: -45
     units: degree
 scale_x:
   type: scale x
@@ -55,6 +65,8 @@ scale_pz:
   scale: 1.0
   fix_average: True
 order: 
+  - set_pz
+  - set_z
   - rot_xz
   - twiss_x
   - twiss_y
@@ -63,8 +75,6 @@ order:
   - scale_px
   - scale_y
   - scale_py
-  - scale_z
-  - scale_pz
   - shear_zpz
 
   
