@@ -13,4 +13,5 @@ phase_space_reconstruction.egg-info/
 *.stat
 *.ckpt
 **/lightning_logs/
+dev
 
