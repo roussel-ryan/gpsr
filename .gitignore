@@ -11,3 +11,6 @@ phase_space_reconstruction.egg-info/
 *.sdds
 *.opal
 *.stat
+*.ckpt
+**/lightning_logs/
+
