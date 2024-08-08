@@ -1,111 +1,167 @@
-import time
+from abc import ABC, abstractmethod
 from copy import deepcopy
 
-import matplotlib.pyplot as plt
+import numpy as np
 import torch
-from bmadx import Particle
-from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchQuadrupole
-from torch import nn
 from torch.utils.data import Dataset
-from tqdm import trange
+
+from bmadx import PI
+from bmadx.bmad_torch.track_torch import Beam, TorchDrift, TorchQuadrupole, \
+    TorchLattice, TorchCrabCavity, TorchSBend
+from phase_space_reconstruction.diagnostics import ImageDiagnostic
 
 
-class PhaseSpaceReconstructionModel(torch.nn.Module):
-    def __init__(self, lattice, diagnostic, beam):
-        super(PhaseSpaceReconstructionModel, self).__init__()
+class GPSRLattice(torch.nn.Module, ABC):
+    @abstractmethod
+    def set_lattice_parameters(self, x: torch.Tensor):
+        pass
 
-        self.base_lattice = lattice
+    @abstractmethod
+    def track_and_observe(self, beam):
+        """ tracks beam through the lattice and returns observations"""
+        pass
+
+
+class GPSR(torch.nn.Module):
+    def __init__(self, beam_generator, lattice: GPSRLattice):
+        super(GPSR, self).__init__()
+        self.beam_generator = deepcopy(beam_generator)
+        self.lattice = deepcopy(lattice)
+
+    def forward(self, x):
+        # generate beam
+        initial_beam = self.beam_generator()
+
+        # set lattice parameters
+        self.lattice.set_lattice_parameters(x)
+
+        return self.lattice.track_and_observe(initial_beam)
+
+
+class GPSRQuadScanLattice(GPSRLattice):
+    def __init__(self, l_quad: float, l_drift: float, diagnostic: ImageDiagnostic):
+        super().__init__()
+        q1 = TorchQuadrupole(torch.tensor(l_quad), torch.tensor(0.0), 5)
+        d1 = TorchDrift(torch.tensor(l_drift))
+        self.lattice = TorchLattice([q1, d1])
         self.diagnostic = diagnostic
-        self.beam = deepcopy(beam)
 
-    def track_and_observe_beam(self, beam, K, scan_quad_id=0):
-        # alter quadrupole strength
-        lattice = deepcopy(self.base_lattice)
-        lattice.elements[scan_quad_id].K1.data = K
-
-        # track beam through lattice
-        final_beam = lattice(beam)
-
-        # analyze beam with diagnostic
+    def track_and_observe(self, beam):
+        final_beam = self.lattice(beam)
         observations = self.diagnostic(final_beam)
 
         return observations, final_beam
 
-    def forward(self, K, scan_quad_id=0):
-        proposal_beam = self.beam()
+    def set_lattice_parameters(self, x: torch.Tensor):
+        self.lattice.elements[0].K1.data = x
 
-        # track beam
-        observations, final_beam = self.track_and_observe_beam(
-            proposal_beam, K, scan_quad_id
+
+class GPSR6DLattice(GPSRLattice):
+    def __init__(
+            self,
+            l_quad: float,
+            l_tdc: float,
+            f_tdc: float,
+            phi_tdc: float,
+            l_bend: float,
+            theta_on: float,
+            l1: float,
+            l2: float,
+            l3: float,
+            p0c: float,
+            diagnostic: ImageDiagnostic,
+            upstream_elements=None
+    ):
+        super().__init__()
+
+        upstream_elements = upstream_elements or []
+
+        # Drift from Quad to TDC (0.5975)
+        l_d1 = l1 - l_quad / 2 - l_tdc / 2
+
+        # Drift from TDC to Bend (0.3392)
+        l_d2 = l2 - l_tdc / 2 - l_bend / 2
+
+        # Drift from Bend to YAG 2 (corrected for dipole on/off)
+        l_d3 = l3 - l_bend / 2 / np.cos(theta_on)
+
+        q = TorchQuadrupole(torch.tensor(l_quad), torch.tensor(0.0), 5)
+        d1 = TorchDrift(torch.tensor(l_d1))
+
+        tdc = TorchCrabCavity(
+            L=torch.tensor(l_tdc),
+            VOLTAGE=torch.tensor(0.0),
+            RF_FREQUENCY=torch.tensor(f_tdc),
+            PHI0=torch.tensor(phi_tdc),
+            TILT=torch.tensor(PI / 2),
         )
 
-        # get entropy
-        entropy = calculate_beam_entropy(proposal_beam)
+        d2 = TorchDrift(L=torch.tensor(l_d2))
 
-        # get beam covariance
-        cov = calculate_covariance(proposal_beam)
+        # initialize with dipole on
+        l_arc = l_bend * theta_on / np.sin(theta_on)
+        g = theta_on / l_arc
 
-        return observations, entropy, cov
+        bend = TorchSBend(
+            L=torch.tensor(l_arc),
+            P0C=torch.tensor(p0c),
+            G=torch.tensor(g),
+            E1=torch.tensor(0.0),
+            E2=torch.tensor(theta_on),
+        )
 
+        d3 = TorchDrift(L=torch.tensor(l_d3))
 
-class VariationalPhaseSpaceReconstructionModel(PhaseSpaceReconstructionModel):
-    def forward(self, K, scan_quad_id=0):
-        proposal_beam = self.beam()
+        lattice = TorchLattice([*upstream_elements, q, d1, tdc, d2, bend, d3])
 
-        # track beam
-        observations, _ = self.track_and_observe_beam(proposal_beam, K, scan_quad_id)
+        self.l_bend = l_bend
+        self.l3 = l3
+        self.diagnostic = diagnostic
+        self.lattice = lattice
 
-        return observations
+    def track_and_observe(self, beam):
+        final_beam = self.lattice(beam)
+        observations = self.diagnostic(final_beam)
 
+        return observations, final_beam
 
-class NNTransform(torch.nn.Module):
-    def __init__(
-        self,
-        n_hidden,
-        width,
-        dropout=0.0,
-        activation=torch.nn.Tanh(),
-        output_scale=1e-2,
-        phase_space_dim=6,
-    ):
+    def set_lattice_parameters(self, x: torch.Tensor):
         """
-        Nonparametric transformation - NN
+        sets the quadrupole / TDC parameters
         """
-        super(NNTransform, self).__init__()
 
-        layer_sequence = [nn.Linear(phase_space_dim, width), activation]
+        # set quad/TDC/G parameters
 
-        for i in range(n_hidden):
-            layer_sequence.append(torch.nn.Linear(width, width))
-            layer_sequence.append(torch.nn.Dropout(dropout))
-            layer_sequence.append(activation)
+        self.lattice.elements[-6].K1.data = x[..., 0].unsqueeze(-1)
+        self.lattice.elements[-4].VOLTAGE.data = x[..., 1].unsqueeze(-1)
+        self.set_dipole_G(x[..., 2].unsqueeze(-1))
 
-        layer_sequence.append(torch.nn.Linear(width, phase_space_dim))
-
-        self.stack = torch.nn.Sequential(*layer_sequence)
-        self.register_buffer("output_scale", torch.tensor(output_scale))
-
-    def forward(self, X):
-        return self.stack(X) * self.output_scale
+    def set_dipole_G(self, G):
+        theta = torch.arcsin(self.l_bend * G)
+        l_arc = theta / G
+        self.lattice.elements[-2].G.data = G
+        self.lattice.elements[-2].L.data = l_arc
+        self.lattice.elements[-2].E2.data = theta
+        self.lattice.elements[-1].L.data = self.l3 - self.l_bend / 2 / torch.cos(theta)
 
 
-class InitialBeam(torch.nn.Module):
-    def __init__(self, transformer, base_dist, n_particles, **kwargs):
-        super(InitialBeam, self).__init__()
-        self.transformer = transformer
-        self.base_dist = base_dist
-        self.base_beam = None
+# class VariationalPhaseSpaceReconstructionModel(PhaseSpaceReconstructionModel):
+#    def forward(self, K, scan_quad_id=0):
+#        proposal_beam = self.beam()
 
-        self.set_base_beam(n_particles, **kwargs)
+# track beam
+#        observations, _ = self.track_and_observe_beam(proposal_beam, K, scan_quad_id)
 
-    def set_base_beam(self, n_particles, **kwargs):
-        self.base_beam = Beam(self.base_dist.sample([n_particles]), **kwargs)
+#        return observations
+
+
+class FixedBeam(torch.nn.Module):
+    def __init__(self, beam):
+        super(FixedBeam, self).__init__()
+        self.beam = beam
 
     def forward(self):
-        transformed_beam = self.transformer(self.base_beam.data)
-        return Beam(
-            transformed_beam, self.base_beam.p0c, self.base_beam.s, self.base_beam.mc2
-        )
+        return self.beam
 
 
 class OffsetBeam(torch.nn.Module):
@@ -159,7 +215,7 @@ class ImageDataset(Dataset):
         return self.k[idx], self.images[idx]
 
 
-class NormalizedQuadScan(nn.Module):
+class NormalizedQuadScan(torch.nn.Module):
     def __init__(self, A, drift, quad_length):
         super().__init__()
         self.register_buffer("A", A)
@@ -167,25 +223,25 @@ class NormalizedQuadScan(nn.Module):
         self.register_buffer("l", quad_length)
 
         # note params are normalized
-        self.register_parameter("lambda_1", nn.Parameter(torch.tensor(1.0)))
-        self.register_parameter("lambda_2", nn.Parameter(torch.tensor(1.0)))
-        self.register_parameter("c", nn.Parameter(torch.tensor(0.0)))
+        self.register_parameter("lambda_1", torch.nn.Parameter(torch.tensor(1.0)))
+        self.register_parameter("lambda_2", torch.nn.Parameter(torch.tensor(1.0)))
+        self.register_parameter("c", torch.nn.Parameter(torch.tensor(0.0)))
 
     def forward(self, k):
         # input should be real k, output is real sigma_x^2
         norm_k = 1 + self.d * self.l * k
         norm_c = torch.tanh(self.c)
         norm_s11 = (
-            norm_k**2 * self.lambda_1**2
-            + 2 * self.d * norm_k * self.lambda_1 * self.lambda_2 * norm_c
-            + self.lambda_2**2 * self.d**2
+                norm_k ** 2 * self.lambda_1 ** 2
+                + 2 * self.d * norm_k * self.lambda_1 * self.lambda_2 * norm_c
+                + self.lambda_2 ** 2 * self.d ** 2
         )
-        return norm_s11 * self.A**2
+        return norm_s11 * self.A ** 2
 
     def emittance(self):
         norm_c = torch.tanh(self.c)
-        norm_emit = (self.lambda_1**2 * self.lambda_2**2 * (1 - norm_c**2)).sqrt()
-        return norm_emit * self.A**2
+        norm_emit = (self.lambda_1 ** 2 * self.lambda_2 ** 2 * (1 - norm_c ** 2)).sqrt()
+        return norm_emit * self.A ** 2
 
 
 def predict_images(beam, lattice, screen):
@@ -246,7 +302,7 @@ class PhaseSpaceReconstructionModel3D(torch.nn.Module):
         # change the dipole attributes + drift attribute
         G = params[:, 2].unsqueeze(-1)
         l_bend = 0.3018
-        theta = torch.arcsin(l_bend * G) # AWA parameters
+        theta = torch.arcsin(l_bend * G)  # AWA parameters
         l_arc = theta / G
         lattice.elements[ids[2]].G.data = G
         lattice.elements[ids[2]].L.data = l_arc
@@ -311,7 +367,7 @@ class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
         # change the dipole attributes + drift attribute
         G = params_dipole_off[:, :, 2]
         l_bend = 0.3018
-        theta = torch.arcsin(l_bend * G) # AWA parameters
+        theta = torch.arcsin(l_bend * G)  # AWA parameters
         l_arc = theta / G
         diagnostics_lattice0.elements[ids[2]].G.data = G
         diagnostics_lattice0.elements[ids[2]].L.data = l_arc
@@ -325,7 +381,7 @@ class PhaseSpaceReconstructionModel3D_2screens(torch.nn.Module):
         # change the dipole attributes + drift attribute
         G = params_dipole_on[:, :, 2]
         l_bend = 0.3018
-        theta = torch.arcsin(l_bend * G) # AWA parameters
+        theta = torch.arcsin(l_bend * G)  # AWA parameters
         l_arc = theta / G
         diagnostics_lattice1.elements[ids[2]].G.data = G
         diagnostics_lattice1.elements[ids[2]].L.data = l_arc
