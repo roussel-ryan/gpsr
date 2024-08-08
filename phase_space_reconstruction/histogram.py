@@ -19,9 +19,8 @@ def marginal_pdf(
 
     Args:
         values: shape [BxNx1].
-        bins: shape [NUM_BINS].
+        bins: shape [BxNUM_BINS].
         sigma: shape [1], gaussian smoothing factor.
-        epsilon: scalar, for numerical stability.
 
     Returns:
         Tuple[torch.Tensor, torch.Tensor]:
@@ -29,31 +28,33 @@ def marginal_pdf(
           - torch.Tensor: shape [BxNxNUM_BINS].
     """
 
-    if not isinstance(values, torch.Tensor):
-        raise TypeError(f"Input values type is not a torch.Tensor. Got {type(values)}")
+    # handle no batching in the bins
+    if len(bins.shape) == 1:
+        bins = bins.repeat(*values.shape)
+        if sigma.shape:
+            raise ValueError("cannot batch sigma when bins are not batched")
+    else:
+        # handle batching in the bins
+        if not values.shape[:-2] == bins.shape[:-1]:
+            raise ValueError(f"bins batch dimension {bins.shape[:-1]} does not match "
+                             f"bins batch dimension {values.shape[:-2]}")
+        repeat_shapes = [1] * (len(bins.shape) + 1)
+        repeat_shapes[-2] = values.shape[-2]
+        bins = bins.unsqueeze(dim=-2).repeat(*repeat_shapes)
 
-    if not isinstance(bins, torch.Tensor):
-        raise TypeError(f"Input bins type is not a torch.Tensor. Got {type(bins)}")
-
-    if not isinstance(sigma, torch.Tensor):
-        raise TypeError(f"Input sigma type is not a torch.Tensor. Got {type(sigma)}")
-
-    if not bins.dim() == 1:
-        raise ValueError(
-            "Input bins must be a of the shape NUM_BINS" " Got {}".format(bins.shape)
-        )
-
-    if not sigma.dim() == 0:
-        raise ValueError(
-            "Input sigma must be a of the shape 1" " Got {}".format(sigma.shape)
-        )
+    # handle batching in sigma -- note bins have been reshaped from above
+    if sigma.shape:
+        if sigma.shape != bins.shape[:-2]:
+            raise ValueError(f"sigma batch dimension {sigma.shape} does not match "
+                             f"bins batch dimension {bins.shape[:-2]}")
+        sigma = sigma.unsqueeze(dim=-1).unsqueeze(dim=-1)
 
     if type(weights) == float:
-        weights = torch.ones(values.shape[:-1])
+        weights = torch.ones(values.shape[:-1])*weights
     elif weights is None:
         weights = 1.0
 
-    residuals = values - bins.repeat(*values.shape)
+    residuals = values - bins
     kernel_values = (
         weights
         * torch.exp(-0.5 * (residuals / sigma).pow(2))
@@ -158,6 +159,7 @@ def histogram2d(
         >>> hist.shape
         torch.Size([2, 128, 128])
     """
+    assert bins1.shape == bins2.shape
 
     _, kernel_values1 = marginal_pdf(x1.unsqueeze(-1), bins1, bandwidth, weights)
     _, kernel_values2 = marginal_pdf(x2.unsqueeze(-1), bins2, bandwidth, weights)
