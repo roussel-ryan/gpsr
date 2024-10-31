@@ -1,8 +1,10 @@
 import torch
+from torch import Tensor
+
 from bmadx.bmad_torch.track_torch import Beam
 from torch.nn import Module
 
-from phase_space_reconstruction.histogram import histogram2d
+from cheetah.utils.kde import kde_histogram_2d
 
 
 class ImageDiagnostic(Module):
@@ -41,7 +43,7 @@ class ImageDiagnostic(Module):
         self.register_buffer("bins_y", bins_y)
         self.register_buffer("bandwidth", bandwidth)
 
-    def forward(self, beam: Beam):
+    def forward(self, beam: Beam) -> Tensor:
         x_vals = getattr(beam, self.x)
         y_vals = getattr(beam, self.y)
         if not x_vals.shape == y_vals.shape:
@@ -50,4 +52,4 @@ class ImageDiagnostic(Module):
         if len(x_vals.shape) == 1:
             raise ValueError("coords must be at least 2D")
 
-        return histogram2d(x_vals, y_vals, self.bins_x, self.bins_y, self.bandwidth)
+        return kde_histogram_2d(x_vals, y_vals, self.bins_x, self.bins_y, self.bandwidth)

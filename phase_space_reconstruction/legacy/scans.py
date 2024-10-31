@@ -143,7 +143,6 @@ def run_awa_3d_scan(beam, lattice, screen, ks, vs, gs, ids=[0, 2, 4], save_as=No
     
     diagnostics_lattice.elements[-1].L.data = 0.889 - l_bend / 2 / torch.cos(theta)
 
-
     # track through lattice
     output_beam = diagnostics_lattice(beam)
 
