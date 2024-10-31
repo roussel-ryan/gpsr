@@ -1,9 +1,17 @@
+from abc import abstractmethod, ABC
+
 import torch
 from torch import Size
 from torch.distributions import MultivariateNormal
 
-from cheetah.particles import ParticleBeam
+from cheetah.particles import ParticleBeam, Beam
 from cheetah.utils.bmadx import bmad_to_cheetah_coords
+
+
+class BeamGenerator(torch.nn.Module, ABC):
+    @abstractmethod
+    def forward(self) -> Beam:
+        pass
 
 
 class NNTransform(torch.nn.Module):
@@ -37,28 +45,27 @@ class NNTransform(torch.nn.Module):
         return self.stack(X) * self.output_scale
 
 
-class NNParticleBeamGenerator(torch.nn.Module):
+class NNParticleBeamGenerator(BeamGenerator):
     def __init__(
             self,
             n_particles,
             energy,
             base_dist=MultivariateNormal(torch.zeros(6), torch.eye(6)),
             transformer=NNTransform(2, 20, output_scale=1e-2),
-            **kwargs
     ):
         super(NNParticleBeamGenerator, self).__init__()
         self.transformer = transformer
         self.base_dist = base_dist
         self.register_buffer("beam_energy", energy)
 
-        self.set_base_particles(n_particles, **kwargs)
+        self.set_base_particles(n_particles)
 
-    def set_base_particles(self, n_particles, **kwargs):
+    def set_base_particles(self, n_particles):
         self.register_buffer(
             "base_particles", self.base_dist.sample(Size([n_particles]))
         )
 
-    def forward(self):
+    def forward(self) -> Beam:
         transformed_beam = self.transformer(self.base_particles)
         transformed_beam = bmad_to_cheetah_coords(
             transformed_beam,

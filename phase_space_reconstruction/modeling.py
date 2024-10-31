@@ -10,6 +10,7 @@ from torch.utils.data import Dataset
 from cheetah.accelerator import Quadrupole, Drift, TransverseDeflectingCavity, \
     Dipole, Segment, Screen
 from cheetah.particles import Beam
+from phase_space_reconstruction.beams import BeamGenerator
 
 
 class GPSRLattice(torch.nn.Module, ABC):
@@ -31,7 +32,7 @@ class GPSRLattice(torch.nn.Module, ABC):
 
 
 class GPSR(torch.nn.Module):
-    def __init__(self, beam_generator, lattice: GPSRLattice):
+    def __init__(self, beam_generator: BeamGenerator, lattice: GPSRLattice):
         super(GPSR, self).__init__()
         self.beam_generator = deepcopy(beam_generator)
         self.lattice = deepcopy(lattice)
