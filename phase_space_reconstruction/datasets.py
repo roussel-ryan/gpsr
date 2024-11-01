@@ -1,5 +1,6 @@
 from typing import Tuple, List
 
+import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -48,3 +49,36 @@ class ObservableDataset(Dataset):
 
     def __getitem__(self, idx) -> (Tensor, List[Tensor]):
         return self.parameters[idx], [ele[idx] for ele in self.observations]
+
+
+class SixDReconstructionDataset(ObservableDataset):
+    def __init__(
+            self,
+            parameters: Tensor,
+            observations: Tuple[Tensor, Tensor],
+            bins: Tuple[Tensor, Tensor]
+    ):
+        """
+        Light wrapper dataset class for 6D phase space reconstructions with quadrupole,
+        dipole and TDC. Checks for correct sizes of parameters and observations.
+
+        Parameters
+        ----------
+        parameters : Tensor
+            Tensor of beamline parameters that correspond to data observations.
+            Should elements along the last dimension should be ordered by (dipole
+            strengths, TDC voltages, quadrupole focusing strengths) and should have a
+            shape of (2 x 2 x K x N) where K is the number of quadrupole strengths.
+        observations : Tuple[Tensor, Tensor]
+            Tuple of tensors contaning observed images, where the tensor shapes
+            should be (2 x K x bins x bins). First entry should be dipole off images.
+        bins: Tuple[Tensor, Tensor]
+            Tuple of 1-D bin locations for each image set.
+
+        """
+
+        assert parameters.shape[:2] == torch.Size([2, 2])
+        assert len(observations) == 2
+
+        super().__init__(parameters, observations)
+        self.bins = bins

@@ -1,6 +1,6 @@
 import torch
 
-from phase_space_reconstruction.modeling import ImageDataset, ImageDataset3D
+from phase_space_reconstruction.legacy.modeling import ImageDataset, ImageDataset3D
 
 
 def run_quad_scan(beam, lattice, screen, ks, scan_quad_id=0, save_as=None):

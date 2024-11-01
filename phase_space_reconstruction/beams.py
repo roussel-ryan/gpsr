@@ -1,7 +1,8 @@
 from abc import abstractmethod, ABC
 
 import torch
-from torch import Size, Module, Tensor
+from torch import Size, Tensor
+from torch.nn import Module
 from torch.distributions import MultivariateNormal, Distribution
 
 from cheetah.particles import ParticleBeam, Beam

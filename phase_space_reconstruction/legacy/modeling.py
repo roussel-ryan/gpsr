@@ -1,6 +1,12 @@
+from copy import deepcopy
 
-    # def set_dipole_G(self, G):
-    #    theta = torch.arcsin(self.l_bend * G)
+import torch
+from torch.utils.data import Dataset  # def set_dipole_G(self, G):
+
+from bmadx.bmad_torch.track_torch import Beam
+
+
+#    theta = torch.arcsin(self.l_bend * G)
     #    l_arc = theta / G
     #    self.lattice.elements[-2].G.data = G
     #    self.lattice.elements[-2].L.data = l_arc
