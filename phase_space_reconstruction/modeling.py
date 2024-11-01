@@ -55,14 +55,14 @@ class GPSRQuadScanLattice(GPSRLattice):
         self.lattice = Segment([q1, d1])
         self.diagnostic = diagnostic
 
-    def track_and_observe(self, beam):
+    def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         final_beam = self.lattice(beam)
         observations = self.diagnostic(final_beam)
 
-        return observations, final_beam
+        return tuple(observations.unsqueeze(0))
 
     def set_lattice_parameters(self, x: torch.Tensor):
-        self.lattice.elements[0].K1.data = x
+        self.lattice.elements[0].k1.data = x
 
 
 class GPSR6DLattice(GPSRLattice):

@@ -19,13 +19,18 @@ class LitGPSR(L.LightningModule, ABC):
         # get the training data batch
         x, y = batch
 
+        # we transpose here because the first dim is batched over different observations
+        x = torch.transpose(x, 0, 1)
+
         # make predictions using the GPSR model
         pred = self.gpsr_model(x)
 
         # add up the loss functions from each prediction (in a tuple)
-        loss = torch.add(
-            *[mae_loss(y_ele, pred_ele) for y_ele, pred_ele in zip(y, pred)]
-        )
+        diff = [mae_loss(y_ele, pred_ele) for y_ele, pred_ele in zip(y, pred)]
+        if len(diff) > 1:
+            loss = torch.add(*diff)
+        else:
+            loss = diff[0]
         # log the loss function at the end of each epoch
         self.log("loss", loss, on_epoch=True)
 
