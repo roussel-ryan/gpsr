@@ -36,18 +36,34 @@ class Test6DLattice:
 
         beam = NNParticleBeamGenerator(100, torch.tensor(10.0e6))
 
-        gpsr_lattice.set_lattice_parameters(
-            torch.stack((
-                torch.tensor((0.0, 0.0, 0.0)),
-                torch.tensor((0.0, 0.0, 1.0))
-            ))
+        # specify beamline parameters, batched by diagnostic path
+        # ie. 2 sets of parameters for each path
+        # lattice parameter shape should be [KxMxN]
+        # where K is the number of paths, M is the number of data samples for each
+        # path, N is the number of parameters varied for each measurement
+        lattice_parameters = torch.stack(
+            (
+                torch.stack((
+                    torch.tensor((0.0, 0.0, 0.0)),
+                    torch.tensor((1.0, 1.0, 0.0)),
+                )),
+                torch.stack((
+                    torch.tensor((0.0, 0.0, 1.0)),
+                    torch.tensor((1.0, 1.0, 1.0)),
+                )),
+            )
         )
+        assert lattice_parameters.shape == torch.Size([2, 2, 3])
+
+        gpsr_lattice.set_lattice_parameters(lattice_parameters)
+
+        final_beam = gpsr_lattice.lattice(beam())
+        assert final_beam.x.shape == torch.Size([2, 2, 100])
 
         obs, final_beam = gpsr_lattice.track_and_observe(beam())
 
-        assert obs.shape == torch.Size([2, 50, 50])
-        assert gpsr_lattice.lattice.elements[-1].L.shape == torch.Size([2, 1])
+        assert obs.shape == torch.Size([2, 2, 50, 50])
+        assert gpsr_lattice.lattice.elements[-1].L.shape == torch.Size([2, 2, 1])
         assert gpsr_lattice.lattice.elements[-1].L[0] != \
                gpsr_lattice.lattice.elements[-1].L[1]
 
-        assert final_beam.x.shape == torch.Size([2, 100])

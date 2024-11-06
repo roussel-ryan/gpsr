@@ -29,7 +29,7 @@ class TestHistogram:
         assert bins.shape == Size([5, 10])  # 5 histograms at 10 points (n histograms
         # must equal the batch shape of the particle data
 
-        sigma = torch.rand(5) + 0.1  # a single bandwidth
+        sigma = torch.rand(5) + 0.1  # a different bandwidth for each set of bins
 
         pdf, _ = marginal_pdf(data, bins, sigma)
         assert pdf.shape == Size([5, 10])  # 5 histograms at 10 points
@@ -47,20 +47,31 @@ class TestHistogram:
             )
 
     def test_histogram_2d_batched(self):
-        data = torch.randn((5, 10000, 2))  # 5 beamline states, 100 particles in 1D
+        data = torch.randn((3, 2, 100, 6))  # 2 diagnostic paths,
+        # 3 states per diagnostic paths,
+        # 100 particles in 6D space
 
-        bins = torch.linspace(0, 1, 10).unsqueeze(dim=0).repeat((5, 1))
-        bins[0] = torch.linspace(-1, 1, 10)
-        bins[-1] = torch.linspace(-10, 10, 10)
+        # two different bins (1 per path)
+        n = 30
+        bins_x = torch.stack((
+            torch.linspace(-20, 20, n) * 1e-3,
+            torch.linspace(-30, 30, n) * 1e-3,
+        ))
+        bins_y = torch.stack((
+            torch.linspace(-20, 20, n) * 1e-3,
+            torch.linspace(-30, 30, n) * 1e-3,
+        ))
 
-        assert bins.shape == Size([5, 10])
+        assert bins_x.shape == Size([2, n])
+        assert bins_y.shape == Size([2, n])
+
         sigma = torch.tensor(0.1)  # a single bandwidth
 
         pdf = histogram2d(
             data[..., 0],
             data[..., 1],
-            bins,
-            bins,
+            bins_x,
+            bins_y,
             sigma
         )
 
