@@ -2,6 +2,7 @@ from typing import Tuple, List
 
 import torch
 from matplotlib import pyplot as plt
+from scipy.ndimage import gaussian_filter
 from torch import Tensor
 from torch.utils.data import Dataset
 
@@ -50,10 +51,11 @@ class ObservableDataset(Dataset):
 
             # we have to flatten any batch dimensions B for batching purposes
             batch_shape = self.parameters.shape[1:-1]
-            self._flattened_parameters = torch.flatten(parameters, start_dim=1, end_dim=-2)
+            self._flattened_parameters = torch.flatten(parameters, start_dim=1,
+                                                       end_dim=-2)
             self._flattened_observations = tuple(
                 [torch.flatten(
-                    ele, end_dim=len(batch_shape)-1
+                    ele, end_dim=len(batch_shape) - 1
                 ) for ele in self.observations]
             )
         else:
@@ -103,7 +105,16 @@ class FourDReconstructionDataset(ObservableDataset):
         super().__init__(parameters.unsqueeze(0), tuple(observations.unsqueeze(0)))
         self.bins = bins
 
-    def plot_data(self):
+    def plot_data(self, overlay_data=None, overlay_kwargs: dict = None):
+
+        # check overlay data size if specified
+        if overlay_data is not None:
+            assert isinstance(overlay_data, type(self))
+            overlay_kwargs = overlay_kwargs or {
+                "levels": [0.1, 0.25, 0.5, 0.75, 0.9],
+                "cmap": "Greys"
+            }
+
         parameters = self.parameters[0]
         n_k = len(parameters)
         fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all",
@@ -122,10 +133,19 @@ class FourDReconstructionDataset(ObservableDataset):
                 vmax=1.0,
                 vmin=0,
             )
-            ax[i].set_title(f"{parameters[i]:.1f}")
 
+            if overlay_data is not None:
+                img = gaussian_filter(images[i].numpy(), 3)
+
+                ax[i].contour(
+                    xx[0].numpy(), xx[1].numpy(),
+                    img / img.max(),
+                    **overlay_kwargs
+                )
+
+            ax[i].set_title(f"{parameters[i]:.1f}")
             ax[i].set_xlabel("x (mm)")
-            #ax[0].text(0.5, 0.5, f"img 1", va="center", ha="center")
+            # ax[0].text(0.5, 0.5, f"img 1", va="center", ha="center")
 
         ax[0].set_ylabel("y (mm)")
         ax[0].text(
@@ -172,11 +192,24 @@ class SixDReconstructionDataset(ObservableDataset):
         super().__init__(parameters, observations)
         self.bins = bins
 
-    def plot_data(self, publication_size: bool = False):
+    def plot_data(
+            self,
+            publication_size: bool = False,
+            overlay_data=None,
+            overlay_kwargs: dict = None
+    ):
         """
         Visualize dataset collected for 6-D phase space reconstructions
 
         """
+
+        # check overlay data size if specified
+        if overlay_data is not None:
+            assert isinstance(overlay_data, type(self))
+            overlay_kwargs = overlay_kwargs or {
+                "levels": [0.1, 0.25, 0.5, 0.75, 0.9],
+                "cmap": "Greys"
+            }
 
         n_g, n_v, n_k = self.parameters.shape[:-1]
         params = self.parameters
@@ -233,6 +266,15 @@ class SixDReconstructionDataset(ObservableDataset):
                         vmax=1.0,
                         vmin=0,
                     )
+
+                    if overlay_data is not None:
+                        img = gaussian_filter(images[j][k, i].numpy(), 3)
+
+                        ax[row_number, i].contour(
+                            xx[0].numpy(), xx[1].numpy(),
+                            img / img.max(),
+                            **overlay_kwargs
+                        )
 
                     if j == 0:
                         v_lbl = "off"
