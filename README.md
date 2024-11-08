@@ -11,7 +11,7 @@ distribtuions from experimental data. This work is based on the following public
 [Efficient six-dimensional phase space reconstructions from experimental measurements using generative machine learning](https://journals.aps.org/prab/abstract/10.1103/PhysRevAccelBeams.27.094601)
 
 <div align="center">
-  <img src="docs/assets/6d_cartoon.png", width="200">
+  <img src="docs/assets/6d_cartoon.png", width="1000">
 </div>
 
 ## Installation
