@@ -7,8 +7,14 @@ import torch
 from torch import Tensor
 from torch.utils.data import Dataset
 
-from cheetah.accelerator import Quadrupole, Drift, TransverseDeflectingCavity, \
-    Dipole, Segment, Screen
+from cheetah.accelerator import (
+    Quadrupole,
+    Drift,
+    TransverseDeflectingCavity,
+    Dipole,
+    Segment,
+    Screen,
+)
 from cheetah.particles import Beam
 from phase_space_reconstruction.beams import BeamGenerator
 
@@ -67,19 +73,19 @@ class GPSRQuadScanLattice(GPSRLattice):
 
 class GPSR6DLattice(GPSRLattice):
     def __init__(
-            self,
-            l_quad: float,
-            l_tdc: float,
-            f_tdc: float,
-            phi_tdc: float,
-            l_bend: float,
-            theta_on: float,
-            l1: float,
-            l2: float,
-            l3: float,
-            screen_1: Screen,
-            screen_2: Screen,
-            upstream_elements=None
+        self,
+        l_quad: float,
+        l_tdc: float,
+        f_tdc: float,
+        phi_tdc: float,
+        l_bend: float,
+        theta_on: float,
+        l1: float,
+        l2: float,
+        l3: float,
+        screen_1: Screen,
+        screen_2: Screen,
+        upstream_elements=None,
     ):
         super().__init__()
 
@@ -99,7 +105,7 @@ class GPSR6DLattice(GPSRLattice):
             torch.tensor(0.0),
             name="SCAN_QUAD",
             num_steps=5,
-            tracking_method="bmadx"
+            tracking_method="bmadx",
         )
         d1 = Drift(torch.tensor(l_d1))
 
@@ -109,7 +115,7 @@ class GPSR6DLattice(GPSRLattice):
             frequency=torch.tensor(f_tdc),
             phase=torch.tensor(phi_tdc),
             tilt=torch.tensor(3.14 / 2),
-            name="SCAN_TDC"
+            name="SCAN_TDC",
         )
 
         d2 = Drift(length=torch.tensor(l_d2))
@@ -174,5 +180,6 @@ class GPSR6DLattice(GPSRLattice):
         self.lattice.SCAN_DIPOLE.e2.data = bend_angle
 
         # set parameters of drift between dipole and screen
-        self.lattice.DIPOLE_TO_SCREEN.length.data = self.l3 - self.l_bend / 2 / \
-                                                    torch.cos(bend_angle)
+        self.lattice.DIPOLE_TO_SCREEN.length.data = (
+            self.l3 - self.l_bend / 2 / torch.cos(bend_angle)
+        )

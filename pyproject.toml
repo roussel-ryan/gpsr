@@ -22,7 +22,8 @@ dependencies = [
   "matplotlib",
   "pytorch",
   "pytorch-cuda",
-  "cheetah-accelerator"
+  "cheetah-accelerator",
+  "tensorboard"
 ]
 description = "Phase space reconstruction using differentiable beam dynamics and generative beam representations"
 dynamic = [ "version" ]

@@ -52,4 +52,6 @@ class ImageDiagnostic(Module):
         if len(x_vals.shape) == 1:
             raise ValueError("coords must be at least 2D")
 
-        return kde_histogram_2d(x_vals, y_vals, self.bins_x, self.bins_y, self.bandwidth)
+        return kde_histogram_2d(
+            x_vals, y_vals, self.bins_x, self.bins_y, self.bandwidth
+        )

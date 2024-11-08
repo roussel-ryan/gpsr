@@ -51,12 +51,14 @@ class ObservableDataset(Dataset):
 
             # we have to flatten any batch dimensions B for batching purposes
             batch_shape = self.parameters.shape[1:-1]
-            self._flattened_parameters = torch.flatten(parameters, start_dim=1,
-                                                       end_dim=-2)
+            self._flattened_parameters = torch.flatten(
+                parameters, start_dim=1, end_dim=-2
+            )
             self._flattened_observations = tuple(
-                [torch.flatten(
-                    ele, end_dim=len(batch_shape) - 1
-                ) for ele in self.observations]
+                [
+                    torch.flatten(ele, end_dim=len(batch_shape) - 1)
+                    for ele in self.observations
+                ]
             )
         else:
             self._flattened_parameters = parameters
@@ -68,7 +70,7 @@ class ObservableDataset(Dataset):
     def __getitem__(self, idx) -> (Tensor, List[Tensor]):
         return (
             self._flattened_parameters[:, idx],
-            [ele[idx] for ele in self._flattened_observations]
+            [ele[idx] for ele in self._flattened_observations],
         )
 
     def plot_data(self):
@@ -76,58 +78,50 @@ class ObservableDataset(Dataset):
 
 
 class FourDReconstructionDataset(ObservableDataset):
-    def __init__(
-            self,
-            parameters: Tensor,
-            observations: Tensor,
-            bins: Tensor
-    ):
+    def __init__(self, parameters: Tensor, observations: Tensor, bins: Tensor):
         """
-                Light wrapper dataset class for 4D phase space reconstructions with
-                quadrupole. Checks for correct sizes of parameters and observations
-                and provides a plotting utility.
+        Light wrapper dataset class for 4D phase space reconstructions with
+        quadrupole. Checks for correct sizes of parameters and observations
+        and provides a plotting utility.
 
-                Parameters
-                ----------
-                parameters : Tensor
-                    Tensor of beamline parameters that correspond to data observations.
-                    Should elements along the last dimension should be ordered by (dipole
-                    strengths, TDC voltages, quadrupole focusing strengths) and should have a
-                    shape of (K x N) where K is the number of quadrupole strengths.
-                observations : Tensor
-                    Tensor contaning observed images, where the tensor shapes
-                    should be (K x bins x bins). First entry should be dipole off images.
-                bins: Tensor
-                    Tensor of 1-D bin locations for each image set.
+        Parameters
+        ----------
+        parameters : Tensor
+            Tensor of beamline parameters that correspond to data observations.
+            Should elements along the last dimension should be ordered by (dipole
+            strengths, TDC voltages, quadrupole focusing strengths) and should have a
+            shape of (K x N) where K is the number of quadrupole strengths.
+        observations : Tensor
+            Tensor contaning observed images, where the tensor shapes
+            should be (K x bins x bins). First entry should be dipole off images.
+        bins: Tensor
+            Tensor of 1-D bin locations for each image set.
 
-                """
+        """
 
         super().__init__(parameters.unsqueeze(0), tuple(observations.unsqueeze(0)))
         self.bins = bins
 
     def plot_data(self, overlay_data=None, overlay_kwargs: dict = None):
-
         # check overlay data size if specified
         if overlay_data is not None:
             assert isinstance(overlay_data, type(self))
             overlay_kwargs = overlay_kwargs or {
                 "levels": [0.1, 0.25, 0.5, 0.75, 0.9],
-                "cmap": "Greys"
+                "cmap": "Greys",
             }
 
         parameters = self.parameters[0]
         n_k = len(parameters)
-        fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all",
-                               sharey="all")
+        fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all", sharey="all")
 
-        xx = torch.meshgrid(
-            self.bins * 1e3, self.bins * 1e3, indexing="ij"
-        )
+        xx = torch.meshgrid(self.bins * 1e3, self.bins * 1e3, indexing="ij")
         images = self.observations[0]
 
         for i in range(n_k):
             ax[i].pcolormesh(
-                xx[0].numpy(), xx[1].numpy(),
+                xx[0].numpy(),
+                xx[1].numpy(),
                 images[i] / images[i].max(),
                 rasterized=True,
                 vmax=1.0,
@@ -138,9 +132,7 @@ class FourDReconstructionDataset(ObservableDataset):
                 img = gaussian_filter(images[i].numpy(), 3)
 
                 ax[i].contour(
-                    xx[0].numpy(), xx[1].numpy(),
-                    img / img.max(),
-                    **overlay_kwargs
+                    xx[0].numpy(), xx[1].numpy(), img / img.max(), **overlay_kwargs
                 )
 
             ax[i].set_title(f"{parameters[i]:.1f}")
@@ -162,10 +154,10 @@ class FourDReconstructionDataset(ObservableDataset):
 
 class SixDReconstructionDataset(ObservableDataset):
     def __init__(
-            self,
-            parameters: Tensor,
-            observations: Tuple[Tensor, Tensor],
-            bins: Tuple[Tensor, Tensor]
+        self,
+        parameters: Tensor,
+        observations: Tuple[Tensor, Tensor],
+        bins: Tuple[Tensor, Tensor],
     ):
         """
         Light wrapper dataset class for 6D phase space reconstructions with quadrupole,
@@ -193,10 +185,10 @@ class SixDReconstructionDataset(ObservableDataset):
         self.bins = bins
 
     def plot_data(
-            self,
-            publication_size: bool = False,
-            overlay_data=None,
-            overlay_kwargs: dict = None
+        self,
+        publication_size: bool = False,
+        overlay_data=None,
+        overlay_kwargs: dict = None,
     ):
         """
         Visualize dataset collected for 6-D phase space reconstructions
@@ -208,7 +200,7 @@ class SixDReconstructionDataset(ObservableDataset):
             assert isinstance(overlay_data, type(self))
             overlay_kwargs = overlay_kwargs or {
                 "levels": [0.1, 0.25, 0.5, 0.75, 0.9],
-                "cmap": "Greys"
+                "cmap": "Greys",
             }
 
         n_g, n_v, n_k = self.parameters.shape[:-1]
@@ -229,8 +221,14 @@ class SixDReconstructionDataset(ObservableDataset):
         else:
             figsize = ((n_k + 1) * 2, (n_v + n_g + 1) * 2)
             kwargs = {"right": 0.9}
-        fig, ax = plt.subplots(n_v + n_g, n_k, figsize=figsize, gridspec_kw=kwargs,
-                               sharex="all", sharey="all")
+        fig, ax = plt.subplots(
+            n_v + n_g,
+            n_k,
+            figsize=figsize,
+            gridspec_kw=kwargs,
+            sharex="all",
+            sharey="all",
+        )
 
         # ax[0, 0].set_axis_off()
         ax[0, 0].text(
@@ -253,14 +251,12 @@ class SixDReconstructionDataset(ObservableDataset):
             )
             for k in range(n_v):
                 for j in range(n_g):
-
-                    xx = torch.meshgrid(
-                        bins[j] * 1e3, bins[j] * 1e3
-                    )
+                    xx = torch.meshgrid(bins[j] * 1e3, bins[j] * 1e3)
 
                     row_number = 2 * j + k
                     ax[row_number, i].pcolormesh(
-                        xx[0].numpy(), xx[1].numpy(),
+                        xx[0].numpy(),
+                        xx[1].numpy(),
                         images[j][k, i] / images[j][k, i].max(),
                         rasterized=True,
                         vmax=1.0,
@@ -271,9 +267,10 @@ class SixDReconstructionDataset(ObservableDataset):
                         img = gaussian_filter(images[j][k, i].numpy(), 3)
 
                         ax[row_number, i].contour(
-                            xx[0].numpy(), xx[1].numpy(),
+                            xx[0].numpy(),
+                            xx[1].numpy(),
                             img / img.max(),
-                            **overlay_kwargs
+                            **overlay_kwargs,
                         )
 
                     if j == 0:

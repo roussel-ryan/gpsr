@@ -17,13 +17,13 @@ class BeamGenerator(torch.nn.Module, ABC):
 
 class NNTransform(torch.nn.Module):
     def __init__(
-            self,
-            n_hidden: int,
-            width: int,
-            dropout: float = 0.0,
-            activation: Module = torch.nn.Tanh(),
-            output_scale: float = 1e-2,
-            phase_space_dim: int = 6,
+        self,
+        n_hidden: int,
+        width: int,
+        dropout: float = 0.0,
+        activation: Module = torch.nn.Tanh(),
+        output_scale: float = 1e-2,
+        phase_space_dim: int = 6,
     ):
         """
         Nonparametric transformation - NN
@@ -48,11 +48,11 @@ class NNTransform(torch.nn.Module):
 
 class NNParticleBeamGenerator(BeamGenerator):
     def __init__(
-            self,
-            n_particles: int,
-            energy: float,
-            base_dist: Distribution = MultivariateNormal(torch.zeros(6), torch.eye(6)),
-            transformer: NNTransform = NNTransform(2, 20, output_scale=1e-2),
+        self,
+        n_particles: int,
+        energy: float,
+        base_dist: Distribution = MultivariateNormal(torch.zeros(6), torch.eye(6)),
+        transformer: NNTransform = NNTransform(2, 20, output_scale=1e-2),
     ):
         super(NNParticleBeamGenerator, self).__init__()
         self.transformer = transformer
@@ -69,8 +69,6 @@ class NNParticleBeamGenerator(BeamGenerator):
     def forward(self) -> Beam:
         transformed_beam = self.transformer(self.base_particles)
         transformed_beam = bmad_to_cheetah_coords(
-            transformed_beam,
-            self.beam_energy,
-            torch.tensor(0.511e6)
+            transformed_beam, self.beam_energy, torch.tensor(0.511e6)
         )
         return ParticleBeam(*transformed_beam)

@@ -108,7 +108,7 @@ def get_beam_fraction_bmadx_particle(beam_distribution: Particle, beam_fraction)
         *frac_coords.T,
         p0c=beam_distribution.p0c,
         s=beam_distribution.s,
-        mc2=beam_distribution.mc2
+        mc2=beam_distribution.mc2,
     )
 
     return frac_particle

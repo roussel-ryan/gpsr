@@ -43,7 +43,7 @@ class TestHistogram:
             marginal_pdf(
                 data,
                 torch.linspace(0, 1, 10).unsqueeze(dim=0).repeat((3, 1)),
-                torch.tensor(1.0)
+                torch.tensor(1.0),
             )
 
     def test_histogram_2d_batched(self):
@@ -53,44 +53,33 @@ class TestHistogram:
 
         # two different bins (1 per path)
         n = 30
-        bins_x = torch.stack((
-            torch.linspace(-20, 20, n) * 1e-3,
-            torch.linspace(-30, 30, n) * 1e-3,
-        ))
-        bins_y = torch.stack((
-            torch.linspace(-20, 20, n) * 1e-3,
-            torch.linspace(-30, 30, n) * 1e-3,
-        ))
+        bins_x = torch.stack(
+            (
+                torch.linspace(-20, 20, n) * 1e-3,
+                torch.linspace(-30, 30, n) * 1e-3,
+            )
+        )
+        bins_y = torch.stack(
+            (
+                torch.linspace(-20, 20, n) * 1e-3,
+                torch.linspace(-30, 30, n) * 1e-3,
+            )
+        )
 
         assert bins_x.shape == Size([2, n])
         assert bins_y.shape == Size([2, n])
 
         sigma = torch.tensor(0.1)  # a single bandwidth
 
-        pdf = histogram2d(
-            data[..., 0],
-            data[..., 1],
-            bins_x,
-            bins_y,
-            sigma
-        )
+        pdf = histogram2d(data[..., 0], data[..., 1], bins_x, bins_y, sigma)
 
         assert pdf.shape == Size([5, 10, 10])
         for ele in pdf:
             assert torch.isclose(ele.sum(), torch.tensor(1.0))
-            #fig, ax = plt.subplots()
-            #ax.imshow(ele)
+            # fig, ax = plt.subplots()
+            # ax.imshow(ele)
 
         # test bad bins
         with pytest.raises(ValueError):
             bins = torch.randn(6, 5)
-            histogram2d(
-                data[..., 0],
-                data[..., 1],
-                bins,
-                bins,
-                sigma
-            )
-
-
-
+            histogram2d(data[..., 0], data[..., 1], bins, bins, sigma)
