@@ -3,7 +3,7 @@ import torch
 from torch.nn import Module, Parameter
 from torch.nn.functional import mse_loss
 
-from phase_space_reconstruction.utils import calculate_centroid, calculate_ellipse
+from gpsr.utils import calculate_centroid, calculate_ellipse
 
 
 def normalize_images(images):

@@ -4,8 +4,8 @@ import lightning as L
 import torch
 from torch import optim
 
-from phase_space_reconstruction.losses import mae_loss
-from phase_space_reconstruction.modeling import (
+from gpsr.losses import mae_loss
+from gpsr.modeling import (
     GPSR,
 )
 

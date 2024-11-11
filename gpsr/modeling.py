@@ -16,7 +16,7 @@ from cheetah.accelerator import (
     Screen,
 )
 from cheetah.particles import Beam
-from phase_space_reconstruction.beams import BeamGenerator
+from gpsr.beams import BeamGenerator
 
 
 class GPSRLattice(torch.nn.Module, ABC):
