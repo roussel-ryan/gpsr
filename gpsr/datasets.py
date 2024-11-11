@@ -46,6 +46,9 @@ class ObservableDataset(Dataset):
         self.parameters = parameters
         self.observations = observations
 
+        if not isinstance(observations, tuple):
+            raise ValueError("observations must be passed as a tuple of tensors")
+
         if len(self.observations) > 1:
             assert len(self.observations) == self.parameters.shape[0]
 
@@ -189,6 +192,7 @@ class SixDReconstructionDataset(ObservableDataset):
         publication_size: bool = False,
         overlay_data=None,
         overlay_kwargs: dict = None,
+        show_difference: bool = False
     ):
         """
         Visualize dataset collected for 6-D phase space reconstructions
@@ -252,32 +256,46 @@ class SixDReconstructionDataset(ObservableDataset):
             for k in range(n_v):
                 for j in range(n_g):
                     xx = torch.meshgrid(bins[j] * 1e3, bins[j] * 1e3)
-
                     row_number = 2 * j + k
-                    ax[row_number, i].pcolormesh(
-                        xx[0].numpy(),
-                        xx[1].numpy(),
-                        images[j][k, i] / images[j][k, i].max(),
-                        rasterized=True,
-                        vmax=1.0,
-                        vmin=0,
-                    )
 
-                    if overlay_data is not None:
-                        img = gaussian_filter(images[j][k, i].numpy(), 3)
-
-                        ax[row_number, i].contour(
+                    if show_difference and overlay_data is not None:
+                        # if flags are specified plot the difference
+                        ax[row_number, i].pcolormesh(
                             xx[0].numpy(),
                             xx[1].numpy(),
-                            img / img.max(),
-                            **overlay_kwargs,
+                            torch.abs(
+                                images[j][k, i] - overlay_data.observations[j][k, i]
+                            ),
+                            rasterized=True,
                         )
 
-                    if j == 0:
+                    else:
+                        ax[row_number, i].pcolormesh(
+                            xx[0].numpy(),
+                            xx[1].numpy(),
+                            images[j][k, i] / images[j][k, i].max(),
+                            rasterized=True,
+                            vmax=1.0,
+                            vmin=0,
+                        )
+
+                        if overlay_data is not None:
+                            img = gaussian_filter(
+                                overlay_data.observations[j][k, i].numpy(), 3
+                            )
+
+                            ax[row_number, i].contour(
+                                xx[0].numpy(),
+                                xx[1].numpy(),
+                                img / img.max(),
+                                **overlay_kwargs,
+                            )
+
+                    if k == 0:
                         v_lbl = "off"
                     else:
                         v_lbl = "on"
-                    if k == 0:
+                    if j == 0:
                         g_lbl = "off"
                     else:
                         g_lbl = "on"
