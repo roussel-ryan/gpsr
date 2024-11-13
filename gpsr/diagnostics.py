@@ -1,9 +1,9 @@
 import torch
 from torch import Tensor
 
-from bmadx.bmad_torch.track_torch import Beam
 from torch.nn import Module
 
+from cheetah.particles import ParticleBeam
 from cheetah.utils.kde import kde_histogram_2d
 
 
@@ -43,7 +43,7 @@ class ImageDiagnostic(Module):
         self.register_buffer("bins_y", bins_y)
         self.register_buffer("bandwidth", bandwidth)
 
-    def forward(self, beam: Beam) -> Tensor:
+    def forward(self, beam:ParticleBeam) -> Tensor:
         x_vals = getattr(beam, self.x)
         y_vals = getattr(beam, self.y)
         if not x_vals.shape == y_vals.shape:
