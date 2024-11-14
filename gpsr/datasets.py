@@ -98,7 +98,8 @@ class FourDReconstructionDataset(ObservableDataset):
             Tensor contaning observed images, where the tensor shapes
             should be (K x bins x bins). First entry should be dipole off images.
         bins: Tensor
-            Tensor of 1-D bin locations for each image set.
+            Tensor of 1-D bin locations for each image set. Assumes square images with
+            the same bin locations.
 
         """
 
@@ -175,9 +176,11 @@ class SixDReconstructionDataset(ObservableDataset):
             shape of (2 x 2 x K x N) where K is the number of quadrupole strengths.
         observations : Tuple[Tensor, Tensor]
             Tuple of tensors contaning observed images, where the tensor shapes
-            should be (2 x K x bins x bins). First entry should be dipole off images.
+            should be (2 x K x n_bins x n_bins). First entry should be dipole off
+            images.
         bins: Tuple[Tensor, Tensor]
-            Tuple of 1-D bin locations for each image set.
+            Tuple of 1-D bin locations for each image set. Assumes square images with
+            the same bin locations.
 
         """
 
