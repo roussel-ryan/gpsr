@@ -11,9 +11,10 @@ from gpsr.modeling import (
 
 
 class LitGPSR(L.LightningModule, ABC):
-    def __init__(self, gpsr_model: GPSR):
+    def __init__(self, gpsr_model: GPSR, lr=1e-3):
         super().__init__()
         self.gpsr_model = gpsr_model
+        self.lr = lr
 
     def training_step(self, batch, batch_idx):
         # get the training data batch
@@ -37,5 +38,5 @@ class LitGPSR(L.LightningModule, ABC):
         return loss
 
     def configure_optimizers(self):
-        optimizer = optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = optim.Adam(self.parameters(), lr=self.lr)
         return optimizer

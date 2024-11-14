@@ -260,13 +260,21 @@ class SixDReconstructionDataset(ObservableDataset):
 
                     if show_difference and overlay_data is not None:
                         # if flags are specified plot the difference
+                        diff = torch.abs(
+                            images[j][k, i] - overlay_data.observations[j][k, i]
+                        )
                         ax[row_number, i].pcolormesh(
                             xx[0].numpy(),
                             xx[1].numpy(),
-                            torch.abs(
-                                images[j][k, i] - overlay_data.observations[j][k, i]
-                            ),
+                            diff,
                             rasterized=True,
+                        )
+                        ax[row_number, i].text(
+                            0.01,
+                            0.99, f'{torch.sum(diff):.2}',
+                            color='white',
+                            transform=ax[row_number, i].transAxes,
+                            ha='left', va='top', fontsize=8
                         )
 
                     else:
