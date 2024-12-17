@@ -125,10 +125,10 @@ class GPSR6DLattice(GPSRLattice):
 
         bend = Dipole(
             name="SCAN_DIPOLE",
-            length=torch.tensor(l_arc),
-            angle=torch.tensor(0.0),
-            e1=torch.tensor(0.0),
-            e2=torch.tensor(theta_on),
+            length=torch.tensor(l_arc).float(),
+            angle=torch.tensor(0.0).float(),
+            dipole_e1=torch.tensor(0.0).float(),
+            dipole_e2=torch.tensor(theta_on).float(),
         )
 
         d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3))
@@ -177,7 +177,7 @@ class GPSR6DLattice(GPSRLattice):
         arc_length = bend_angle / G
         self.lattice.SCAN_DIPOLE.angle.data = bend_angle
         self.lattice.SCAN_DIPOLE.length.data = arc_length
-        self.lattice.SCAN_DIPOLE.e2.data = bend_angle
+        self.lattice.SCAN_DIPOLE.dipole_e2.data = bend_angle
 
         # set parameters of drift between dipole and screen
         self.lattice.DIPOLE_TO_SCREEN.length.data = (
