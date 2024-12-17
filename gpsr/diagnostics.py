@@ -42,7 +42,7 @@ class ImageDiagnostic(Module):
         self.register_buffer("bins_y", bins_y)
         self.register_buffer("bandwidth", bandwidth)
 
-    def forward(self, beam:ParticleBeam) -> Tensor:
+    def forward(self, beam: ParticleBeam) -> Tensor:
         x_vals = getattr(beam, self.x)
         y_vals = getattr(beam, self.y)
         if not x_vals.shape == y_vals.shape:

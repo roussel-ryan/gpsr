@@ -195,7 +195,7 @@ class SixDReconstructionDataset(ObservableDataset):
         publication_size: bool = False,
         overlay_data=None,
         overlay_kwargs: dict = None,
-        show_difference: bool = False
+        show_difference: bool = False,
     ):
         """
         Visualize dataset collected for 6-D phase space reconstructions
@@ -274,10 +274,13 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
                         ax[row_number, i].text(
                             0.01,
-                            0.99, f'{torch.sum(diff):.2}',
-                            color='white',
+                            0.99,
+                            f"{torch.sum(diff):.2}",
+                            color="white",
                             transform=ax[row_number, i].transAxes,
-                            ha='left', va='top', fontsize=8
+                            ha="left",
+                            va="top",
+                            fontsize=8,
                         )
 
                     else:
