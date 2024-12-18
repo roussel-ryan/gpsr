@@ -1,9 +1,8 @@
-*.pt
 *.pth
 #*.dset
 **/__pycache__/
 .idea/
-phase_space_reconstruction.egg-info/
+*egg-info/
 **/.ipynb_checkpoints/
 *.data
 *.h5
@@ -11,3 +10,7 @@ phase_space_reconstruction.egg-info/
 *.sdds
 *.opal
 *.stat
+*.ckpt
+**/lightning_logs/
+dev
+**/_version.py

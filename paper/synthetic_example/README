@@ -1,8 +1,0 @@
-# analysis steps
-- generate synthetic test beam and test images (synthetic_beam/generate_beam.ipynb)
-    - use distgen to generate simple beam using gaussian.yaml and then modify dist in
-     + track synthetic beam through lattice in generate_test_beam.py (called in
-     generate_beam.ipynb)
-    - note number of particles -> can get expensive
-- fit images using fitting.py
-- analyze in various notebooks
