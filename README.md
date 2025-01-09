@@ -20,5 +20,10 @@ Using `pip`
 ```shell
 git clone https://github.com/roussel-ryan/gpsr.git
 cd gpsr
-pip install .
+pip install -e .
+```
+or for development,
+
+```shell
+pip install -e ".[dev]"
 ```
