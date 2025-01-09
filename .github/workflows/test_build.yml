@@ -24,7 +24,7 @@ jobs:
           channels: conda-forge
           activate-environment: gpsr-dev
 
-      - name: Install lume-model
+      - name: Install gpsr
         shell: bash -l {0}
         run: |
           pip install -e ".[dev]"
