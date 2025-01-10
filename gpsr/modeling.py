@@ -130,7 +130,7 @@ class GPSR6DLattice(GPSRLattice):
             dipole_e2=torch.tensor(theta_on).float(),
         )
 
-        d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3))
+        d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3).float())
 
         lattice = Segment([*upstream_elements, q, d1, tdc, d2, bend, d3])
 
@@ -143,6 +143,17 @@ class GPSR6DLattice(GPSRLattice):
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way
         final_beam = self.lattice(beam)
+
+        # check to make sure the beam has the correct batch dimension
+        # if not its likely because set_lattice_parameters has not been called yet
+        particle_shape = final_beam.particles.shape
+        if not particle_shape[0] == 2:
+            raise RuntimeError(
+                "particle tracking did not return the correct "
+                "particle batch shape, did you call "
+                "set_lattice_parameters yet. Found particle shape "
+                f"{particle_shape}"
+            )
 
         # observe the beam at the different diagnostics based on the first batch
         # dimension
@@ -159,12 +170,14 @@ class GPSR6DLattice(GPSRLattice):
         -----------
         x : Tensor
             Specifies the scan parameters in a batched manner with the
-            following shape: (M x N x K x 3) where M is the number of dipole states,
+            following shape: (2 x N x K x 3) where 2 is the number of dipole states,
             N is the number of TDC states and K is the number of quadrupole
             strengths. The elements of the final dimension correspond to the
             dipole angles, TDC voltages, and quadrupole strengths respectively
 
         """
+        if not (x.shape[0] == 2 and x.shape[-1] == 3):
+            raise ValueError(f"incorrect input shape, got {x.shape}")
 
         # set quad/TDC parameters
         self.lattice.SCAN_QUAD.k1.data = x[..., 2]
