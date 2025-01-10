@@ -3,8 +3,9 @@ Generative Phase Space Reconstruction (GPSR)
 
 Flexible reconstruction of beam distributions from experimental measurements.
 
-The goal of this package is to provide software necessary to reconstruct phase space 
-distribtuions from experimental data. This work is based on the following publications:
+The goal of this package is to provide software necessary to reconstruct
+phase space distributions from experimental data. This work is based on
+the following publications:
 
 [Phase Space Reconstruction from Accelerator Beam Measurements Using Neural Networks and Differentiable Simulations](https://journals.aps.org/prl/abstract/10.1103/PhysRevLett.130.145001)
 
