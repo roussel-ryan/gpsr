@@ -1,4 +1,3 @@
-import matplotlib.pyplot as plt
 import torch
 from torch.nn import Module, Parameter
 from torch.nn.functional import mse_loss
@@ -84,7 +83,6 @@ class MENTLoss(Module):
         # target_image = target_image_original
         pred_image = normalize_images(outputs[0])
         entropy = outputs[1]
-        cov = outputs[2]
 
         # compare image centroids to get regularization
         x = torch.arange(target_image.shape[-1]).to(target_image)
@@ -107,48 +105,4 @@ class MENTLoss(Module):
             + self.alpha_ * cov_loss
         )
 
-        """
-        if 0:
-            fig, ax = plt.subplots(4, 2, sharex="all", sharey="all")
-            fig.set_size_inches(5, 15)
-            ax[0][0].set_title(image_loss.data)
-            for i in range(4):
-                ax[i][0].imshow(
-                    target_image[i][0].cpu().detach(),
-                    vmin=0,
-                    vmax=0.005,
-                    origin="lower",
-                )
-                ax[i][0].plot(
-                    target_centroids[0][i, 0].cpu().detach(),
-                    target_centroids[1][i, 0].cpu().detach(),
-                    "r+",
-                )
-                ax[i][1].imshow(
-                    pred_image[i][0].cpu().detach(), vmin=0, vmax=0.005, origin="lower"
-                )
-                ax[i][1].plot(
-                    pred_centroids[0][i, 0].cpu().detach(),
-                    pred_centroids[1][i, 0].cpu().detach(),
-                    "r+",
-                )
-            print(image_loss)
-            plt.show()
-        """
-        """
-        self.loss_record.append(
-            [
-                torch.tensor(
-                    [
-                        self.lambda_ * image_loss,
-                        -entropy,
-                        self.beta_ * centroid_loss,
-                        self.alpha_ * cov_loss,
-                        total_loss * self.gamma_,
-                    ]
-                ),
-                cov,
-            ]
-        )
-        """
         return total_loss * self.gamma_

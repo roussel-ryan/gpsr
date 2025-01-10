@@ -5,7 +5,6 @@ from typing import Tuple
 import numpy as np
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset
 
 from cheetah.accelerator import (
     Quadrupole,
