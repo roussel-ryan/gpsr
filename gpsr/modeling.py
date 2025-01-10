@@ -5,7 +5,6 @@ from typing import Tuple
 import numpy as np
 import torch
 from torch import Tensor
-from torch.utils.data import Dataset
 
 from cheetah.accelerator import (
     Quadrupole,
@@ -131,7 +130,7 @@ class GPSR6DLattice(GPSRLattice):
             dipole_e2=torch.tensor(theta_on).float(),
         )
 
-        d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3))
+        d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3).float())
 
         lattice = Segment([*upstream_elements, q, d1, tdc, d2, bend, d3])
 
@@ -144,6 +143,16 @@ class GPSR6DLattice(GPSRLattice):
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way
         final_beam = self.lattice(beam)
+
+        # check to make sure the beam has the correct batch dimension
+        # if not its likely because set_lattice_parameters has not been called yet
+        particle_shape = final_beam.particles.shape
+        if not (particle_shape[0] == 2 and len(particle_shape) == 4):
+            raise RuntimeError(
+                "particle tracking did not return the correct "
+                "particle batch shape, did you call "
+                "set_lattice_parameters yet"
+            )
 
         # observe the beam at the different diagnostics based on the first batch
         # dimension
