@@ -1,8 +1,7 @@
-import pytest
 import torch
 from torch.distributions import MultivariateNormal
 from cheetah.particles import ParticleBeam
-from gpsr.beams import BeamGenerator, NNTransform, NNParticleBeamGenerator
+from gpsr.beams import NNTransform, NNParticleBeamGenerator
 
 
 class TestBeams:

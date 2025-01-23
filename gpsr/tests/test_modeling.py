@@ -112,26 +112,29 @@ class TestModeling:
             screen_2,
         )
 
-        x = torch.tensor([[[
-            [0.2, 0.5, 0.1],
-            [0.2, 0.5, 0.1]
-        ]]]).reshape(2, 1, 1, 3)
+        x = torch.tensor([[[[0.2, 0.5, 0.1], [0.2, 0.5, 0.1]]]]).reshape(2, 1, 1, 3)
         lattice.set_lattice_parameters(x)
 
         assert torch.equal(
-            lattice.lattice.SCAN_QUAD.k1, torch.tensor([0.1,0.1]).reshape(2, 1, 1)
+            lattice.lattice.SCAN_QUAD.k1, torch.tensor([0.1, 0.1]).reshape(2, 1, 1)
         )
         assert torch.equal(
             lattice.lattice.SCAN_TDC.voltage, torch.tensor([0.5, 0.5]).reshape(2, 1, 1)
         )
         assert torch.allclose(
-            lattice.lattice.SCAN_DIPOLE.angle, torch.tensor([0.16,0.16]).reshape(2, 1, 1), atol=1e-2
+            lattice.lattice.SCAN_DIPOLE.angle,
+            torch.tensor([0.16, 0.16]).reshape(2, 1, 1),
+            atol=1e-2,
         )
         assert torch.allclose(
-            lattice.lattice.SCAN_DIPOLE.length, torch.tensor([0.8035,0.8035]).reshape(2, 1, 1), atol=1e-2
+            lattice.lattice.SCAN_DIPOLE.length,
+            torch.tensor([0.8035, 0.8035]).reshape(2, 1, 1),
+            atol=1e-2,
         )
         assert torch.allclose(
-            lattice.lattice.SCAN_DIPOLE.dipole_e2, torch.tensor([0.16,0.16]).reshape(2, 1, 1), atol=1e-2
+            lattice.lattice.SCAN_DIPOLE.dipole_e2,
+            torch.tensor([0.16, 0.16]).reshape(2, 1, 1),
+            atol=1e-2,
         )
 
     def test_gpsr_6d_lattice_track_and_observe(self):
