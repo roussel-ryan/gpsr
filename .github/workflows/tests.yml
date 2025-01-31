@@ -24,8 +24,6 @@ jobs:
       - uses: conda-incubator/setup-miniconda@v3
         with:
           python-version: ${{ matrix.python-version }}
-          miniforge-version: latest
-          use-mamba: true
           channels: conda-forge
           activate-environment: gpsr-dev
 
