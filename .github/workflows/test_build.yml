@@ -3,7 +3,6 @@ name: Test build
 on:
   push:
   pull_request:
-    types: [opened, synchronize, reopened]
 
 jobs:
   build:
@@ -28,11 +27,6 @@ jobs:
         shell: bash -l {0}
         run: |
           pip install -e ".[dev]"
-
-#      - name: Run Tests
-#        shell: bash -l {0}
-#        run: |
-#          pytest -ra --pyargs tests
 
       - name: Install build
         shell: bash -l {0}

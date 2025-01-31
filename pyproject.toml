@@ -34,8 +34,7 @@ dev = [
   "pytest",
   "pytest-cov",
   "jupyter",
-  "pre-commit",
-  "ruff"
+  "pre-commit"
 ]
 doc = [
   "mkdocs",
