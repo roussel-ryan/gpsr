@@ -9,6 +9,9 @@ jobs:
     if: ${{ github.repository == 'roussel-ryan/gpsr' }}
     name: Build and publish Python distributions to PyPI
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/gpsr
     permissions:
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
 
