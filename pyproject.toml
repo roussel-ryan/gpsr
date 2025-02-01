@@ -1,7 +1,7 @@
 [build-system]
 build-backend = "setuptools.build_meta"
 requires = [
-  "setuptools>=60",
+  "setuptools>=75.0",
   "setuptools_scm[toml]>=8.0"
 ]
 
@@ -18,9 +18,7 @@ classifiers = [
 ]
 dependencies = [
   "lightning",
-  "numpy",
   "matplotlib",
-  "torch",
   "cheetah-accelerator",
   "tensorboard"
 ]
@@ -34,13 +32,9 @@ requires-python = ">=3.10"
 [project.optional-dependencies]
 dev = [
   "pytest",
-  "ffmpeg",
-  "pytest",
   "pytest-cov",
-  "jupyterlab>=3",
-  "jupyterlab-lsp",
-  "python-lsp-server",
-  "pygments",
+  "jupyter",
+  "pre-commit"
 ]
 doc = [
   "mkdocs",
