@@ -1,20 +1,16 @@
 name: gpsr
 channels:
   - conda-forge
-  - pytorch
-  - nvidia
 dependencies:
-  - lightning
-  - python>=3.10
-  - ipython
-  - ipykernel
-  - pytorch
-  - pytorch-cuda>=11.8
-  - tensorboard
-  - numpy
-  - matplotlib
-  - scipy
-  - tqdm
+  - python=3.12
   - pip
   - pip:
+    - numpy
+    - matplotlib
+    - scipy
+    - ipykernel
+    - tqdm
+    - torch
+    - lightning
+    - tensorboard
     - cheetah-accelerator
