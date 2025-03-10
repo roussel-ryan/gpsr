@@ -14,3 +14,4 @@
 **/lightning_logs/
 dev
 **/_version.py
+/.vscode

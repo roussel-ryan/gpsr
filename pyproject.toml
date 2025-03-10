@@ -20,7 +20,9 @@ dependencies = [
   "lightning",
   "matplotlib",
   "cheetah-accelerator",
-  "tensorboard"
+  "tensorboard",
+  "scipy",
+  "scikit-image",
 ]
 description = "Phase space reconstruction using differentiable beam dynamics and generative beam representations"
 dynamic = [ "version" ]
