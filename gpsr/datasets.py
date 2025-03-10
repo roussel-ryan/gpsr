@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
 from torch import Tensor
 from torch.utils.data import Dataset
+from cheetah.accelerator import Screen
 
 
 class ObservableDataset(Dataset):
@@ -80,8 +81,11 @@ class ObservableDataset(Dataset):
         pass
 
 
-class FourDReconstructionDataset(ObservableDataset):
-    def __init__(self, parameters: Tensor, observations: Tensor, bins: Tensor):
+DEFAULT_CONTOUR_LEVELS = [0.1, 0.5, 0.9]
+DEFAULT_COLORMAP = "Greys"
+
+class QuadScanDataset(ObservableDataset):
+    def __init__(self, parameters: Tensor, observations: Tensor, screen: Screen):
         """
         Light wrapper dataset class for 4D phase space reconstructions with
         quadrupole. Checks for correct sizes of parameters and observations
@@ -104,22 +108,23 @@ class FourDReconstructionDataset(ObservableDataset):
         """
 
         super().__init__(parameters.unsqueeze(0), tuple(observations.unsqueeze(0)))
-        self.bins = bins
+        self.screen = screen
 
-    def plot_data(self, overlay_data=None, overlay_kwargs: dict = None):
+    def plot_data(self, overlay_data=None, overlay_kwargs: dict = None, filter_size: int = None):
         # check overlay data size if specified
         if overlay_data is not None:
             assert isinstance(overlay_data, type(self))
-            overlay_kwargs = overlay_kwargs or {
-                "levels": [0.1, 0.25, 0.5, 0.75, 0.9],
-                "cmap": "Greys",
-            }
+            overlay_kwargs = {
+                "levels": DEFAULT_CONTOUR_LEVELS,
+                "cmap": DEFAULT_COLORMAP,
+            } | (overlay_kwargs or {})
 
         parameters = self.parameters[0]
         n_k = len(parameters)
         fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all", sharey="all")
 
-        xx = torch.meshgrid(self.bins * 1e3, self.bins * 1e3, indexing="ij")
+        xbins, ybins = self.screen.pixel_bin_centers
+        xx = torch.meshgrid(xbins * 1e3, ybins * 1e3, indexing="ij")
         images = self.observations[0]
 
         for i in range(n_k):
@@ -133,15 +138,16 @@ class FourDReconstructionDataset(ObservableDataset):
             )
 
             if overlay_data is not None:
-                img = gaussian_filter(images[i].numpy(), 3)
+                overlay_image = overlay_data.observations[0][i]
+                if filter_size is not None:
+                    overlay_image = gaussian_filter(overlay_image.numpy(), filter_size)
 
                 ax[i].contour(
-                    xx[0].numpy(), xx[1].numpy(), img / img.max(), **overlay_kwargs
+                    xx[0].numpy(), xx[1].numpy(), overlay_image / overlay_image.max(), **overlay_kwargs
                 )
 
             ax[i].set_title(f"{parameters[i]:.1f}")
             ax[i].set_xlabel("x (mm)")
-            # ax[0].text(0.5, 0.5, f"img 1", va="center", ha="center")
 
         ax[0].set_ylabel("y (mm)")
         ax[0].text(
@@ -155,13 +161,12 @@ class FourDReconstructionDataset(ObservableDataset):
 
         return fig, ax
 
-
 class SixDReconstructionDataset(ObservableDataset):
     def __init__(
         self,
         parameters: Tensor,
         observations: Tuple[Tensor, Tensor],
-        bins: Tuple[Tensor, Tensor],
+        screens: Tuple[Screen, Screen],
     ):
         """
         Light wrapper dataset class for 6D phase space reconstructions with quadrupole,
@@ -188,7 +193,7 @@ class SixDReconstructionDataset(ObservableDataset):
         assert len(observations) == 2
 
         super().__init__(parameters, observations)
-        self.bins = bins
+        self.screens = screens
 
     def plot_data(
         self,
@@ -196,6 +201,7 @@ class SixDReconstructionDataset(ObservableDataset):
         overlay_data=None,
         overlay_kwargs: dict = None,
         show_difference: bool = False,
+        filter_size: int = None,
     ):
         """
         Visualize dataset collected for 6-D phase space reconstructions
@@ -206,14 +212,13 @@ class SixDReconstructionDataset(ObservableDataset):
         if overlay_data is not None:
             assert isinstance(overlay_data, type(self))
             overlay_kwargs = overlay_kwargs or {
-                "levels": [0.1, 0.25, 0.5, 0.75, 0.9],
-                "cmap": "Greys",
+                "levels": DEFAULT_CONTOUR_LEVELS,
+                "cmap": DEFAULT_COLORMAP,
             }
 
         n_g, n_v, n_k = self.parameters.shape[:-1]
         params = self.parameters
         images = self.observations
-        bins = self.bins
 
         # plot
         if publication_size:
@@ -258,7 +263,9 @@ class SixDReconstructionDataset(ObservableDataset):
             )
             for k in range(n_v):
                 for j in range(n_g):
-                    xx = torch.meshgrid(bins[j] * 1e3, bins[j] * 1e3)
+                    xbins, ybins = self.screens[j].pixel_bin_centers
+
+                    xx = torch.meshgrid(xbins[j] * 1e3, ybins[j] * 1e3)
                     row_number = 2 * j + k
 
                     if show_difference and overlay_data is not None:
@@ -294,15 +301,12 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                         if overlay_data is not None:
-                            img = gaussian_filter(
-                                overlay_data.observations[j][k, i].numpy(), 3
-                            )
+                            overlay_image = overlay_data.observations[0][i]
+                            if filter_size is not None:
+                                overlay_image = gaussian_filter(overlay_image.numpy(), filter_size)
 
-                            ax[row_number, i].contour(
-                                xx[0].numpy(),
-                                xx[1].numpy(),
-                                img / img.max(),
-                                **overlay_kwargs,
+                            ax[i].contour(
+                                xx[0].numpy(), xx[1].numpy(), overlay_image / overlay_image.max(), **overlay_kwargs
                             )
 
                     if k == 0:
