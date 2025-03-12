@@ -71,4 +71,4 @@ class NNParticleBeamGenerator(BeamGenerator):
         transformed_beam = bmad_to_cheetah_coords(
             transformed_beam, self.beam_energy, torch.tensor(0.511e6)
         )
-        return ParticleBeam(*transformed_beam)
+        return ParticleBeam(*transformed_beam, total_charge=1e-9)
