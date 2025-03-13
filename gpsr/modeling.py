@@ -135,14 +135,14 @@ class GPSR6DLattice(GPSRLattice):
 
         self.l_bend = l_bend
         self.l3 = l3
-        self.screen_1_diagonstic = screen_1
-        self.screen_2_diagonstic = screen_2
+        self.screen_1 = screen_1
+        self.screen_2 = screen_2
         self.lattice = lattice
 
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way
         final_beam = self.lattice(beam)
-
+        #print(final_beam.particles.shape)
         # check to make sure the beam has the correct batch dimension
         # if not its likely because set_lattice_parameters has not been called yet
         particle_shape = final_beam.particles.shape
@@ -156,8 +156,10 @@ class GPSR6DLattice(GPSRLattice):
 
         # observe the beam at the different diagnostics based on the first batch
         # dimension
-        screen_1_observation = self.screen_1_diagonstic(final_beam[0])
-        screen_2_observation = self.screen_2_diagonstic(final_beam[1])
+        final_beam_1 = self.screen_1(final_beam[0])
+        screen_1_observation = self.screen_1.reading
+        final_beam_2 = self.screen_2(final_beam[1])
+        screen_2_observation = self.screen_2.reading
 
         return screen_1_observation, screen_2_observation
 
