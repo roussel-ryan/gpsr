@@ -20,14 +20,20 @@ class LitGPSR(L.LightningModule, ABC):
         # get the training data batch
         x, y = batch
 
-        # we transpose here because the first dim is batched over different observations
-        x = torch.transpose(x, 0, 1)
-
         # make predictions using the GPSR model
         pred = self.gpsr_model(x)
 
+        # check to make sure the prediction shape matches the target shape EXACTLY
+        # removing this check will allow the model to run, but it will not be correct
+        for i in range(len(pred)):
+            if not pred[i].shape == y[i].shape:
+                raise RuntimeError(
+                    f"prediction {i} shape {pred[i].shape} does not match target shape {y[i].shape}"
+                )
+
         # add up the loss functions from each prediction (in a tuple)
         diff = [mae_loss(y_ele, pred_ele) for y_ele, pred_ele in zip(y, pred)]
+
         if len(diff) > 1:
             loss = torch.add(*diff)
         else:

@@ -66,7 +66,7 @@ class GPSRQuadScanLattice(GPSRLattice):
         return tuple(self.lattice.elements[-1].reading.transpose(-1, -2).unsqueeze(0))
 
     def set_lattice_parameters(self, x: torch.Tensor):
-        self.lattice.elements[0].k1.data = x
+        self.lattice.elements[0].k1.data = x[:,0]
 
 
 class GPSR6DLattice(GPSRLattice):
@@ -135,8 +135,7 @@ class GPSR6DLattice(GPSRLattice):
 
         self.l_bend = l_bend
         self.l3 = l3
-        self.screen_1 = screen_1
-        self.screen_2 = screen_2
+        self.screens = [screen_1, screen_2]
         self.lattice = lattice
 
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
@@ -156,12 +155,12 @@ class GPSR6DLattice(GPSRLattice):
 
         # observe the beam at the different diagnostics based on the first batch
         # dimension
-        final_beam_1 = self.screen_1(final_beam[0])
-        screen_1_observation = self.screen_1.reading
-        final_beam_2 = self.screen_2(final_beam[1])
-        screen_2_observation = self.screen_2.reading
+        obs = []
+        for i in range(2):
+            self.screens[i].track(final_beam[i])
+            obs.append(self.screens[i].reading.transpose(-1, -2))
 
-        return screen_1_observation, screen_2_observation
+        return tuple(obs)
 
     def set_lattice_parameters(self, x: torch.Tensor) -> None:
         """

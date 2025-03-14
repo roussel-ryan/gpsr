@@ -69,11 +69,11 @@ class ObservableDataset(Dataset):
             self._flattened_observations = observations
 
     def __len__(self):
-        return self._flattened_parameters.shape[1]
+        return self._flattened_parameters.shape[0]
 
     def __getitem__(self, idx) -> (Tensor, List[Tensor]):
         return (
-            self._flattened_parameters[:, idx],
+            self._flattened_parameters[idx],
             [ele[idx] for ele in self._flattened_observations],
         )
 
@@ -95,19 +95,16 @@ class QuadScanDataset(ObservableDataset):
         ----------
         parameters : Tensor
             Tensor of beamline parameters that correspond to data observations.
-            Should elements along the last dimension should be ordered by (dipole
-            strengths, TDC voltages, quadrupole focusing strengths) and should have a
-            shape of (K x N) where K is the number of quadrupole strengths.
+            Should have a shape of (K x 1) where K is the number of quadrupole strengths.
         observations : Tensor
-            Tensor contaning observed images, where the tensor shapes
+            Tensor contaning observed images, where the tensor shape
             should be (K x bins x bins). First entry should be dipole off images.
-        bins: Tensor
-            Tensor of 1-D bin locations for each image set. Assumes square images with
-            the same bin locations.
+        screen: Screen
+            Cheetah screen object that corresponds to the observed images.
 
         """
 
-        super().__init__(parameters.unsqueeze(0), tuple(observations.unsqueeze(0)))
+        super().__init__(parameters, tuple([observations]))
         self.screen = screen
 
     def plot_data(self, overlay_data=None, overlay_kwargs: dict = None, filter_size: int = None):
@@ -119,7 +116,7 @@ class QuadScanDataset(ObservableDataset):
                 "cmap": DEFAULT_COLORMAP,
             } | (overlay_kwargs or {})
 
-        parameters = self.parameters[0]
+        parameters = self.parameters.flatten()
         n_k = len(parameters)
         fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all", sharey="all")
 
@@ -178,7 +175,7 @@ class SixDReconstructionDataset(ObservableDataset):
             Tensor of beamline parameters that correspond to data observations.
             Should elements along the last dimension should be ordered by (dipole
             strengths, TDC voltages, quadrupole focusing strengths) and should have a
-            shape of (2 x 2 x K x N) where K is the number of quadrupole strengths.
+            shape of (2 x 2 x K x 3) where K is the number of quadrupole strengths.
         observations : Tuple[Tensor, Tensor]
             Tuple of tensors contaning observed images, where the tensor shapes
             should be (2 x K x n_bins x n_bins). First entry should be dipole off
