@@ -16,9 +16,9 @@ class ObservableDataset(Dataset):
     ----------
     parameters : Tensor
         Tensor of beamline parameters that correspond to data observations. Should
-        have a shape of (M x B x N) where M is the number of different observations,
-        B is a batch dimension of arbitrary shape, and N is equal to the number of
-        different parameters changed in the beamline. See Notes for an example.
+        have a shape of (B x N), B is a batch dimension and N is equal to the number of
+        different parameters changed in the beamline. If parameters control which observation is being used,
+        the shape should be (M x B x N) where M is the number of different observations. See Notes for an example.
     observations : Tuple[Tensor]
         Tuple of tensors contaning observed data. Tuple length should be M,
         or the number of different observations. Tensor shapes should be (B x D)
@@ -28,54 +28,88 @@ class ObservableDataset(Dataset):
 
     Notes
     -----
+
+    Example: 4D phase space reconstruction with a quadrupole scan on one screen
+    using 5 quadrupole strengths. See below for the correct shapes of each input.
+
+    >>> import torch
+    >>> parameters = torch.rand((5, 1)) # B = (2, 5), N = 3
+    >>> observations = (
+    >>>     torch.rand((5, 200, 200)),
+    >>> )
+    >>> dataset = ObservableDataset(parameters, observations)
+
+
     Example: 6D phase space reconstruction with 2 screens of various pixel sizes.
     Beamline parameters include the 2 dipole strengths (corresponding to each screen),
     2 transverse deflecting cavity strengths, and 5 quadrupole strenghs. See below for
     the correct shapes of each input.
 
     >>> import torch
-    >>> parameters = torch.rand((2, 2, 5, 3)) # M = 2, B = (2, 5), N = 3
+    >>> parameters = torch.rand((2, 10, 3)) # M = 2, B = 10, N = 3
     >>> observations = (
-    >>>     torch.rand((2, 5, 200, 200)),
-    >>>     torch.rand((2, 5, 150, 150))
+    >>>     torch.rand((10, 200, 200)),
+    >>>     torch.rand((10, 150, 150))
     >>> )
-    >>> dataset = ObservableDataset(parameters, observations)
+    >>> dataset = ObservableDataset(parameters, observations, n_observation_dims=1)
 
     """
 
-    def __init__(self, parameters: Tensor, observations: Tuple[Tensor, ...]):
+    def __init__(
+        self,
+        parameters: Tensor,
+        observations: Tuple[Tensor, ...],
+    ):
         self.parameters = parameters
         self.observations = observations
 
         if not isinstance(observations, tuple):
             raise ValueError("observations must be passed as a tuple of tensors")
 
-        if len(self.observations) > 1:
-            assert len(self.observations) == self.parameters.shape[0]
-
-            # we have to flatten any batch dimensions B for batching purposes
-            batch_shape = self.parameters.shape[1:-1]
-            self._flattened_parameters = torch.flatten(
-                parameters, start_dim=1, end_dim=-2
-            )
-            self._flattened_observations = tuple(
-                [
-                    torch.flatten(ele, end_dim=len(batch_shape) - 1)
-                    for ele in self.observations
-                ]
-            )
+        # validate the input shapes
+        if len(parameters.shape) == 3:
+            # the leading dimension must match the number of observations
+            if not parameters.shape[0] == len(observations):
+                raise ValueError(
+                    "Number of observations must match the leading dimension of parameters"
+                )
+            for ele in self.observations:
+                if not parameters.shape[1] == ele.shape[0]:
+                    raise ValueError(
+                        "Batch dimension of parameters must match batch dimension of observations"
+                    )
+        elif len(parameters.shape) == 2:
+            for ele in self.observations:
+                if not parameters.shape[0] == ele.shape[0]:
+                    raise ValueError(
+                        "Batch dimension of parameters must match batch dimension of observations"
+                    )
         else:
-            self._flattened_parameters = parameters
-            self._flattened_observations = observations
+            raise ValueError("parameters must be a 2D or 3D tensor")
 
     def __len__(self):
-        return self._flattened_parameters.shape[0]
+        if len(self.parameters.shape) == 3:
+            return self.parameters.shape[1]
+        else:
+            return self.parameters.shape[0]
 
-    def __getitem__(self, idx) -> (Tensor, List[Tensor]):
-        return (
-            self._flattened_parameters[idx],
-            [ele[idx] for ele in self._flattened_observations],
-        )
+    def __getitem__(self, idx) -> Tuple[Tensor, List[Tensor]]:
+        """
+        Get the parameters and observations for a given index.
+        If the parameters are 3D, the first dimension corresponds
+        to the number of observations and should not be indexed over
+        when mini-batching.
+        """
+        if len(self.parameters.shape) == 3:
+            return (
+                self.parameters[:, idx],
+                [ele[idx] for ele in self.observations],
+            )
+        else:
+            return (
+                self.parameters[idx],
+                [ele[idx] for ele in self.observations],
+            )
 
     def plot_data(self):
         pass
@@ -83,6 +117,7 @@ class ObservableDataset(Dataset):
 
 DEFAULT_CONTOUR_LEVELS = [0.1, 0.5, 0.9]
 DEFAULT_COLORMAP = "Greys"
+
 
 class QuadScanDataset(ObservableDataset):
     def __init__(self, parameters: Tensor, observations: Tensor, screen: Screen):
@@ -107,7 +142,9 @@ class QuadScanDataset(ObservableDataset):
         super().__init__(parameters, tuple([observations]))
         self.screen = screen
 
-    def plot_data(self, overlay_data=None, overlay_kwargs: dict = None, filter_size: int = None):
+    def plot_data(
+        self, overlay_data=None, overlay_kwargs: dict = None, filter_size: int = None
+    ):
         # check overlay data size if specified
         if overlay_data is not None:
             assert isinstance(overlay_data, type(self))
@@ -140,7 +177,10 @@ class QuadScanDataset(ObservableDataset):
                     overlay_image = gaussian_filter(overlay_image.numpy(), filter_size)
 
                 ax[i].contour(
-                    xx[0].numpy(), xx[1].numpy(), overlay_image / overlay_image.max(), **overlay_kwargs
+                    xx[0].numpy(),
+                    xx[1].numpy(),
+                    overlay_image / overlay_image.max(),
+                    **overlay_kwargs,
                 )
 
             ax[i].set_title(f"{parameters[i]:.1f}")
@@ -157,6 +197,7 @@ class QuadScanDataset(ObservableDataset):
         )
 
         return fig, ax
+
 
 class SixDReconstructionDataset(ObservableDataset):
     def __init__(
@@ -180,14 +221,16 @@ class SixDReconstructionDataset(ObservableDataset):
             Tuple of tensors contaning observed images, where the tensor shapes
             should be (2 x K x n_bins x n_bins). First entry should be dipole off
             images.
-        bins: Tuple[Tensor, Tensor]
-            Tuple of 1-D bin locations for each image set. Assumes square images with
-            the same bin locations.
 
         """
+        self.six_d_params = parameters
+        self.six_d_observations = observations
 
-        assert parameters.shape[:2] == torch.Size([2, 2])
-        assert len(observations) == 2
+        # flatten stuff here for the parent class
+        parameters = self.six_d_params.flatten(start_dim=1, end_dim=-2)
+        observations = tuple(
+            [ele.flatten(end_dim=-3) for ele in self.six_d_observations]
+        )
 
         super().__init__(parameters, observations)
         self.screens = screens
@@ -213,9 +256,9 @@ class SixDReconstructionDataset(ObservableDataset):
                 "cmap": DEFAULT_COLORMAP,
             }
 
-        n_g, n_v, n_k = self.parameters.shape[:-1]
-        params = self.parameters
-        images = self.observations
+        n_g, n_v, n_k = self.six_d_params.shape[:-1]
+        params = self.six_d_params
+        images = self.six_d_observations
 
         # plot
         if publication_size:
@@ -299,10 +342,15 @@ class SixDReconstructionDataset(ObservableDataset):
                         if overlay_data is not None:
                             overlay_image = overlay_data.observations[j][k, i]
                             if filter_size is not None:
-                                overlay_image = gaussian_filter(overlay_image.numpy(), filter_size)
+                                overlay_image = gaussian_filter(
+                                    overlay_image.numpy(), filter_size
+                                )
 
-                            ax[row_number, i].contour(
-                                xx[0].numpy(), xx[1].numpy(), overlay_image / overlay_image.max(), **overlay_kwargs
+                            ax[i].contour(
+                                xx[0].numpy(),
+                                xx[1].numpy(),
+                                overlay_image / overlay_image.max(),
+                                **overlay_kwargs,
                             )
 
                     if k == 0:

@@ -73,6 +73,6 @@ class NNParticleBeamGenerator(BeamGenerator):
             transformed_beam, self.beam_energy, torch.tensor(0.511e6)
         )
         return ParticleBeam(
-            *transformed_beam, 
+            *transformed_beam,
             particle_charges=self.particle_charges,
         )
