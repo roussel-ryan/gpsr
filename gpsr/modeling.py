@@ -66,7 +66,7 @@ class GPSRQuadScanLattice(GPSRLattice):
         return tuple(self.lattice.elements[-1].reading.transpose(-1, -2).unsqueeze(0))
 
     def set_lattice_parameters(self, x: torch.Tensor):
-        self.lattice.elements[0].k1.data = x[:,0]
+        self.lattice.elements[0].k1.data = x[:, 0]
 
 
 class GPSR6DLattice(GPSRLattice):

@@ -59,9 +59,9 @@ class Screen(Element):
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__(name=name, **factory_kwargs)
 
-        assert (
-            isinstance(resolution, (tuple, list)) and len(resolution) == 2
-        ), "Invalid resolution. Must be a tuple of 2 integers."
+        assert isinstance(resolution, (tuple, list)) and len(resolution) == 2, (
+            "Invalid resolution. Must be a tuple of 2 integers."
+        )
         assert method in [
             "histogram",
             "kde",
