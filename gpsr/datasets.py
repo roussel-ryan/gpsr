@@ -340,13 +340,12 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                         if overlay_data is not None:
-                            overlay_image = overlay_data.observations[j][k, i]
+                            overlay_image = overlay_data.six_d_observations[j][k, i]
                             if filter_size is not None:
                                 overlay_image = gaussian_filter(
                                     overlay_image.numpy(), filter_size
                                 )
-
-                            ax[i].contour(
+                            ax[row_number, i].contour(
                                 xx[0].numpy(),
                                 xx[1].numpy(),
                                 overlay_image / overlay_image.max(),

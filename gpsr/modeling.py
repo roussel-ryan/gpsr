@@ -158,7 +158,7 @@ class GPSR6DLattice(GPSRLattice):
         obs = []
         for i in range(2):
             self.screens[i].track(final_beam[i])
-            obs.append(self.screens[i].reading.transpose(-1, -2))
+            obs.append(self.screens[i].reading.transpose(-2, -1).flip(dims=[-2]))
 
         return tuple(obs)
 
