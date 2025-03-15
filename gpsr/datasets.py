@@ -304,8 +304,7 @@ class SixDReconstructionDataset(ObservableDataset):
             for k in range(n_v):
                 for j in range(n_g):
                     xbins, ybins = self.screens[j].pixel_bin_centers
-
-                    xx = torch.meshgrid(xbins * 1e3, ybins * 1e3)
+                    xx = torch.meshgrid(xbins * 1e3, ybins * 1e3, indexing="ij")
                     row_number = 2 * j + k
 
                     if show_difference and overlay_data is not None:
@@ -341,13 +340,12 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                         if overlay_data is not None:
-                            overlay_image = overlay_data.observations[0][i]
+                            overlay_image = overlay_data.six_d_observations[j][k, i]
                             if filter_size is not None:
                                 overlay_image = gaussian_filter(
                                     overlay_image.numpy(), filter_size
                                 )
-
-                            ax[i].contour(
+                            ax[row_number, i].contour(
                                 xx[0].numpy(),
                                 xx[1].numpy(),
                                 overlay_image / overlay_image.max(),

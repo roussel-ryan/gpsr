@@ -19,7 +19,8 @@ class LitGPSR(L.LightningModule, ABC):
     def training_step(self, batch, batch_idx):
         # get the training data batch
         x, y = batch
-
+        if len(x.shape) == 3:
+            x = torch.transpose(x, 0, 1)
         # make predictions using the GPSR model
         pred = self.gpsr_model(x)
 

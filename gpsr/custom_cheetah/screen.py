@@ -149,7 +149,7 @@ class Screen(Element):
         # Record the beam only when the screen is active
         if self.is_active:
             copy_of_incoming = incoming.clone()
-
+            copy_of_misalignment = self.misalignment.clone().to(incoming.particles.device)
             if isinstance(incoming, ParameterBeam):
                 copy_of_incoming._mu, _ = torch.broadcast_tensors(
                     copy_of_incoming._mu, self.misalignment[..., 0]
@@ -164,11 +164,10 @@ class Screen(Element):
                     self.misalignment[..., 0].unsqueeze(-1).unsqueeze(-1),
                 )
                 copy_of_incoming.particles = copy_of_incoming.particles.clone()
-
-                copy_of_incoming.particles[..., 0] -= self.misalignment[
+                copy_of_incoming.particles[..., 0] -= copy_of_misalignment[
                     ..., 0
                 ].unsqueeze(-1)
-                copy_of_incoming.particles[..., 1] -= self.misalignment[
+                copy_of_incoming.particles[..., 1] -= copy_of_misalignment[
                     ..., 1
                 ].unsqueeze(-1)
 
