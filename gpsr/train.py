@@ -8,6 +8,7 @@ from gpsr.losses import mae_loss
 from gpsr.modeling import (
     GPSR,
 )
+from pyro.infer import Trace_ELBO, SVI
 
 
 class LitGPSR(L.LightningModule, ABC):
@@ -46,3 +47,22 @@ class LitGPSR(L.LightningModule, ABC):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
+
+class TrainSVI():
+    def __init__(self, model, guide, optimizer, loss=Trace_ELBO()):
+        self.model = model
+        self.guide = guide
+        self.optimizer = optimizer
+        self.loss = loss
+
+        self.svi = SVI(model, guide, optimizer, loss=loss)
+
+    def train(self, x, y, y_std=None, n_steps=1000):
+        for step in range(n_steps):
+            loss = self.svi.step(x, y, y_std)
+            if step % 100 == 0:
+                print(f"step {step} loss = {loss}")
+        return loss
+
+
+

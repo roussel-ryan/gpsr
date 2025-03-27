@@ -5,6 +5,9 @@ from typing import Tuple
 import numpy as np
 import torch
 from torch import Tensor
+import pyro
+import pyro.distributions as dist
+from pyro.nn import PyroModule, PyroSample
 
 from cheetah.accelerator import (
     Quadrupole,
@@ -50,6 +53,38 @@ class GPSR(torch.nn.Module):
         self.lattice.set_lattice_parameters(x)
 
         return self.lattice.track_and_observe(initial_beam)
+
+class BayesianGPSR(PyroModule):
+    def __init__(self, beam_generator: BeamGenerator, lattice: GPSRLattice):
+        super().__init__()
+        self.beam_generator = beam_generator
+        self.lattice = lattice
+
+        self.noise = PyroSample(dist.HalfNormal(0.1))
+
+    def forward(self, x: Tensor, observations: Tensor = None, observations_std: Tensor = None):
+        if observations_std is None:
+            noise_std = self.noise
+        else:
+            noise_std = observations_std
+
+        # generate beam
+        initial_beam = self.beam_generator()
+
+        # set lattice parameters
+        self.lattice.set_lattice_parameters(x)
+
+        # track the beam through the lattice
+        results = self.lattice.track_and_observe(initial_beam)
+
+        with pyro.plate("data", len(x)):
+            return pyro.sample(
+                f"obs", 
+                dist.Normal(results, noise_std), 
+                obs=observations
+            )
+           
+
 
 
 class GPSRQuadScanLattice(GPSRLattice):

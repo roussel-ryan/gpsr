@@ -4,8 +4,10 @@ import torch
 from torch import Size, Tensor
 from torch.nn import Module
 from torch.distributions import MultivariateNormal, Distribution
+from pyro.nn import PyroModule, PyroSample
+import pyro.distributions as dist
 
-from cheetah.particles import ParticleBeam
+from cheetah.particles import ParticleBeam, ParameterBeam
 from cheetah.utils.bmadx import bmad_to_cheetah_coords
 
 
@@ -76,3 +78,69 @@ class NNParticleBeamGenerator(BeamGenerator):
             *transformed_beam,
             particle_charges=self.particle_charges,
         )
+    
+class BayesianGaussianBeamGenerator(PyroModule):
+    """ defines a probablistic model for a Gaussian beam distribution using Pyro"""
+    def __init__(self, energy: float, particle_charges: float = 1.0, prior_beamsize_scale: float = 1.0e-7):
+        super().__init__()  
+        self.register_buffer("energy", torch.tensor(energy))
+        self.register_buffer("particle_charges", torch.tensor(particle_charges))
+
+        # define optimization parameters --> used to parameterize the beam distribution
+        self.L_omega = PyroSample(
+            dist.LKJCholesky(6, torch.tensor(1.0))
+        )
+
+        #self.mean = PyroSample(
+        #    dist.Normal(
+        #        torch.ones(6),
+        #        torch.ones(6)*0.1
+        #    )
+        #)
+        #self.scale = PyroSample(
+        #    dist.InverseGamma(
+        #        torch.ones(6)*1.0,
+        #        torch.ones(6)*1.0
+        #    )
+        #)
+
+        self.theta = PyroSample(
+            dist.InverseGamma(
+                torch.ones(6)*0.5,
+                torch.ones(6)*5.0
+            ).to_event(1)
+        )
+
+        self.scale = PyroSample(
+            dist.HalfNormal(
+                torch.ones(1)*0.1
+            )
+        )
+
+    def calculate_cov(self, L_omega: Tensor, theta: Tensor, scale: Tensor) -> Tensor:
+        """ calculate the covariance matrix from the Cholesky factor and the theta parameters in unit (unscaled) space"""
+        L_Omega = torch.matmul(
+            torch.diag_embed(theta), L_omega
+        )
+        cov = L_Omega @ L_Omega.transpose(-1, -2)
+        return cov * scale * 1e-7
+    
+    def get_cov_samples(self, n_samples: int) -> Tensor:
+        cov_samples = []
+        for i in range(n_samples):
+            cov_samples += [self.calculate_cov(self.L_omega, self.theta, self.scale)]
+        return torch.stack(cov_samples)
+    
+    def forward(self) -> ParticleBeam:
+        cov = self.calculate_cov(self.L_omega, self.theta, self.scale)
+        cheetah_cov = torch.eye(7).unsqueeze(0).tile(*cov.shape[:-2], 1, 1)
+        cheetah_cov[..., :6, :6] = cov
+
+        return ParameterBeam(
+            mu = torch.zeros(7), 
+            cov=cheetah_cov, 
+            energy=self.energy,
+        )
+
+
+
