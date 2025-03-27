@@ -3,15 +3,16 @@ from unittest.mock import MagicMock
 import pytest
 import torch
 from cheetah import Segment, ParticleBeam
-from cheetah.accelerator import (
-    Quadrupole,
-    Drift,
-    Screen,
-    TransverseDeflectingCavity
-)
+from cheetah.accelerator import Quadrupole, Drift, Screen, TransverseDeflectingCavity
 from cheetah.particles import Beam
 
-from gpsr.modeling import GPSR, GPSRLattice, GPSRQuadScanLattice, GPSR6DLattice , GenericGPSRLattice
+from gpsr.modeling import (
+    GPSR,
+    GPSRLattice,
+    GPSRQuadScanLattice,
+    GPSR6DLattice,
+    GenericGPSRLattice,
+)
 
 
 class TestModeling:
@@ -204,91 +205,88 @@ class TestModeling:
         assert torch.equal(results[0], torch.tensor([1.0]))
 
     def test_generic_gpsr_lattice_initialization(self):
+        TDC = TransverseDeflectingCavity(
+            length=torch.tensor(1.0),
+            voltage=torch.tensor(100.0),
+            phase=torch.tensor(0.0),
+            name="TDC",
+        )
+        d1 = Drift(length=torch.tensor(1.0))
+        d2 = Drift(length=torch.tensor(1.0))
+        d3 = Drift(length=torch.tensor(1.0))
 
-        TDC = TransverseDeflectingCavity(length = torch.tensor(1.0) ,
-                                        voltage = torch.tensor(100.0) ,
-                                        phase = torch.tensor(0.0) , name = 'TDC')
-        d1 = Drift(length = torch.tensor(1.0))
-        d2 = Drift(length = torch.tensor(1.0))
-        d3 = Drift(length = torch.tensor(1.0))
+        q1 = Quadrupole(length=torch.tensor(1.0), k1=torch.tensor(0.5), name="q1")
 
-        q1 = Quadrupole(length = torch.tensor(1.0) , k1 = torch.tensor(0.5), name = 'q1')
+        screen_1 = Screen(name="screen_1")
+        screen_2 = Screen(name="screen_2")
 
-        screen_1 = Screen(name = 'screen_1')
-        screen_2 = Screen(name = 'screen_2')
+        seg = Segment([TDC, d1, screen_1, d2, q1, d3, screen_2])
 
-        seg = Segment([TDC,d1,screen_1,d2,q1,d3,screen_2])
+        var_elements = [(seg.q1, "k1"), (seg.TDC, "voltage")]
+        obs_elements = [seg.screen_1, seg.screen_2]
 
-        var_elements = [(seg.q1 , 'k1'),
-                        (seg.TDC , 'voltage')]
-        obs_elements = [seg.screen_1 , seg.screen_2]
-
-        lattice = GenericGPSRLattice(seg,
-                                     variable_elements=var_elements,
-                                     observable_elements=obs_elements)
+        lattice = GenericGPSRLattice(
+            seg, variable_elements=var_elements, observable_elements=obs_elements
+        )
 
         assert isinstance(lattice.lattice, Segment)
         assert lattice.variable_elements == var_elements
         assert lattice.observable_elements == obs_elements
 
-
     def test_generic_gpsr_lattice_set_lattice_parameters(self):
+        TDC = TransverseDeflectingCavity(
+            length=torch.tensor(1.0),
+            voltage=torch.tensor(100.0),
+            phase=torch.tensor(0.0),
+            name="TDC",
+        )
+        d1 = Drift(length=torch.tensor(1.0))
+        d2 = Drift(length=torch.tensor(1.0))
+        d3 = Drift(length=torch.tensor(1.0))
 
-        TDC = TransverseDeflectingCavity(length = torch.tensor(1.0) ,
-                                        voltage = torch.tensor(100.0) ,
-                                        phase = torch.tensor(0.0) , name = 'TDC')
-        d1 = Drift(length = torch.tensor(1.0))
-        d2 = Drift(length = torch.tensor(1.0))
-        d3 = Drift(length = torch.tensor(1.0))
+        q1 = Quadrupole(length=torch.tensor(1.0), k1=torch.tensor(0.5), name="q1")
 
-        q1 = Quadrupole(length = torch.tensor(1.0) , k1 = torch.tensor(0.5), name = 'q1')
+        screen_1 = Screen(name="screen_1")
+        screen_2 = Screen(name="screen_2")
 
-        screen_1 = Screen(name = 'screen_1')
-        screen_2 = Screen(name = 'screen_2')
+        seg = Segment([TDC, d1, screen_1, d2, q1, d3, screen_2])
 
-        seg = Segment([TDC,d1,screen_1,d2,q1,d3,screen_2])
+        var_elements = [(seg.q1, "k1"), (seg.TDC, "voltage")]
+        obs_elements = [seg.screen_1, seg.screen_2]
 
-        var_elements = [(seg.q1 , 'k1'),
-                        (seg.TDC , 'voltage')]
-        obs_elements = [seg.screen_1 , seg.screen_2]
-
-        lattice = GenericGPSRLattice(seg,
-                                     variable_elements=var_elements,
-                                     observable_elements=obs_elements)
+        lattice = GenericGPSRLattice(
+            seg, variable_elements=var_elements, observable_elements=obs_elements
+        )
         x = torch.tensor([[0.1, 0.5], [0.1, 0.5]])
         lattice.set_lattice_parameters(x)
 
-        assert torch.equal(
-            lattice.lattice.q1.k1, torch.tensor([0.1, 0.1])
-        )
-        assert torch.equal(
-            lattice.lattice.TDC.voltage, torch.tensor([0.5, 0.5])
-        )
-
+        assert torch.equal(lattice.lattice.q1.k1, torch.tensor([0.1, 0.1]))
+        assert torch.equal(lattice.lattice.TDC.voltage, torch.tensor([0.5, 0.5]))
 
     def test_generic_gpsr_lattice_track_and_observe(self):
-        
-        TDC = TransverseDeflectingCavity(length = torch.tensor(1.0) ,
-                                        voltage = torch.tensor(100.0) ,
-                                        phase = torch.tensor(0.0) , name = 'TDC')
-        d1 = Drift(length = torch.tensor(1.0))
-        d2 = Drift(length = torch.tensor(1.0))
-        d3 = Drift(length = torch.tensor(1.0))
+        TDC = TransverseDeflectingCavity(
+            length=torch.tensor(1.0),
+            voltage=torch.tensor(100.0),
+            phase=torch.tensor(0.0),
+            name="TDC",
+        )
+        d1 = Drift(length=torch.tensor(1.0))
+        d2 = Drift(length=torch.tensor(1.0))
+        d3 = Drift(length=torch.tensor(1.0))
 
-        q1 = Quadrupole(length = torch.tensor(1.0) , k1 = torch.tensor(0.5), name = 'q1')
+        q1 = Quadrupole(length=torch.tensor(1.0), k1=torch.tensor(0.5), name="q1")
 
-        screen_1 = Screen(name = 'screen_1')
-        screen_2 = Screen(name = 'screen_2')
+        screen_1 = Screen(name="screen_1")
+        screen_2 = Screen(name="screen_2")
 
-        seg = Segment([TDC,d1,screen_1,d2,q1,d3,screen_2])
+        seg = Segment([TDC, d1, screen_1, d2, q1, d3, screen_2])
 
-        var_elements = [(seg.q1 , 'k1'),
-                        (seg.TDC , 'voltage')]
-        obs_elements = [seg.screen_1 , seg.screen_2]
+        var_elements = [(seg.q1, "k1"), (seg.TDC, "voltage")]
+        obs_elements = [seg.screen_1, seg.screen_2]
 
-        lattice = GenericGPSRLattice(seg,
-                                     variable_elements=var_elements,
-                                     observable_elements=obs_elements)
+        lattice = GenericGPSRLattice(
+            seg, variable_elements=var_elements, observable_elements=obs_elements
+        )
 
         beam = ParticleBeam(energy=torch.tensor(1e6), particles=torch.rand((10, 7)))
 
