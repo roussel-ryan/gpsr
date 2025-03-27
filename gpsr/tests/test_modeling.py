@@ -49,7 +49,7 @@ class TestModeling:
         l_quad = 0.5
         l_drift = 1.0
         diagnostic = MagicMock(spec=Screen)
-        diagnostic.transfer_map = lambda x,y: torch.eye(7)
+        diagnostic.transfer_map = lambda x, y: torch.eye(7)
         diagnostic.reading = torch.eye(3)
         diagnostic.name = "test"
 
@@ -74,7 +74,6 @@ class TestModeling:
         screen_2 = MagicMock(spec=Screen)
         screen_1.name = "screen_1"
         screen_2.name = "screen_2"
-
 
         lattice = GPSR6DLattice(
             l_quad,
@@ -158,8 +157,8 @@ class TestModeling:
         screen_2.reading = torch.eye(2)
         screen_1.name = "screen_1"
         screen_2.name = "screen_2"
-        screen_1.transfer_map = lambda x,y: torch.eye(7)
-        screen_2.transfer_map = lambda x,y: torch.eye(7)        
+        screen_1.transfer_map = lambda x, y: torch.eye(7)
+        screen_2.transfer_map = lambda x, y: torch.eye(7)
 
         lattice = GPSR6DLattice(
             l_quad,
