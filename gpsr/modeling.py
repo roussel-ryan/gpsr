@@ -198,7 +198,7 @@ class GPSR6DLattice(GPSRLattice):
         )
 
 
-class GeneralizedGPSRLattice(GPSRLattice):
+class GenericGPSRLattice(GPSRLattice):
     """
     Attributes:
         lattice: The base lattice structure used for beam tracking.
