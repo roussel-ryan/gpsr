@@ -209,8 +209,8 @@ class GeneralizedGPSRLattice(GPSRLattice):
     
     def __init__(self, 
                  lattice,
-                 variable_elements: List[Tuple[Element, str]] = [],
-                 observable_elements: List[Element] = []):
+                 variable_elements: List[Tuple[Element, str]],
+                 observable_elements: List[Element]):
         """
         Initializes the GPSRLattice instance.
         
@@ -244,9 +244,6 @@ class GeneralizedGPSRLattice(GPSRLattice):
         Returns:
             A tuple of tensors representing the observations from the observable elements.
         """
-        
-        # Assign unit charge to all beam particles
-        beam.particle_charges = torch.ones(beam.x.shape)
         
         # Compute the merged transfer maps for the lattice
         merged_lattice = self.lattice.transfer_maps_merged(beam)
