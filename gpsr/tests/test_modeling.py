@@ -23,6 +23,7 @@ class TestModeling:
         l_quad = 0.5
         l_drift = 1.0
         diagnostic = MagicMock(spec=Screen)
+        diagnostic.name = "test"
 
         lattice = GPSRQuadScanLattice(l_quad, l_drift, diagnostic)
 
@@ -35,10 +36,11 @@ class TestModeling:
         l_quad = 0.5
         l_drift = 1.0
         diagnostic = MagicMock(spec=Screen)
+        diagnostic.name = "test"
 
         lattice = GPSRQuadScanLattice(l_quad, l_drift, diagnostic)
 
-        x = torch.tensor([0.1])
+        x = torch.tensor([0.1]).unsqueeze(0)
         lattice.set_lattice_parameters(x)
 
         assert torch.isclose(lattice.lattice.elements[0].k1, torch.tensor(0.1))
@@ -47,7 +49,9 @@ class TestModeling:
         l_quad = 0.5
         l_drift = 1.0
         diagnostic = MagicMock(spec=Screen)
-        diagnostic.return_value = torch.tensor([1.0, 2.0, 3.0])
+        diagnostic.transfer_map = lambda x,y: torch.eye(7)
+        diagnostic.reading = torch.eye(3)
+        diagnostic.name = "test"
 
         lattice = GPSRQuadScanLattice(l_quad, l_drift, diagnostic)
 
@@ -56,7 +60,7 @@ class TestModeling:
 
         assert isinstance(observations, tuple)
         assert len(observations) == 1
-        assert torch.equal(observations[0], torch.tensor([1.0, 2.0, 3.0]))
+        assert torch.equal(observations[0], torch.eye(3))
 
     def test_gpsr_6d_lattice_initialization(self):
         l_quad = 0.5
@@ -68,6 +72,9 @@ class TestModeling:
         l1, l2, l3 = 1.0, 1.5, 2.0
         screen_1 = MagicMock(spec=Screen)
         screen_2 = MagicMock(spec=Screen)
+        screen_1.name = "screen_1"
+        screen_2.name = "screen_2"
+
 
         lattice = GPSR6DLattice(
             l_quad,
@@ -84,8 +91,8 @@ class TestModeling:
         )
 
         assert isinstance(lattice.lattice, Segment)
-        assert lattice.screen_1_diagonstic is screen_1
-        assert lattice.screen_2_diagonstic is screen_2
+        assert lattice.screens[0] is screen_1
+        assert lattice.screens[1] is screen_2
 
     def test_gpsr_6d_lattice_set_lattice_parameters(self):
         l_quad = 0.5
@@ -147,8 +154,12 @@ class TestModeling:
         l1, l2, l3 = 1.0, 1.5, 2.0
         screen_1 = MagicMock(spec=Screen)
         screen_2 = MagicMock(spec=Screen)
-        screen_1.return_value = torch.tensor([1.0, 2.0])
-        screen_2.return_value = torch.tensor([3.0, 4.0])
+        screen_1.reading = torch.eye(2)
+        screen_2.reading = torch.eye(2)
+        screen_1.name = "screen_1"
+        screen_2.name = "screen_2"
+        screen_1.transfer_map = lambda x,y: torch.eye(7)
+        screen_2.transfer_map = lambda x,y: torch.eye(7)        
 
         lattice = GPSR6DLattice(
             l_quad,
@@ -173,8 +184,8 @@ class TestModeling:
 
         assert isinstance(observations, tuple)
         assert len(observations) == 2
-        assert torch.equal(observations[0], torch.tensor([1.0, 2.0]))
-        assert torch.equal(observations[1], torch.tensor([3.0, 4.0]))
+        assert torch.equal(observations[0], torch.eye(2))
+        assert torch.equal(observations[1], torch.eye(2))
 
     def test_gpsr_forward(self):
         beam_generator = MagicMock()
