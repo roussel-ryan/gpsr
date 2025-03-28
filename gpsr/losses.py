@@ -35,7 +35,9 @@ def log_mse(target, pred):
 
 
 def mae_loss(target, pred):
-    return torch.mean(torch.abs(target - pred))
+    target_image = normalize_images(target)
+    pred_image = normalize_images(pred)
+    return torch.mean(torch.abs(target_image - pred_image))
 
 
 def mae_log_loss(target, pred):

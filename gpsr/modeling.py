@@ -142,7 +142,7 @@ class GPSR6DLattice(GPSRLattice):
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way
         final_beam = self.lattice(beam)
-
+        #print(final_beam.particles.shape)
         # check to make sure the beam has the correct batch dimension
         # if not its likely because set_lattice_parameters has not been called yet
         particle_shape = final_beam.particles.shape
@@ -159,7 +159,7 @@ class GPSR6DLattice(GPSRLattice):
         obs = []
         for i in range(2):
             self.screens[i].track(final_beam[i])
-            obs.append(self.screens[i].reading.transpose(-1, -2))
+            obs.append(self.screens[i].reading.flip(dims=[-2]).transpose(-2, -1))
 
         return tuple(obs)
 
