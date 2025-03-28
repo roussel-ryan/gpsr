@@ -256,7 +256,7 @@ class GenericGPSRLattice(GPSRLattice):
 
         # Apply the merged lattice transformations to the beam
         merged_lattice(beam)
-        
+
         # Collect observations from the observable elements
         observations = tuple([element.reading for element in self.observable_elements])
 
