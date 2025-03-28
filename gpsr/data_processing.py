@@ -1,5 +1,4 @@
 from typing import Callable
-import matplotlib.pyplot as plt
 from skimage.measure import block_reduce
 from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
