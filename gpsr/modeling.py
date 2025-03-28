@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Tuple
+from typing import Tuple, List
 
 import numpy as np
 import torch
@@ -15,6 +15,7 @@ from cheetah.accelerator import (
     Screen,
 )
 from cheetah.particles import Beam
+from cheetah.accelerator import Element
 from gpsr.beams import BeamGenerator
 
 
@@ -195,3 +196,78 @@ class GPSR6DLattice(GPSRLattice):
         self.lattice.DIPOLE_TO_SCREEN.length.data = (
             self.l3 - self.l_bend / 2 / torch.cos(bend_angle)
         )
+
+
+class GenericGPSRLattice(GPSRLattice):
+    """
+    Attributes:
+        lattice: The base lattice structure used for beam tracking.
+        variable_elements: A list of tuples, where each tuple contains an element object and
+                          the name of the parameter to be varied as a string.
+        observable_elements: A list of elements that have the 'reading' property.
+    """
+
+    def __init__(
+        self,
+        lattice,
+        variable_elements: List[Tuple[Element, str]],
+        observable_elements: List[Element],
+    ):
+        """
+        Initializes the GPSRLattice instance.
+
+        Args:
+            lattice: The cheetah lattice used for beam tracking.
+            variable_elements: A list of tuples, where each tuple contains a cheetah element object and
+                              the name of the parameter to be varied as a string.
+            observable_elements: A list of elements that have the 'reading' property.
+        """
+        super().__init__()
+
+        for element in variable_elements:
+            if not hasattr(element[0], element[1]):
+                raise AttributeError(
+                    f"Variable element {element[0].name} does not have parameter '{element[1]}'."
+                )
+
+        for element in observable_elements:
+            if not hasattr(element, "reading"):
+                raise AttributeError(
+                    f"Observable element {element.name} does not have a 'reading' property."
+                )
+
+        self.lattice = lattice
+        self.variable_elements = variable_elements
+        self.observable_elements = observable_elements
+
+    def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
+        """
+        Tracks a beam through the lattice and collects observations from designated elements.
+
+        Args:
+            beam: The beam object to be tracked.
+
+        Returns:
+            A tuple of tensors representing the observations from the observable elements.
+        """
+
+        # Compute the merged transfer maps for the lattice
+        merged_lattice = self.lattice.transfer_maps_merged(beam)
+
+        # Apply the merged lattice transformations to the beam
+        merged_lattice(beam)
+
+        # Collect observations from the observable elements
+        observations = tuple([element.reading for element in self.observable_elements])
+
+        return observations
+
+    def set_lattice_parameters(self, settings: torch.Tensor):
+        """
+        Sets the parameters of variable elements in the lattice.
+
+        Args:
+            settings: A tensor containing the new parameter values for the variable elements.
+        """
+        for i, element in enumerate(self.variable_elements, 0):
+            setattr(element[0], element[1], settings[..., i])
