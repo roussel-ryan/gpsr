@@ -93,7 +93,7 @@ class ObservableDataset(Dataset):
     def __getitem__(self, idx) -> Tuple[Tensor, List[Tensor]]:
         """
         Get the parameters and observations for a given index.
-        If the parameters are 3D we then batch along the 
+        If the parameters are 3D we then batch along the
         """
         return (
             self.parameters[idx],
@@ -296,13 +296,13 @@ class SixDReconstructionDataset(ObservableDataset):
             for j in range(n_g):
                 for k in range(n_v):
                     px_bin_centers = self.screens[j].pixel_bin_centers
-                    px_bin_centers = px_bin_centers[0]*1e3, px_bin_centers[1]*1e3
+                    px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
                     row_number = 2 * j + k
 
                     if show_difference and overlay_data is not None:
                         # if flags are specified plot the difference
                         diff = torch.abs(
-                            images[j][i,k] - overlay_data.six_d_observations[j][i,k]
+                            images[j][i, k] - overlay_data.six_d_observations[j][i, k]
                         )
                         ax[row_number, i].pcolor(
                             *px_bin_centers,
@@ -330,7 +330,9 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                         if overlay_data is not None:
-                            overlay_image = overlay_data.six_d_observations[j][i, k].numpy()
+                            overlay_image = overlay_data.six_d_observations[j][
+                                i, k
+                            ].numpy()
                             if filter_size is not None:
                                 overlay_image = gaussian_filter(
                                     overlay_image, filter_size
