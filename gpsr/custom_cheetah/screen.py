@@ -167,10 +167,10 @@ class Screen(Element):
 
                 copy_of_incoming.particles[..., 0] -= self.misalignment[
                     ..., 0
-                ].unsqueeze(-1)
+                ].unsqueeze(-1).to(copy_of_incoming.particles)
                 copy_of_incoming.particles[..., 1] -= self.misalignment[
                     ..., 1
-                ].unsqueeze(-1)
+                ].unsqueeze(-1).to(copy_of_incoming.particles)
 
             self.set_read_beam(copy_of_incoming)
 
@@ -284,7 +284,7 @@ class Screen(Element):
                 # Change the x, y positions
                 image = torch.transpose(image, -2, -1)
                 # Flip up and down, now row 0 corresponds to the top
-                image = torch.flip(image, dims=[-2])
+                # image = torch.flip(image, dims=[-2])
         else:
             raise TypeError(f"Read beam is of invalid type {type(read_beam)}")
 
