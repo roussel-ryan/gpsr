@@ -154,11 +154,11 @@ class GPSR6DLattice(GPSRLattice):
             )
 
         n_batch_dims = len(final_beam.sigma_x.shape) - 1
-        batch_size = [slice(None)] * n_batch_dims
+        batch_size = (slice(None),) * n_batch_dims  # Use a tuple instead of a list
 
         obs = []
         for i, screen in enumerate(self.screens):
-            screen.track(final_beam[*batch_size, i])
+            screen.track(final_beam[batch_size + (i,)])  # Concatenate explicitly
             obs.append(screen.reading)
 
         return tuple(obs)
