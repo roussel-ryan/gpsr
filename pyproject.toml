@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
   "lightning",
   "matplotlib",
-  "cheetah-accelerator",
+  "cheetah-accelerator>=0.7.1",
   "tensorboard",
   "scipy",
   "scikit-image",
