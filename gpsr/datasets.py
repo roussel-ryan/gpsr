@@ -212,6 +212,8 @@ class SixDReconstructionDataset(ObservableDataset):
             images, second entry should be dipole on images.
 
         """
+
+        # keep unflattened parameters and observations for visualization
         self.six_d_params = parameters
         self.six_d_observations = observations
 
@@ -230,7 +232,7 @@ class SixDReconstructionDataset(ObservableDataset):
         overlay_data=None,
         overlay_kwargs: dict = None,
         show_difference: bool = False,
-        filter_size: int = None,
+        filter_size: int = 3,
     ):
         """
         Visualize dataset collected for 6-D phase space reconstructions
@@ -240,10 +242,11 @@ class SixDReconstructionDataset(ObservableDataset):
         # check overlay data size if specified
         if overlay_data is not None:
             assert isinstance(overlay_data, type(self))
-            overlay_kwargs = overlay_kwargs or {
+            okwargs = {
                 "levels": DEFAULT_CONTOUR_LEVELS,
                 "cmap": DEFAULT_COLORMAP,
             }
+            okwargs.update(overlay_kwargs or {})
 
         n_k, n_v, n_g = self.six_d_params.shape[:-1]
         params = self.six_d_params
@@ -296,13 +299,10 @@ class SixDReconstructionDataset(ObservableDataset):
                     px_bin_centers = px_bin_centers[0]*1e3, px_bin_centers[1]*1e3
                     row_number = 2 * j + k
 
-                    print("plotting row", row_number, "column", i)
-                    print(f"params: {params[i, k, j]}")
-
                     if show_difference and overlay_data is not None:
                         # if flags are specified plot the difference
                         diff = torch.abs(
-                            images[j][i,k] - overlay_data.observations[j][i,k]
+                            images[j][i,k] - overlay_data.six_d_observations[j][i,k]
                         )
                         ax[row_number, i].pcolor(
                             *px_bin_centers,
@@ -330,16 +330,16 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                         if overlay_data is not None:
-                            overlay_image = overlay_data.observations[0][i]
+                            overlay_image = overlay_data.six_d_observations[j][i, k].numpy()
                             if filter_size is not None:
                                 overlay_image = gaussian_filter(
-                                    overlay_image.numpy(), filter_size
+                                    overlay_image, filter_size
                                 )
 
-                            ax[i].contour(
+                            ax[row_number, i].contour(
                                 *px_bin_centers,
                                 overlay_image / overlay_image.max(),
-                                **overlay_kwargs,
+                                **okwargs,
                             )
 
                     if k == 0:
