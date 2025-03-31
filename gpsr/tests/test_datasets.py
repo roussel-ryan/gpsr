@@ -12,7 +12,7 @@ from gpsr.datasets import (
 class TestDatasets:
     def test_observable_dataset_initialization(self):
         # Valid initialization
-        parameters = torch.rand((3, 2, 5))  # B = 3,, M = 2, N = 5
+        parameters = torch.rand((3, 2, 5))  # B = 3, M = 2, N = 5
         observations = tuple((torch.rand((3, 200, 200)), torch.rand((3, 150, 150))))
         dataset = ObservableDataset(parameters, observations)
 
