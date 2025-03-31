@@ -146,6 +146,13 @@ class GPSR6DLattice(GPSRLattice):
         # note that the axis that speicfies the screen number is the axis after the batch axis
         # e.g. (N x 2 x 3) where N is the batch size, 2 is the number of screens,
         # note this is not the last axis for indexing the sub-beams
+
+        # we require the beam to be at least 2D, so we can use the last axis to index the screens
+        if len(final_beam.sigma_x.shape) < 2:
+            raise ValueError(
+                "Beam must have at least 2 dimensions corresponding to the dipole strengths for each screen"
+            )
+
         n_batch_dims = len(final_beam.sigma_x.shape) - 1
         batch_size = [slice(None)] * n_batch_dims
 
