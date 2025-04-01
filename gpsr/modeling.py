@@ -143,23 +143,23 @@ class GPSR6DLattice(GPSRLattice):
         # track the beam through the accelerator in a batched way
         final_beam = self.lattice(beam)
 
-        # check to make sure the beam has the correct batch dimension
-        # if not its likely because set_lattice_parameters has not been called yet
-        particle_shape = final_beam.particles.shape
-        if not particle_shape[0] == 2:
-            raise RuntimeError(
-                "particle tracking did not return the correct "
-                "particle batch shape, did you call "
-                "set_lattice_parameters yet. Found particle shape "
-                f"{particle_shape}"
+        # note that the axis that speicfies the screen number is the axis after the batch axis
+        # e.g. (N x 2 x 3) where N is the batch size, 2 is the number of screens,
+        # note this is not the last axis for indexing the sub-beams
+
+        # we require the beam to be at least 2D, so we can use the last axis to index the screens
+        if len(final_beam.sigma_x.shape) < 2:
+            raise ValueError(
+                "Beam must have at least 2 dimensions corresponding to the dipole strengths for each screen"
             )
 
-        # observe the beam at the different diagnostics based on the first batch
-        # dimension
+        n_batch_dims = len(final_beam.sigma_x.shape) - 1
+        batch_size = (slice(None),) * n_batch_dims  # Use a tuple instead of a list
+
         obs = []
-        for i in range(2):
-            self.screens[i].track(final_beam[i])
-            obs.append(self.screens[i].reading.transpose(-1, -2))
+        for i, screen in enumerate(self.screens):
+            screen.track(final_beam[batch_size + (i,)])  # Concatenate explicitly
+            obs.append(screen.reading)
 
         return tuple(obs)
 
@@ -171,21 +171,18 @@ class GPSR6DLattice(GPSRLattice):
         -----------
         x : Tensor
             Specifies the scan parameters in a batched manner with the
-            following shape: (2 x N x K x 3) where 2 is the number of dipole states,
+            following shape: (K x N x 2 x 3) where 2 is the number of dipole states,
             N is the number of TDC states and K is the number of quadrupole
             strengths. The elements of the final dimension correspond to the
-            dipole angles, TDC voltages, and quadrupole strengths respectively
+            quadrupole strengths, TDC voltages, and dipole angles respectively
 
         """
-        if not (x.shape[0] == 2 and x.shape[-1] == 3):
-            raise ValueError(f"incorrect input shape, got {x.shape}")
-
         # set quad/TDC parameters
-        self.lattice.SCAN_QUAD.k1.data = x[..., 2]
+        self.lattice.SCAN_QUAD.k1.data = x[..., 0]
         self.lattice.SCAN_TDC.voltage.data = x[..., 1]
 
         # set dipole parameters
-        G = x[..., 0]
+        G = x[..., 2]
         bend_angle = torch.arcsin(self.l_bend * G)
         arc_length = bend_angle / G
         self.lattice.SCAN_DIPOLE.angle.data = bend_angle

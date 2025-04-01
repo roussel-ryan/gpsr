@@ -124,14 +124,14 @@ class TestModeling:
         lattice.set_lattice_parameters(x)
 
         assert torch.equal(
-            lattice.lattice.SCAN_QUAD.k1, torch.tensor([0.1, 0.1]).reshape(2, 1, 1)
+            lattice.lattice.SCAN_QUAD.k1, torch.tensor([0.2, 0.2]).reshape(2, 1, 1)
         )
         assert torch.equal(
             lattice.lattice.SCAN_TDC.voltage, torch.tensor([0.5, 0.5]).reshape(2, 1, 1)
         )
         assert torch.allclose(
             lattice.lattice.SCAN_DIPOLE.angle,
-            torch.tensor([0.16, 0.16]).reshape(2, 1, 1),
+            torch.tensor([0.0801, 0.0801]).reshape(2, 1, 1),
             atol=1e-2,
         )
         assert torch.allclose(
@@ -141,7 +141,7 @@ class TestModeling:
         )
         assert torch.allclose(
             lattice.lattice.SCAN_DIPOLE.dipole_e2,
-            torch.tensor([0.16, 0.16]).reshape(2, 1, 1),
+            torch.tensor([0.0801, 0.0801]).reshape(2, 1, 1),
             atol=1e-2,
         )
 
@@ -177,10 +177,10 @@ class TestModeling:
         )
 
         beam = ParticleBeam(energy=torch.tensor(1e6), particles=torch.rand((10, 7)))
-        with pytest.raises(RuntimeError):
+        with pytest.raises(ValueError):
             lattice.track_and_observe(beam)
 
-        lattice.set_lattice_parameters(torch.rand(2, 2, 2, 3))
+        lattice.set_lattice_parameters(torch.rand(10, 2, 3))
         observations = lattice.track_and_observe(beam)
 
         assert isinstance(observations, tuple)
