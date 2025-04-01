@@ -56,8 +56,8 @@ def process_images(
     ]
     processed_images = images[
         ...,
-        crop_ranges[0][1] : crop_ranges[1][1],
-        crop_ranges[0][0] : crop_ranges[1][0],
+        crop_ranges[0][1]: crop_ranges[1][1],
+        crop_ranges[0][0]: crop_ranges[1][0],
     ]
 
     # apply threshold if provided -- otherwise calculate threshold using triangle method
