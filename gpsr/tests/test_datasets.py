@@ -12,7 +12,7 @@ from gpsr.datasets import (
 class TestDatasets:
     def test_observable_dataset_initialization(self):
         # Valid initialization
-        parameters = torch.rand((2, 3, 5))  # M = 2, B = (3,), N = 5
+        parameters = torch.rand((3, 2, 5))  # B = 3, M = 2, N = 5
         observations = tuple((torch.rand((3, 200, 200)), torch.rand((3, 150, 150))))
         dataset = ObservableDataset(parameters, observations)
 
@@ -24,14 +24,14 @@ class TestDatasets:
             ObservableDataset(parameters, torch.rand((3, 200, 200)))  # Not a tuple
 
     def test_observable_dataset_len(self):
-        parameters = torch.rand((2, 3, 5))  # M = 2, B = (3,), N = 5
+        parameters = torch.rand((3, 2, 5))  # B = 3,, M = 2, N = 5
         observations = (torch.rand((3, 200, 200)), torch.rand((3, 150, 150)))
         dataset = ObservableDataset(parameters, observations)
 
         assert len(dataset) == 3
 
     def test_observable_dataset_getitem(self):
-        parameters = torch.rand((2, 3, 5))  # M = 2, B = (3,), N = 5
+        parameters = torch.rand((3, 2, 5))  # B = 3,, M = 2, N = 5
         observations = (torch.rand((3, 200, 200)), torch.rand((3, 150, 150)))
         dataset = ObservableDataset(parameters, observations)
 
@@ -51,15 +51,15 @@ class TestDatasets:
         assert dataset.observations[0].shape == (5, 100, 100)
 
     def test_six_d_reconstruction_dataset_initialization(self):
-        parameters = torch.rand((2, 2, 5, 3))  # (n_g, n_v, n_k, n_params)
+        parameters = torch.rand((5, 2, 2, 3))  # (n_g, n_v, n_k, n_params)
         observations = (
-            torch.rand((2, 5, 100, 100)),
-            torch.rand((2, 5, 150, 150)),
+            torch.rand((5, 2, 100, 100)),
+            torch.rand((5, 2, 150, 150)),
         )
         bins = (torch.linspace(-1, 1, 100), torch.linspace(-1, 1, 150))
         dataset = SixDReconstructionDataset(parameters, observations, bins)
 
-        assert dataset.parameters.shape == (2, 10, 3)
+        assert dataset.parameters.shape == (10, 2, 3)
         assert len(dataset.observations) == 2
         assert dataset.observations[0].shape == (10, 100, 100)
 

@@ -18,7 +18,7 @@ class ObservableDataset(Dataset):
         Tensor of beamline parameters that correspond to data observations. Should
         have a shape of (B x N), B is a batch dimension and N is equal to the number of
         different parameters changed in the beamline. If parameters control which observation is being used,
-        the shape should be (M x B x N) where M is the number of different observations. See Notes for an example.
+        the shape should be (B x M x N) where M is the number of different observations. See Notes for an example.
     observations : Tuple[Tensor]
         Tuple of tensors contaning observed data. Tuple length should be M,
         or the number of different observations. Tensor shapes should be (B x D)
@@ -33,7 +33,7 @@ class ObservableDataset(Dataset):
     using 5 quadrupole strengths. See below for the correct shapes of each input.
 
     >>> import torch
-    >>> parameters = torch.rand((5, 1)) # B = (2, 5), N = 3
+    >>> parameters = torch.rand((5, 1)) # B = (5), N = 1
     >>> observations = (
     >>>     torch.rand((5, 200, 200)),
     >>> )
@@ -43,10 +43,11 @@ class ObservableDataset(Dataset):
     Example: 6D phase space reconstruction with 2 screens of various pixel sizes.
     Beamline parameters include the 2 dipole strengths (corresponding to each screen),
     2 transverse deflecting cavity strengths, and 5 quadrupole strenghs. See below for
-    the correct shapes of each input.
+    the correct shapes of each input. Note: that because the TCAV and quadrupole parameters
+    do not change the measurement diagnostic, they are flattened into a single dimension.
 
     >>> import torch
-    >>> parameters = torch.rand((2, 10, 3)) # M = 2, B = 10, N = 3
+    >>> parameters = torch.rand((10, 2, 3)) # B = 10, M = 2, N = 3
     >>> observations = (
     >>>     torch.rand((10, 200, 200)),
     >>>     torch.rand((10, 150, 150))
@@ -67,49 +68,37 @@ class ObservableDataset(Dataset):
             raise ValueError("observations must be passed as a tuple of tensors")
 
         # validate the input shapes
-        if len(parameters.shape) == 3:
+        if len(parameters.shape) == 2 or len(parameters.shape) == 3:
             # the leading dimension must match the number of observations
-            if not parameters.shape[0] == len(observations):
-                raise ValueError(
-                    "Number of observations must match the leading dimension of parameters"
-                )
-            for ele in self.observations:
-                if not parameters.shape[1] == ele.shape[0]:
+
+            if len(parameters.shape) == 3:
+                # the leading dimension must match the number of observations
+                if not parameters.shape[-2] == len(observations):
                     raise ValueError(
-                        "Batch dimension of parameters must match batch dimension of observations"
+                        f"Number of observations {len(observations)} must match "
+                        f"the [-2] dimension of parameters {parameters.shape[-2]}"
                     )
-        elif len(parameters.shape) == 2:
             for ele in self.observations:
                 if not parameters.shape[0] == ele.shape[0]:
                     raise ValueError(
                         "Batch dimension of parameters must match batch dimension of observations"
                     )
+
         else:
             raise ValueError("parameters must be a 2D or 3D tensor")
 
     def __len__(self):
-        if len(self.parameters.shape) == 3:
-            return self.parameters.shape[1]
-        else:
-            return self.parameters.shape[0]
+        return self.parameters.shape[0]
 
     def __getitem__(self, idx) -> Tuple[Tensor, List[Tensor]]:
         """
         Get the parameters and observations for a given index.
-        If the parameters are 3D, the first dimension corresponds
-        to the number of observations and should not be indexed over
-        when mini-batching.
+        If the parameters are 3D we then batch along the
         """
-        if len(self.parameters.shape) == 3:
-            return (
-                self.parameters[:, idx],
-                [ele[idx] for ele in self.observations],
-            )
-        else:
-            return (
-                self.parameters[idx],
-                [ele[idx] for ele in self.observations],
-            )
+        return (
+            self.parameters[idx],
+            [ele[idx] for ele in self.observations],
+        )
 
     def plot_data(self):
         pass
@@ -216,20 +205,22 @@ class SixDReconstructionDataset(ObservableDataset):
             Tensor of beamline parameters that correspond to data observations.
             Should elements along the last dimension should be ordered by (dipole
             strengths, TDC voltages, quadrupole focusing strengths) and should have a
-            shape of (2 x 2 x K x 3) where K is the number of quadrupole strengths.
+            shape of (K x N x 2 x 3) where K is the number of quadrupole strengths.
         observations : Tuple[Tensor, Tensor]
             Tuple of tensors contaning observed images, where the tensor shapes
-            should be (2 x K x n_bins x n_bins). First entry should be dipole off
-            images.
+            should be (K x N x n_bins x n_bins). First entry should be dipole off
+            images, second entry should be dipole on images.
 
         """
+
+        # keep unflattened parameters and observations for visualization
         self.six_d_params = parameters
         self.six_d_observations = observations
 
         # flatten stuff here for the parent class
-        parameters = self.six_d_params.flatten(start_dim=1, end_dim=-2)
+        parameters = self.six_d_params.clone().flatten(end_dim=-3)
         observations = tuple(
-            [ele.flatten(end_dim=-3) for ele in self.six_d_observations]
+            [ele.clone().flatten(end_dim=-3) for ele in self.six_d_observations]
         )
 
         super().__init__(parameters, observations)
@@ -241,7 +232,7 @@ class SixDReconstructionDataset(ObservableDataset):
         overlay_data=None,
         overlay_kwargs: dict = None,
         show_difference: bool = False,
-        filter_size: int = None,
+        filter_size: int = 3,
     ):
         """
         Visualize dataset collected for 6-D phase space reconstructions
@@ -251,12 +242,13 @@ class SixDReconstructionDataset(ObservableDataset):
         # check overlay data size if specified
         if overlay_data is not None:
             assert isinstance(overlay_data, type(self))
-            overlay_kwargs = overlay_kwargs or {
+            okwargs = {
                 "levels": DEFAULT_CONTOUR_LEVELS,
                 "cmap": DEFAULT_COLORMAP,
             }
+            okwargs.update(overlay_kwargs or {})
 
-        n_g, n_v, n_k = self.six_d_params.shape[:-1]
+        n_k, n_v, n_g = self.six_d_params.shape[:-1]
         params = self.six_d_params
         images = self.six_d_observations
 
@@ -296,26 +288,24 @@ class SixDReconstructionDataset(ObservableDataset):
             ax[0, i].text(
                 0.5,
                 1.1,
-                f"{params[0, 0, i, -1]:.1f}",
+                f"{params[i, 0, 0, 0]:.1f}",
                 va="bottom",
                 ha="center",
                 transform=ax[0, i].transAxes,
             )
-            for k in range(n_v):
-                for j in range(n_g):
-                    xbins, ybins = self.screens[j].pixel_bin_centers
-
-                    xx = torch.meshgrid(xbins * 1e3, ybins * 1e3)
+            for j in range(n_g):
+                for k in range(n_v):
+                    px_bin_centers = self.screens[j].pixel_bin_centers
+                    px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
                     row_number = 2 * j + k
 
                     if show_difference and overlay_data is not None:
                         # if flags are specified plot the difference
                         diff = torch.abs(
-                            images[j][k, i] - overlay_data.observations[j][k, i]
+                            images[j][i, k] - overlay_data.six_d_observations[j][i, k]
                         )
-                        ax[row_number, i].pcolormesh(
-                            xx[0].numpy(),
-                            xx[1].numpy(),
+                        ax[row_number, i].pcolor(
+                            *px_bin_centers,
                             diff,
                             rasterized=True,
                         )
@@ -331,27 +321,27 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                     else:
-                        ax[row_number, i].pcolormesh(
-                            xx[0].numpy(),
-                            xx[1].numpy(),
-                            images[j][k, i] / images[j][k, i].max(),
+                        ax[row_number, i].pcolor(
+                            *px_bin_centers,
+                            images[j][i, k] / images[j][i, k].max(),
                             rasterized=True,
                             vmax=1.0,
                             vmin=0,
                         )
 
                         if overlay_data is not None:
-                            overlay_image = overlay_data.observations[0][i]
+                            overlay_image = overlay_data.six_d_observations[j][
+                                i, k
+                            ].numpy()
                             if filter_size is not None:
                                 overlay_image = gaussian_filter(
-                                    overlay_image.numpy(), filter_size
+                                    overlay_image, filter_size
                                 )
 
-                            ax[i].contour(
-                                xx[0].numpy(),
-                                xx[1].numpy(),
+                            ax[row_number, i].contour(
+                                *px_bin_centers,
                                 overlay_image / overlay_image.max(),
-                                **overlay_kwargs,
+                                **okwargs,
                             )
 
                     if k == 0:
