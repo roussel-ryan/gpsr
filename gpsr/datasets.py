@@ -203,9 +203,10 @@ class SixDReconstructionDataset(ObservableDataset):
         ----------
         parameters : Tensor
             Tensor of beamline parameters that correspond to data observations.
-            Should elements along the last dimension should be ordered by (dipole
-            strengths, TDC voltages, quadrupole focusing strengths) and should have a
-            shape of (K x N x 2 x 3) where K is the number of quadrupole strengths.
+            Should elements along the last dimension should be ordered by 
+            (quadrupole focusing strengths, TDC voltages, dipole strengths) and 
+            should have a shape of (K x N x 2 x 3) where K is the number of 
+            quadrupole strengths.
         observations : Tuple[Tensor, Tensor]
             Tuple of tensors contaning observed images, where the tensor shapes
             should be (K x N x n_bins x n_bins). First entry should be dipole off
@@ -288,7 +289,7 @@ class SixDReconstructionDataset(ObservableDataset):
             ax[0, i].text(
                 0.5,
                 1.1,
-                f"{params[i, 0, 0, 0]:.1f}",
+                f"{params[i, 0, 0, 0]:.2f}",
                 va="bottom",
                 ha="center",
                 transform=ax[0, i].transAxes,
@@ -296,17 +297,21 @@ class SixDReconstructionDataset(ObservableDataset):
             for j in range(n_g):
                 for k in range(n_v):
                     px_bin_centers = self.screens[j].pixel_bin_centers
-                    px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
+                    px_bin_centers_x = px_bin_centers[1] * 1e3
+                    px_bin_centers_y = px_bin_centers[0] * 1e3
                     row_number = 2 * j + k
+
+                    ax[row_number, i].yaxis.tick_right()
 
                     if show_difference and overlay_data is not None:
                         # if flags are specified plot the difference
                         diff = torch.abs(
                             images[j][i, k] - overlay_data.six_d_observations[j][i, k]
                         )
-                        ax[row_number, i].pcolor(
-                            *px_bin_centers,
-                            diff,
+                        ax[row_number, i].pcolormesh(
+                            px_bin_centers_x,
+                            px_bin_centers_y,
+                            diff.T,
                             rasterized=True,
                         )
                         ax[row_number, i].text(
@@ -321,9 +326,10 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                     else:
-                        ax[row_number, i].pcolor(
-                            *px_bin_centers,
-                            images[j][i, k] / images[j][i, k].max(),
+                        ax[row_number, i].pcolormesh(
+                            px_bin_centers_x,
+                            px_bin_centers_y,
+                            images[j][i, k].T / images[j][i, k].max(),
                             rasterized=True,
                             vmax=1.0,
                             vmin=0,
@@ -337,10 +343,10 @@ class SixDReconstructionDataset(ObservableDataset):
                                 overlay_image = gaussian_filter(
                                     overlay_image, filter_size
                                 )
-
                             ax[row_number, i].contour(
-                                *px_bin_centers,
-                                overlay_image / overlay_image.max(),
+                                px_bin_centers_x,
+                                px_bin_centers_y,
+                                overlay_image.T / overlay_image.max(),
                                 **okwargs,
                             )
 
@@ -355,7 +361,7 @@ class SixDReconstructionDataset(ObservableDataset):
 
                     if i == 0:
                         ax[row_number, 0].text(
-                            -0.6,
+                            -0.2,
                             0.5,
                             f"T.D.C.: {v_lbl}\n DIPOLE: {g_lbl}",
                             va="center",
@@ -365,6 +371,8 @@ class SixDReconstructionDataset(ObservableDataset):
         # fig.tight_layout()
         for ele in ax[-1]:
             ele.set_xlabel("x (mm)")
-        for ele in ax[:, 0]:
+        for ele in ax[:, -1]:
             ele.set_ylabel("y (mm)")
+            ele.yaxis.set_label_position("right")
+            ele.tick_params(axis='y', which='both', right=True, labelright=True)
         return fig, ax
