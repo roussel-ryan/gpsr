@@ -4,7 +4,7 @@ import lightning as L
 import torch
 from torch import optim
 
-from gpsr.losses import mae_loss
+from gpsr.losses import mae_loss, normalize_images
 from gpsr.modeling import (
     GPSR,
 )
@@ -32,7 +32,9 @@ class LitGPSR(L.LightningModule, ABC):
                 )
 
         # add up the loss functions from each prediction (in a tuple)
-        diff = [mae_loss(y_ele, pred_ele) for y_ele, pred_ele in zip(y, pred)]
+        y_normalized = [normalize_images(y_ele) for y_ele in y]
+        pred_normalized = [normalize_images(pred_ele) for pred_ele in pred]
+        diff = [mae_loss(y_ele, pred_ele) for y_ele, pred_ele in zip(y_normalized, pred_normalized)]
 
         if len(diff) > 1:
             loss = torch.add(*diff)
