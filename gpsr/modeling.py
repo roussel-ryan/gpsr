@@ -113,7 +113,7 @@ class GPSR6DLattice(GPSRLattice):
             voltage=torch.tensor(0.0),
             frequency=torch.tensor(f_tdc),
             phase=torch.tensor(phi_tdc),
-            tilt=torch.tensor(3.14 / 2),
+            tilt=torch.tensor(np.pi / 2),
             name="SCAN_TDC",
         )
 
