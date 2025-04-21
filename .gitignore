@@ -11,6 +11,8 @@
 *.opal
 *.stat
 *.ckpt
+*.csv
+.coverage
 **/lightning_logs/
 dev
 **/_version.py

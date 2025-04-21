@@ -349,3 +349,14 @@ class Screen(Element):
             + f"is_active={repr(self.is_active)}, "
             + f"name={repr(self.name)})"
         )
+
+
+class COTRScreen(Screen):
+    @property
+    def reading(self) -> torch.Tensor:
+        density = super().reading
+
+        # calculate finite difference of the density
+        dx = torch.diff(density, dim=-1, append=density[..., :, -1:])
+        dy = torch.diff(density, dim=-2, append=density[..., -1:, :])
+        return dx**2 + dy**2
