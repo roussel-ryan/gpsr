@@ -9,6 +9,8 @@ from gpsr.losses import mae_loss
 from gpsr.modeling import (
     GPSR,
 )
+from copy import deepcopy
+from gpsr.beams import NNParticleBeamGenerator
 
 from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -117,7 +119,7 @@ def train_gpsr(
 
 
 def train_ensemble(
-    model,
+    gpsr_lattice,
     train_dataloader,
     n_models=5,
     n_epochs=100,
@@ -134,8 +136,10 @@ def train_ensemble(
         # define logger
         logger = CSVLogger("logs", name=log_name + f"/model_{i}")
 
+        p0c = 43.36e6  # reference momentum in eV/c
+
         model = train_gpsr(
-            model,
+            GPSR(NNParticleBeamGenerator(10000, p0c), gpsr_lattice),
             train_dataloader,
             n_epochs=n_epochs,
             lr=lr,
