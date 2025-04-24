@@ -304,7 +304,7 @@ class SixDReconstructionDataset(ObservableDataset):
                         diff = torch.abs(
                             images[j][i, k] - overlay_data.six_d_observations[j][i, k]
                         )
-                        ax[row_number, i].pcolor(
+                        ax[row_number, i].pcolormesh(
                             *px_bin_centers,
                             diff,
                             rasterized=True,
@@ -321,7 +321,7 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                     else:
-                        ax[row_number, i].pcolor(
+                        ax[row_number, i].pcolormesh(
                             *px_bin_centers,
                             images[j][i, k] / images[j][i, k].max(),
                             rasterized=True,
