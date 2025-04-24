@@ -10,7 +10,7 @@ from gpsr.modeling import (
     GPSR,
 )
 from copy import deepcopy
-from gpsr.beams import NNParticleBeamGenerator
+from gpsr.beams import NNParticleBeamGenerator, NNTransform
 
 from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -116,37 +116,3 @@ def train_gpsr(
     )
 
     return model
-
-
-def train_ensemble(
-    gpsr_lattice,
-    train_dataloader,
-    n_models=5,
-    n_epochs=100,
-    lr=1e-3,
-    log_name="gpsr_ensemble",
-    checkpoint_period_epochs=100,
-    **kwargs,
-):
-    models = []
-
-    for i in range(n_models):
-        print(f"Training model {i + 1}/{n_models}...")
-
-        # define logger
-        logger = CSVLogger("logs", name=log_name + f"/model_{i}")
-
-        p0c = 43.36e6  # reference momentum in eV/c
-
-        model = train_gpsr(
-            GPSR(NNParticleBeamGenerator(10000, p0c), gpsr_lattice),
-            train_dataloader,
-            n_epochs=n_epochs,
-            lr=lr,
-            logger=logger,
-            checkpoint_period_epochs=checkpoint_period_epochs,
-            **kwargs,
-        )
-        models.append(model)
-
-    return models

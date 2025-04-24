@@ -16,3 +16,4 @@ dev
 **/_version.py
 /.vscode
 *.csv
+*.yaml
