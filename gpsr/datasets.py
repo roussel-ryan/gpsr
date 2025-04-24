@@ -194,8 +194,8 @@ class QuadScanDataset(ObservableDataset):
 class SixDReconstructionDataset(ObservableDataset):
     def __init__(
         self,
-        parameters: Tensor,
-        observations: Tuple[Tensor, Tensor],
+        six_d_parameters: Tensor,
+        six_d_observations: Tuple[Tensor, Tensor],
         screens: Tuple[Screen, Screen],
     ):
         """
@@ -205,14 +205,14 @@ class SixDReconstructionDataset(ObservableDataset):
 
         Parameters
         ----------
-        parameters : Tensor
+        six_d_parameters : Tensor
             Tensor of beamline parameters that correspond to data observations.
             Shape should be (K x N x 2 x 3) where K is the number of quadrupole 
             strengths, N the number of TDC voltages, and 2 is the number of 
             dipole strengths. The last dimension should be ordered as 
             (quadrupole focusing strengths, TDC voltages, dipole strengths).
             
-        observations : Tuple[Tensor, Tensor]
+        six_d_observations : Tuple[Tensor, Tensor]
             Tuple of tensors containing observed images, where the tensor shapes
             should be (K x N x n_bins x n_bins). Here, K is the number of 
             quadrupole strengths, and N is the number of TDC voltages. The first 
@@ -230,11 +230,11 @@ class SixDReconstructionDataset(ObservableDataset):
         """
 
         # keep unflattened parameters and observations for visualization
-        self.six_d_params = parameters
-        self.six_d_observations = observations
+        self.six_d_parameters = six_d_parameters
+        self.six_d_observations = six_d_observations
 
         # flatten stuff here for the parent class
-        parameters = self.six_d_params.clone().flatten(end_dim=-3)
+        parameters = self.six_d_parameters.clone().flatten(end_dim=-3)
         observations = tuple(
             [ele.clone().flatten(end_dim=-3) for ele in self.six_d_observations]
         )
@@ -264,8 +264,8 @@ class SixDReconstructionDataset(ObservableDataset):
             }
             okwargs.update(overlay_kwargs or {})
 
-        n_k, n_v, n_g = self.six_d_params.shape[:-1]
-        params = self.six_d_params
+        n_k, n_v, n_g = self.six_d_parameters.shape[:-1]
+        params = self.six_d_parameters
         images = self.six_d_observations
 
         # plot
