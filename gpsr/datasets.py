@@ -24,7 +24,7 @@ class ObservableDataset(Dataset):
         or the number of different observations. Tensor shapes should be (B x D)
         where B is a batch dimension shape that corresponds to the `parameter`
         tensor, and D is an arbitrary shape corresponding to the dimensionality of
-        the observable. The images must follow the matrix convention, 
+        the observable. The images must follow the matrix convention,
         where axis -2 is Y and axis -1 is X.
 
     Notes
@@ -124,7 +124,7 @@ class QuadScanDataset(ObservableDataset):
         observations : Tensor
             Tensor contaning observed images, where the tensor shape
             should be (K x bins x bins). First entry should be dipole off images.
-            The images must follow the matrix convention, where axis -2 is Y and 
+            The images must follow the matrix convention, where axis -2 is Y and
             axis -1 is X.
         screen: Screen
             Cheetah screen object that corresponds to the observed images.
@@ -199,25 +199,25 @@ class SixDReconstructionDataset(ObservableDataset):
         screens: Tuple[Screen, Screen],
     ):
         """
-        Light wrapper dataset class for 6D phase space reconstructions with 
-        quadrupole, dipole, and TDC. Checks for correct sizes of parameters 
+        Light wrapper dataset class for 6D phase space reconstructions with
+        quadrupole, dipole, and TDC. Checks for correct sizes of parameters
         and observations.
 
         Parameters
         ----------
         six_d_parameters : Tensor
             Tensor of beamline parameters that correspond to data observations.
-            Shape should be (K x N x 2 x 3) where K is the number of quadrupole 
-            strengths, N the number of TDC voltages, and 2 is the number of 
-            dipole strengths. The last dimension should be ordered as 
+            Shape should be (K x N x 2 x 3) where K is the number of quadrupole
+            strengths, N the number of TDC voltages, and 2 is the number of
+            dipole strengths. The last dimension should be ordered as
             (quadrupole focusing strengths, TDC voltages, dipole strengths).
-            
+
         six_d_observations : Tuple[Tensor, Tensor]
             Tuple of tensors containing observed images, where the tensor shapes
-            should be (K x N x n_bins x n_bins). Here, K is the number of 
-            quadrupole strengths, and N is the number of TDC voltages. The first 
-            entry should be dipole-off images, and the second entry should be 
-            dipole-on images. The images must follow the matrix convention, 
+            should be (K x N x n_bins x n_bins). Here, K is the number of
+            quadrupole strengths, and N is the number of TDC voltages. The first
+            entry should be dipole-off images, and the second entry should be
+            dipole-on images. The images must follow the matrix convention,
             where axis -2 is Y and axis -1 is X.
 
         screens: Tuple[Screen, Screen]
