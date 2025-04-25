@@ -24,7 +24,8 @@ class ObservableDataset(Dataset):
         or the number of different observations. Tensor shapes should be (B x D)
         where B is a batch dimension shape that corresponds to the `parameter`
         tensor, and D is an arbitrary shape corresponding to the dimensionality of
-        the observable.
+        the observable. The images must follow the matrix convention,
+        where axis -2 is Y and axis -1 is X.
 
     Notes
     -----
@@ -123,6 +124,8 @@ class QuadScanDataset(ObservableDataset):
         observations : Tensor
             Tensor contaning observed images, where the tensor shape
             should be (K x bins x bins). First entry should be dipole off images.
+            The images must follow the matrix convention, where axis -2 is Y and
+            axis -1 is X.
         screen: Screen
             Cheetah screen object that corresponds to the observed images.
 
@@ -191,34 +194,47 @@ class QuadScanDataset(ObservableDataset):
 class SixDReconstructionDataset(ObservableDataset):
     def __init__(
         self,
-        parameters: Tensor,
-        observations: Tuple[Tensor, Tensor],
+        six_d_parameters: Tensor,
+        six_d_observations: Tuple[Tensor, Tensor],
         screens: Tuple[Screen, Screen],
     ):
         """
-        Light wrapper dataset class for 6D phase space reconstructions with quadrupole,
-        dipole and TDC. Checks for correct sizes of parameters and observations.
+        Light wrapper dataset class for 6D phase space reconstructions with
+        quadrupole, dipole, and TDC. Checks for correct sizes of parameters
+        and observations.
 
         Parameters
         ----------
-        parameters : Tensor
+        six_d_parameters : Tensor
             Tensor of beamline parameters that correspond to data observations.
-            Should elements along the last dimension should be ordered by (dipole
-            strengths, TDC voltages, quadrupole focusing strengths) and should have a
-            shape of (K x N x 2 x 3) where K is the number of quadrupole strengths.
-        observations : Tuple[Tensor, Tensor]
-            Tuple of tensors contaning observed images, where the tensor shapes
-            should be (K x N x n_bins x n_bins). First entry should be dipole off
-            images, second entry should be dipole on images.
+            Shape should be (K x N x 2 x 3) where K is the number of quadrupole
+            strengths, N the number of TDC voltages, and 2 is the number of
+            dipole strengths. The last dimension should be ordered as
+            (quadrupole focusing strengths, TDC voltages, dipole strengths).
 
+        six_d_observations : Tuple[Tensor, Tensor]
+            Tuple of tensors containing observed images, where the tensor shapes
+            should be (K x N x n_bins x n_bins). Here, K is the number of
+            quadrupole strengths, and N is the number of TDC voltages. The first
+            entry should be dipole-off images, and the second entry should be
+            dipole-on images. The images must follow the matrix convention,
+            where axis -2 is Y and axis -1 is X.
+
+        screens: Tuple[Screen, Screen]
+            Tuple of cheetah screen objects that corresponds to the observed images.
+
+        Notes
+        -----
+
+        Only squared images are supported for now.
         """
 
         # keep unflattened parameters and observations for visualization
-        self.six_d_params = parameters
-        self.six_d_observations = observations
+        self.six_d_parameters = six_d_parameters
+        self.six_d_observations = six_d_observations
 
         # flatten stuff here for the parent class
-        parameters = self.six_d_params.clone().flatten(end_dim=-3)
+        parameters = self.six_d_parameters.clone().flatten(end_dim=-3)
         observations = tuple(
             [ele.clone().flatten(end_dim=-3) for ele in self.six_d_observations]
         )
@@ -248,8 +264,8 @@ class SixDReconstructionDataset(ObservableDataset):
             }
             okwargs.update(overlay_kwargs or {})
 
-        n_k, n_v, n_g = self.six_d_params.shape[:-1]
-        params = self.six_d_params
+        n_k, n_v, n_g = self.six_d_parameters.shape[:-1]
+        params = self.six_d_parameters
         images = self.six_d_observations
 
         # plot
@@ -304,7 +320,7 @@ class SixDReconstructionDataset(ObservableDataset):
                         diff = torch.abs(
                             images[j][i, k] - overlay_data.six_d_observations[j][i, k]
                         )
-                        ax[row_number, i].pcolor(
+                        ax[row_number, i].pcolormesh(
                             *px_bin_centers,
                             diff,
                             rasterized=True,
@@ -321,7 +337,7 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                     else:
-                        ax[row_number, i].pcolor(
+                        ax[row_number, i].pcolormesh(
                             *px_bin_centers,
                             images[j][i, k] / images[j][i, k].max(),
                             rasterized=True,

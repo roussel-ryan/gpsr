@@ -15,3 +15,5 @@
 dev
 **/_version.py
 /.vscode
+*_dev_*
+*.DS_Store

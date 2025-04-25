@@ -6,7 +6,7 @@ dependencies:
   - pip
   - pip:
     - numpy
-    - matplotlib
+    - matplotlib>=3.3.0
     - scipy
     - ipykernel
     - tqdm
