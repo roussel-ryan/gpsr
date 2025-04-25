@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
   "lightning",
-  "matplotlib",
+  "matplotlib>=3.3.0",
   "cheetah-accelerator>=0.7.1",
   "tensorboard",
   "scipy",
