@@ -136,7 +136,8 @@ class GPSR6DLattice(GPSRLattice):
 
         self.l_bend = l_bend
         self.l3 = l3
-        self.screens = [screen_1, screen_2]
+        self.screen_1 = screen_1
+        self.screen_2 = screen_2
         self.lattice = lattice
 
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
@@ -157,7 +158,7 @@ class GPSR6DLattice(GPSRLattice):
         batch_size = (slice(None),) * n_batch_dims  # Use a tuple instead of a list
 
         obs = []
-        for i, screen in enumerate(self.screens):
+        for i, screen in enumerate((self.screen_1, self.screen_2)):
             screen.track(final_beam[batch_size + (i,)])  # Concatenate explicitly
             obs.append(screen.reading)
 
