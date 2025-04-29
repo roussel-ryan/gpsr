@@ -388,7 +388,7 @@ class SixDReconstructionDataset(ObservableDataset):
 
 
 def split_dataset(dataset, train_k_ids, test_k_ids=None):
-    if type(dataset) == SixDReconstructionDataset:
+    if isinstance(dataset, SixDReconstructionDataset):
         all_k_ids = np.arange(dataset.six_d_parameters.shape[0])
 
         if test_k_ids is None:
@@ -413,7 +413,7 @@ def split_dataset(dataset, train_k_ids, test_k_ids=None):
             screens=dataset.screens,
         )
 
-    elif type(dataset) == QuadScanDataset:
+    elif isinstance(dataset, QuadScanDataset):
         all_k_ids = np.arange(dataset.parameters.shape[0])
 
         if test_k_ids is None:
