@@ -92,8 +92,8 @@ class TestModeling:
         )
 
         assert isinstance(lattice.lattice, Segment)
-        assert lattice.screens[0] is screen_1
-        assert lattice.screens[1] is screen_2
+        assert lattice.screen_1 is screen_1
+        assert lattice.screen_2 is screen_2
 
     def test_gpsr_6d_lattice_set_lattice_parameters(self):
         l_quad = 0.5
