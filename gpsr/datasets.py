@@ -1,5 +1,6 @@
 from typing import Tuple, List
 
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
@@ -384,3 +385,51 @@ class SixDReconstructionDataset(ObservableDataset):
         for ele in ax[:, 0]:
             ele.set_ylabel("y (mm)")
         return fig, ax
+
+
+def split_dataset(dataset, train_k_ids, test_k_ids=None):
+    
+    if type(dataset) == SixDReconstructionDataset:
+        all_k_ids = np.arange(dataset.six_d_parameters.shape[0])
+
+        if test_k_ids is None:
+            test_k_ids_copy = np.setdiff1d(all_k_ids, train_k_ids)
+        else:
+            test_k_ids_copy = test_k_ids
+
+        train_dataset = SixDReconstructionDataset(
+            six_d_parameters = dataset.six_d_parameters[train_k_ids],
+            six_d_observations = [observation[train_k_ids] for observation in dataset.six_d_observations],
+            screens = dataset.screens,
+        )
+
+        test_dataset = SixDReconstructionDataset(
+            six_d_parameters = dataset.six_d_parameters[test_k_ids_copy],
+            six_d_observations = [observation[test_k_ids_copy] for observation in dataset.six_d_observations],
+            screens = dataset.screens,
+        )
+
+    elif type(dataset) == QuadScanDataset:
+        all_k_ids = np.arange(dataset.parameters.shape[0])
+
+        if test_k_ids is None:
+            test_k_ids_copy = np.setdiff1d(all_k_ids, train_k_ids)
+        else:
+            test_k_ids_copy = test_k_ids
+        
+        train_dataset = QuadScanDataset(
+            parameters = dataset.parameters[train_k_ids],
+            observations = dataset.observations[0][train_k_ids],
+            screen = dataset.screen,
+        )
+
+        test_dataset = QuadScanDataset(
+            parameters = dataset.parameters[test_k_ids_copy],
+            observations = dataset.observations[0][test_k_ids_copy],
+            screen = dataset.screen,
+        )
+
+    else:
+        raise ValueError("Unknown dataset type")
+
+    return train_dataset, test_dataset
