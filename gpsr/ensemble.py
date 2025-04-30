@@ -1,4 +1,3 @@
-
 from typing import Literal
 
 import numpy as np
@@ -11,6 +10,7 @@ from lightning.pytorch.loggers import CSVLogger
 from scipy.ndimage import gaussian_filter
 
 from cheetah.particles import ParticleBeam
+
 
 def train_ensemble(
     gpsr_lattice,
@@ -33,9 +33,12 @@ def train_ensemble(
         p0c = 43.36e6  # reference momentum in eV/c
 
         model = train_gpsr(
-            GPSR(NNParticleBeamGenerator(
-                10000, p0c, transformer=NNTransform(2, 20, output_scale=1e-2)
-            ), gpsr_lattice),
+            GPSR(
+                NNParticleBeamGenerator(
+                    10000, p0c, transformer=NNTransform(2, 20, output_scale=1e-2)
+                ),
+                gpsr_lattice,
+            ),
             train_dataloader,
             n_epochs=n_epochs,
             lr=lr,
@@ -45,7 +48,7 @@ def train_ensemble(
         )
         models.append(model)
 
-    return models 
+    return models
 
 
 def compute_mean_and_confidence_interval(
@@ -107,7 +110,7 @@ def compute_distribution_statistics(
         Number of bins to use for the histogram. Default is 100.
     bin_ranges: tuple[tuple[float]], optional
         The ranges for the x and y dimensions. Default is None, which means the ranges will be computed from the data.
-    
+
     Returns
     -------
     tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
@@ -152,30 +155,31 @@ def compute_distribution_statistics(
         mean_histogram,
         normalized_confidence_width,
     )
-    
+
 
 def plot_2d_distribution(
-        beams: list[ParticleBeam],
-        x_dimension: Literal["x", "px", "y", "py", "tau", "p"],
-        y_dimension: Literal["x", "px", "y", "py", "tau", "p"],
-        bins: int = 100,
-        bin_ranges: tuple[tuple[float]] | None = None,
-        ci_kws: dict | None = None,
-        density_kws: dict | None = None,
-        ax: plt.Axes | None = None,
-        smoothing_factor: float = None,
-    ) -> plt.Axes:
-
+    beams: list[ParticleBeam],
+    x_dimension: Literal["x", "px", "y", "py", "tau", "p"],
+    y_dimension: Literal["x", "px", "y", "py", "tau", "p"],
+    bins: int = 100,
+    bin_ranges: tuple[tuple[float]] | None = None,
+    ci_kws: dict | None = None,
+    density_kws: dict | None = None,
+    ax: plt.Axes | None = None,
+    smoothing_factor: float = None,
+) -> plt.Axes:
     if ax is None:
         fig, ax = plt.subplots(1, 2, sharex=True, sharey=True)
 
-    x_centers, y_centers, mean_histogram, normalized_confidence_width = compute_distribution_statistics(
-        beams,
-        x_dimension,
-        y_dimension,
-        bins=bins,
-        bin_ranges=bin_ranges,
-        smoothing_factor=smoothing_factor,
+    x_centers, y_centers, mean_histogram, normalized_confidence_width = (
+        compute_distribution_statistics(
+            beams,
+            x_dimension,
+            y_dimension,
+            bins=bins,
+            bin_ranges=bin_ranges,
+            smoothing_factor=smoothing_factor,
+        )
     )
 
     c = ax[0].pcolormesh(
@@ -198,6 +202,4 @@ def plot_2d_distribution(
     )
     fig.colorbar(c, ax=ax[1], label="Normalized CI")
 
-
     return fig, ax
-        
