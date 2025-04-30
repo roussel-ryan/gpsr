@@ -29,10 +29,10 @@ class TestModeling:
 
         lattice = GPSRQuadScanLattice(l_quad, l_drift, diagnostic)
 
-        assert isinstance(lattice.lattice, Segment)
+        assert isinstance(lattice.segment, Segment)
         assert lattice.diagnostic is diagnostic
-        assert isinstance(lattice.lattice.elements[0], Quadrupole)
-        assert isinstance(lattice.lattice.elements[1], Drift)
+        assert isinstance(lattice.segment.elements[0], Quadrupole)
+        assert isinstance(lattice.segment.elements[1], Drift)
 
     def test_gpsr_quad_scan_lattice_set_lattice_parameters(self):
         l_quad = 0.5
@@ -45,7 +45,7 @@ class TestModeling:
         x = torch.tensor([0.1]).unsqueeze(0)
         lattice.set_lattice_parameters(x)
 
-        assert torch.isclose(lattice.lattice.elements[0].k1, torch.tensor(0.1))
+        assert torch.isclose(lattice.segment.elements[0].k1, torch.tensor(0.1))
 
     def test_gpsr_quad_scan_lattice_track_and_observe(self):
         l_quad = 0.5
@@ -91,7 +91,7 @@ class TestModeling:
             screen_2,
         )
 
-        assert isinstance(lattice.lattice, Segment)
+        assert isinstance(lattice.segment, Segment)
         assert lattice.screen_1 is screen_1
         assert lattice.screen_2 is screen_2
 
@@ -124,23 +124,23 @@ class TestModeling:
         lattice.set_lattice_parameters(x)
 
         assert torch.equal(
-            lattice.lattice.SCAN_QUAD.k1, torch.tensor([0.2, 0.2]).reshape(2, 1, 1)
+            lattice.segment.SCAN_QUAD.k1, torch.tensor([0.2, 0.2]).reshape(2, 1, 1)
         )
         assert torch.equal(
-            lattice.lattice.SCAN_TDC.voltage, torch.tensor([0.5, 0.5]).reshape(2, 1, 1)
+            lattice.segment.SCAN_TDC.voltage, torch.tensor([0.5, 0.5]).reshape(2, 1, 1)
         )
         assert torch.allclose(
-            lattice.lattice.SCAN_DIPOLE.angle,
+            lattice.segment.SCAN_DIPOLE.angle,
             torch.tensor([0.0801, 0.0801]).reshape(2, 1, 1),
             atol=1e-2,
         )
         assert torch.allclose(
-            lattice.lattice.SCAN_DIPOLE.length,
+            lattice.segment.SCAN_DIPOLE.length,
             torch.tensor([0.8035, 0.8035]).reshape(2, 1, 1),
             atol=1e-2,
         )
         assert torch.allclose(
-            lattice.lattice.SCAN_DIPOLE.dipole_e2,
+            lattice.segment.SCAN_DIPOLE.dipole_e2,
             torch.tensor([0.0801, 0.0801]).reshape(2, 1, 1),
             atol=1e-2,
         )
@@ -229,7 +229,7 @@ class TestModeling:
             seg, variable_elements=var_elements, observable_elements=obs_elements
         )
 
-        assert isinstance(lattice.lattice, Segment)
+        assert isinstance(lattice.segment, Segment)
         assert lattice.variable_elements == var_elements
         assert lattice.observable_elements == obs_elements
 
@@ -260,8 +260,8 @@ class TestModeling:
         x = torch.tensor([[0.1, 0.5], [0.1, 0.5]])
         lattice.set_lattice_parameters(x)
 
-        assert torch.equal(lattice.lattice.q1.k1, torch.tensor([0.1, 0.1]))
-        assert torch.equal(lattice.lattice.TDC.voltage, torch.tensor([0.5, 0.5]))
+        assert torch.equal(lattice.segment.q1.k1, torch.tensor([0.1, 0.1]))
+        assert torch.equal(lattice.segment.TDC.voltage, torch.tensor([0.5, 0.5]))
 
     def test_generic_gpsr_lattice_track_and_observe(self):
         TDC = TransverseDeflectingCavity(
