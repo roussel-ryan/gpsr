@@ -1,7 +1,7 @@
 from unittest.mock import Mock
 import pytest
 import torch
-from gpsr.custom_cheetah.screen import Screen
+from cheetah import Screen
 from gpsr.datasets import (
     ObservableDataset,
     QuadScanDataset,
