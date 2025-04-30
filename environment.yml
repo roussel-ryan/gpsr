@@ -13,4 +13,4 @@ dependencies:
     - torch
     - lightning
     - tensorboard
-    - cheetah-accelerator
+    - cheetah-accelerator>=0.7.2

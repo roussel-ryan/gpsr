@@ -1,4 +1,5 @@
 from abc import ABC
+import os
 
 import lightning as L
 import torch
@@ -8,6 +9,9 @@ from gpsr.losses import mae_loss, normalize_images
 from gpsr.modeling import (
     GPSR,
 )
+
+from lightning.pytorch.loggers import CSVLogger
+from lightning.pytorch.callbacks import ModelCheckpoint
 
 
 class LitGPSR(L.LightningModule, ABC):
@@ -53,3 +57,67 @@ class LitGPSR(L.LightningModule, ABC):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
+
+
+def train_gpsr(
+    model,
+    train_dataloader,
+    n_epochs=100,
+    lr=1e-3,
+    logger=None,
+    dirpath=None,
+    checkpoint_period_epochs=100,
+    **kwargs,
+):
+    """
+    Train the GPSR model using PyTorch Lightning.
+
+    Arguments
+    ---------
+    model: GPSRModel
+        GPSR model to be trained.
+    train_dataloader: DataLoader
+        DataLoader for the training data.
+    epochs: int, optional
+        Number of epochs to train the model. Default is 100.
+    lr: float, optional
+        Learning rate for the optimizer. Default is 1e-3.
+    log_name: str, optional
+        Name of the log file to save training logs. Default is "gpsr".
+    checkpoint_period_epochs: int, optional
+        Number of epochs between saving checkpoints. Default is 100.
+    kwargs: Additional arguments to be passed to the Trainer.
+
+    Returns
+    -------
+    model: GPSRModel
+        Trained GPSR model.
+
+    """
+
+    logger = logger or CSVLogger("logs", name="gpsr")
+    dirpath = os.path.join(logger.log_dir, "checkpoints")
+
+    periodic_checkpoint_callback = ModelCheckpoint(
+        dirpath=dirpath,  # Directory to save checkpoints
+        filename="{step}",  # Unique filename
+        save_weights_only=False,  # Save the full model (including optimizer state)
+        every_n_epochs=checkpoint_period_epochs,
+        save_top_k=-1,  # Save all checkpoints
+        monitor="loss",  # Monitor the loss for saving checkpoints
+    )
+
+    trainer = L.Trainer(
+        max_epochs=n_epochs,
+        logger=logger,
+        callbacks=[periodic_checkpoint_callback],
+        **kwargs,
+    )
+
+    gpsr_model = LitGPSR(model, lr)
+    trainer.fit(
+        gpsr_model,
+        train_dataloader,
+    )
+
+    return model
