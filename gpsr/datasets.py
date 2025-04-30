@@ -395,13 +395,42 @@ def split_dataset(
     Union[SixDReconstructionDataset, QuadScanDataset],
     Union[SixDReconstructionDataset, QuadScanDataset],
 ]:
+    """
+    Splits a dataset into training and testing subsets based on provided indices.
+
+    Args:
+        dataset (Union[SixDReconstructionDataset, QuadScanDataset]):
+            The dataset to be split. It can be either a SixDReconstructionDataset
+            or a QuadScanDataset.
+        train_k_ids (np.ndarray):
+            An array of indices specifying the samples to include in the training subset.
+        test_k_ids (np.ndarray, optional):
+            An array of indices specifying the samples to include in the testing subset.
+            If not provided, the testing subset will include all indices not in `train_k_ids`.
+
+    Returns:
+        Tuple[Union[SixDReconstructionDataset, QuadScanDataset],
+              Union[SixDReconstructionDataset, QuadScanDataset]]:
+            A tuple containing the training dataset and the testing dataset, both of the
+            same type as the input dataset.
+
+    Raises:
+        ValueError: If the input dataset is not of type SixDReconstructionDataset or
+                    QuadScanDataset.
+    """
+
+    def generate_test_indices(all_k_ids, train_k_ids, test_k_ids=None):
+        """
+        Generate test indices based on the provided train indices and optional test indices.
+        If test_k_ids is None, compute the difference between all_k_ids and train_k_ids.
+        """
+        if test_k_ids is None:
+            return np.setdiff1d(all_k_ids, train_k_ids)
+        return test_k_ids
+
     if isinstance(dataset, SixDReconstructionDataset):
         all_k_ids = np.arange(dataset.six_d_parameters.shape[0])
-
-        if test_k_ids is None:
-            test_k_ids_copy = np.setdiff1d(all_k_ids, train_k_ids)
-        else:
-            test_k_ids_copy = test_k_ids
+        test_k_ids_copy = generate_test_indices(all_k_ids, train_k_ids, test_k_ids)
 
         train_dataset = SixDReconstructionDataset(
             six_d_parameters=dataset.six_d_parameters[train_k_ids],
@@ -422,11 +451,7 @@ def split_dataset(
 
     elif isinstance(dataset, QuadScanDataset):
         all_k_ids = np.arange(dataset.parameters.shape[0])
-
-        if test_k_ids is None:
-            test_k_ids_copy = np.setdiff1d(all_k_ids, train_k_ids)
-        else:
-            test_k_ids_copy = test_k_ids
+        test_k_ids_copy = generate_test_indices(all_k_ids, train_k_ids, test_k_ids)
 
         train_dataset = QuadScanDataset(
             parameters=dataset.parameters[train_k_ids],
