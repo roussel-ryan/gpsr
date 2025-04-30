@@ -391,7 +391,10 @@ def split_dataset(
     dataset: Union[SixDReconstructionDataset, QuadScanDataset],
     train_k_ids: np.ndarray,
     test_k_ids: np.ndarray = None,
-) -> Tuple[Union[SixDReconstructionDataset, QuadScanDataset], Union[SixDReconstructionDataset, QuadScanDataset]]:
+) -> Tuple[
+    Union[SixDReconstructionDataset, QuadScanDataset],
+    Union[SixDReconstructionDataset, QuadScanDataset],
+]:
     if isinstance(dataset, SixDReconstructionDataset):
         all_k_ids = np.arange(dataset.six_d_parameters.shape[0])
 
