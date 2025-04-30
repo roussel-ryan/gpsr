@@ -54,12 +54,12 @@ class GPSR(torch.nn.Module):
 
 
 class GPSRQuadScanLattice(GPSRLattice):
-    def __init__(self, l_quad: float, l_drift: float, diagnostic: Screen):
+    def __init__(self, l_quad: float, l_drift: float, screen: Screen):
         super().__init__()
         q1 = Quadrupole(torch.tensor(l_quad), torch.tensor(0.0))
         d1 = Drift(torch.tensor(l_drift))
-        self.segment = Segment([q1, d1, diagnostic])
-        self.diagnostic = diagnostic
+        self.segment = Segment([q1, d1, screen])
+        self.screen = screen
 
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way

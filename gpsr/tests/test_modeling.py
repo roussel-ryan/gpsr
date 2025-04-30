@@ -24,23 +24,23 @@ class TestModeling:
     def test_gpsr_quad_scan_lattice_initialization(self):
         l_quad = 0.5
         l_drift = 1.0
-        diagnostic = MagicMock(spec=Screen)
-        diagnostic.name = "test"
+        screen = MagicMock(spec=Screen)
+        screen.name = "test"
 
-        lattice = GPSRQuadScanLattice(l_quad, l_drift, diagnostic)
+        lattice = GPSRQuadScanLattice(l_quad, l_drift, screen)
 
         assert isinstance(lattice.segment, Segment)
-        assert lattice.diagnostic is diagnostic
+        assert lattice.screen is screen
         assert isinstance(lattice.segment.elements[0], Quadrupole)
         assert isinstance(lattice.segment.elements[1], Drift)
 
     def test_gpsr_quad_scan_lattice_set_lattice_parameters(self):
         l_quad = 0.5
         l_drift = 1.0
-        diagnostic = MagicMock(spec=Screen)
-        diagnostic.name = "test"
+        screen = MagicMock(spec=Screen)
+        screen.name = "test"
 
-        lattice = GPSRQuadScanLattice(l_quad, l_drift, diagnostic)
+        lattice = GPSRQuadScanLattice(l_quad, l_drift, screen)
 
         x = torch.tensor([0.1]).unsqueeze(0)
         lattice.set_lattice_parameters(x)
@@ -50,12 +50,12 @@ class TestModeling:
     def test_gpsr_quad_scan_lattice_track_and_observe(self):
         l_quad = 0.5
         l_drift = 1.0
-        diagnostic = MagicMock(spec=Screen)
-        diagnostic.transfer_map = lambda x, y: torch.eye(7)
-        diagnostic.reading = torch.eye(3)
-        diagnostic.name = "test"
+        screen = MagicMock(spec=Screen)
+        screen.transfer_map = lambda x, y: torch.eye(7)
+        screen.reading = torch.eye(3)
+        screen.name = "test"
 
-        lattice = GPSRQuadScanLattice(l_quad, l_drift, diagnostic)
+        lattice = GPSRQuadScanLattice(l_quad, l_drift, screen)
 
         beam = ParticleBeam(energy=torch.tensor(1e6), particles=torch.rand((10, 7)))
         observations = lattice.track_and_observe(beam)
