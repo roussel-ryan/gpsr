@@ -2,11 +2,13 @@
 from typing import Literal
 
 import numpy as np
+import torch
 from matplotlib import pyplot as plt
 from gpsr.modeling import GPSR
 from gpsr.train import train_gpsr
 from gpsr.beams import NNParticleBeamGenerator, NNTransform
 from lightning.pytorch.loggers import CSVLogger
+from scipy.ndimage import gaussian_filter
 
 from cheetah.particles import ParticleBeam
 
@@ -32,7 +34,7 @@ def train_ensemble(
 
         model = train_gpsr(
             GPSR(NNParticleBeamGenerator(
-                10000, p0c, transformer=NNTransform(2, 20, output_scale=1e-1)
+                10000, p0c, transformer=NNTransform(2, 20, output_scale=1e-2)
             ), gpsr_lattice),
             train_dataloader,
             n_epochs=n_epochs,
@@ -43,17 +45,50 @@ def train_ensemble(
         )
         models.append(model)
 
-    return models
+    return models 
 
 
 def compute_mean_and_confidence_interval(
+    histograms: np.ndarray,
+    lower_quantile: float = 0.05,
+    upper_quantile: float = 0.95,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Given an array of histograms, compute the mean and confidence interval over the first axis.
+
+    Parameters
+    ----------
+    histograms: np.ndarray
+        A 2D array of histograms, where each row is a histogram.
+    lower_quantile: float, optional
+        The lower percentile for the confidence interval. Default is 0.05.
+    upper_quantile: float, optional
+        The upper percentile for the confidence interval. Default is 0.95.
+
+    Returns
+    -------
+    tuple[np.ndarray, np.ndarray]
+        A tuple containing the mean histogram and the normalized confidence width.
+
+    """
+    mean_histogram = torch.mean(histograms, axis=0)
+    lower_bound = torch.quantile(histograms, lower_quantile, axis=0)
+    upper_bound = torch.quantile(histograms, upper_quantile, axis=0)
+    normalized_confidence_width = mean_histogram / (upper_bound - lower_bound)
+    normalized_confidence_width[normalized_confidence_width == torch.nan] = 0.0
+
+    return mean_histogram, normalized_confidence_width
+
+
+def compute_distribution_statistics(
     beams: list[ParticleBeam],
     x_dimension: Literal["x", "px", "y", "py", "tau", "p"],
     y_dimension: Literal["x", "px", "y", "py", "tau", "p"],
     bins: int = 100,
     bin_ranges: tuple[tuple[float]] | None = None,
-    lower_percentile: float = 0.05,
-    upper_percentile: float = 0.95,
+    lower_quantile: float = 0.05,
+    upper_quantile: float = 0.95,
+    smoothing_factor: float = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """
     Given a list of beams, compute the mean and confidence interval for the specified dimensions.
@@ -97,17 +132,19 @@ def compute_mean_and_confidence_interval(
             bins=bins,
             range=bin_ranges,
         )
+        if smoothing_factor is not None:
+            histogram = gaussian_filter(histogram, sigma=smoothing_factor)
+
         histograms.append(histogram)
 
     x_centers = (x_edges[:-1] + x_edges[1:]) / 2
     y_centers = (y_edges[:-1] + y_edges[1:]) / 2
 
-    histograms = np.array(histograms)
-    mean_histogram = np.mean(histograms, axis=0)
-    lower_bound = np.percentile(histograms, lower_percentile * 100, axis=0)
-    upper_bound = np.percentile(histograms, upper_percentile * 100, axis=0)
-    normalized_confidence_width = mean_histogram / (upper_bound - lower_bound)
-    normalized_confidence_width[normalized_confidence_width == np.nan] = 0.0
+    mean_histogram, normalized_confidence_width = compute_mean_and_confidence_interval(
+        torch.tensor(histograms),
+        lower_quantile=lower_quantile,
+        upper_quantile=upper_quantile,
+    )
 
     return (
         x_centers,
@@ -116,29 +153,29 @@ def compute_mean_and_confidence_interval(
         normalized_confidence_width,
     )
     
+
 def plot_2d_distribution(
         beams: list[ParticleBeam],
         x_dimension: Literal["x", "px", "y", "py", "tau", "p"],
         y_dimension: Literal["x", "px", "y", "py", "tau", "p"],
-        style: Literal["histogram", "contour"] = "histogram",
         bins: int = 100,
         bin_ranges: tuple[tuple[float]] | None = None,
-        histogram_smoothing: float = 0.0,
-        contour_smoothing: float = 3.0,
-        pcolormesh_kws: dict | None = None,
-        contour_kws: dict | None = None,
+        ci_kws: dict | None = None,
+        density_kws: dict | None = None,
         ax: plt.Axes | None = None,
+        smoothing_factor: float = None,
     ) -> plt.Axes:
 
     if ax is None:
         fig, ax = plt.subplots(1, 2, sharex=True, sharey=True)
 
-    x_centers, y_centers, mean_histogram, normalized_confidence_width = compute_mean_and_confidence_interval(
+    x_centers, y_centers, mean_histogram, normalized_confidence_width = compute_distribution_statistics(
         beams,
         x_dimension,
         y_dimension,
         bins=bins,
         bin_ranges=bin_ranges,
+        smoothing_factor=smoothing_factor,
     )
 
     c = ax[0].pcolormesh(
@@ -146,29 +183,20 @@ def plot_2d_distribution(
         y_centers,
         mean_histogram.T,
         shading="auto",
-        **(pcolormesh_kws or {}),
+        **(density_kws or {}),
     )
     ax[0].set_title("Mean Histogram")
     ax[0].set_xlabel(x_dimension)
     ax[0].set_ylabel(y_dimension)
-    fig.colorbar(c, ax=ax[0], label="Counts")
-    #ax[0].contour(
-    #    x_centers,
-    #    y_centers,
-    #    normalized_confidence_width.T,
-    #    cmap="plasma",
-    #    levels=[1.0,2.0],
-    #    **(pcolormesh_kws or {}),
-    #)
-    c = ax[1].pcolor(
+    fig.colorbar(c, ax=ax[0], label="Density")
+
+    c = ax[1].pcolormesh(
         x_centers,
         y_centers,
         normalized_confidence_width.T,
-        **(pcolormesh_kws or {}),
+        **(ci_kws or {}),
     )
-    #ax[1].set_title("Normalized Confidence Width")
-    #ax[1].set_xlabel(x_dimension)
-    fig.colorbar(c, ax=ax[1], label="Normalized Width")
+    fig.colorbar(c, ax=ax[1], label="Normalized CI")
 
 
     return fig, ax
