@@ -57,9 +57,9 @@ class TrainSVI():
 
         self.svi = SVI(model, guide, optimizer, loss=loss)
 
-    def train(self, x, y, y_std=None, n_steps=1000):
+    def train(self, *args, n_steps=1000):
         for step in range(n_steps):
-            loss = self.svi.step(x, y, y_std)
+            loss = self.svi.step(*args)
             if step % 100 == 0:
                 print(f"step {step} loss = {loss}")
         return loss
