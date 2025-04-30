@@ -434,18 +434,18 @@ def split_dataset(
 
         train_dataset = SixDReconstructionDataset(
             six_d_parameters=dataset.six_d_parameters[train_k_ids],
-            six_d_observations=[
+            six_d_observations=tuple(
                 observation[train_k_ids] for observation in dataset.six_d_observations
-            ],
+            ),
             screens=dataset.screens,
         )
 
         test_dataset = SixDReconstructionDataset(
             six_d_parameters=dataset.six_d_parameters[test_k_ids_copy],
-            six_d_observations=[
+            six_d_observations=tuple(
                 observation[test_k_ids_copy]
                 for observation in dataset.six_d_observations
-            ],
+            ),
             screens=dataset.screens,
         )
 
