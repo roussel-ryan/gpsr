@@ -17,3 +17,5 @@ dev
 /.vscode
 *.csv
 *.yaml
+*_dev_*
+*.DS_Store
