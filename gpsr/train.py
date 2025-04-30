@@ -9,8 +9,6 @@ from gpsr.losses import mae_loss, normalize_images
 from gpsr.modeling import (
     GPSR,
 )
-from copy import deepcopy
-from gpsr.beams import NNParticleBeamGenerator, NNTransform
 
 from lightning.pytorch.loggers import CSVLogger
 from lightning.pytorch.callbacks import ModelCheckpoint
