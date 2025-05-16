@@ -17,7 +17,7 @@ def process_images(
     center_images: bool = False,
 ):
     """
-    Process a batch of images for use in GPSR. 
+    Process a batch of images for use in GPSR.
     The images are cropped, thresholded, pooled, median filtered, and normalized.
     An image_fitter function is used to fit the images and return the rms size and centroid to crop the images.
 
@@ -41,7 +41,7 @@ def process_images(
     n_stds : int, optional
         The number of standard deviations to crop the images, by default 8.
     center_images : bool, optional
-        Whether to center the images before processing, by default False. 
+        Whether to center the images before processing, by default False.
         If True, the images are centered using the image_fitter function.
 
     Returns
