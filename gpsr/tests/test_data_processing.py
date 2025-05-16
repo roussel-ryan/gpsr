@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 import numpy as np
 from gpsr.data_processing import process_images
 import pytest
@@ -6,7 +7,7 @@ import pytest
 class TestProcessImages:
     image_shapes = [(5, 100, 100), (10, 10, 100, 100), (5, 2, 10, 100, 100)]
     rms_size = np.array([5, 5])
-    centroid = np.array([50, 50])
+    centroid = np.array([55, 55])
 
     def mock_image_fitter(self, image):
         # Mock image fitter that returns fixed rms size and centroid
@@ -75,4 +76,16 @@ class TestProcessImages:
         threshold = 0.5
         process_images(
             images, screen_resolution, self.mock_image_fitter, threshold=threshold
+        )
+
+    @pytest.mark.parametrize("image_shape", image_shapes)
+    def test_process_images_with_center_images(self, image_shape):
+        images = np.zeros(image_shape)
+        images[..., 50:60, 50:60] = 1.0
+
+        process_images(
+            images,
+            screen_resolution=1.0,
+            image_fitter=self.mock_image_fitter,
+            center_images=True,
         )
