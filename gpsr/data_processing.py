@@ -1,4 +1,5 @@
 from typing import Callable
+import scipy
 from skimage.measure import block_reduce
 from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
@@ -13,9 +14,14 @@ def process_images(
     median_filter_size: int = None,
     threshold: float = None,
     n_stds: int = 8,
+    center_images: bool = False,
 ):
     """
-    Process a batch of images for use in GPSR. The images are cropped, thresholded, pooled, median filtered, and normalized.
+    Process a batch of images for use in GPSR.
+    The images are cropped, thresholded, pooled, median filtered, and normalized.
+    An image_fitter function is used to fit the images and return the rms size and centroid to crop the images.
+
+    Optionally, the images can be centered using the image_fitter function.
 
     Parameters
     ----------
@@ -25,6 +31,7 @@ def process_images(
         The resolution of the screen in microns.
     image_fitter : Callable
         A function that fits an image and returns the rms size and centroid as a tuple in px coordinates.
+        Example: <rms size>, (<x_center>, <y_center>) = image_fitter(image)
     threshold : float, optional
         The threshold to apply to the images before pooling and filters, by default None. If None, the threshold is calculated via the triangle method.
     pool_size : int, optional
@@ -33,11 +40,14 @@ def process_images(
         The size of the median filter, by default None. If None, no median filter is applied.
     n_stds : int, optional
         The number of standard deviations to crop the images, by default 8.
+    center_images : bool, optional
+        Whether to center the images before processing, by default False.
+        If True, the images are centered using the image_fitter function.
 
     Returns
     -------
     np.ndarray
-        The processed images with shape (..., H', W').
+        The processed images with cropped shape (..., H', W').
     np.ndarray
         The meshgrid for the processed images.
 
@@ -45,19 +55,49 @@ def process_images(
 
     batch_shape = images.shape[:-2]
     batch_dims = tuple(range(len(batch_shape)))
+    center_location = np.array(images.shape[-2:]) // 2
+
+    # center the images
+    if center_images:
+        # flatten batch dimensions
+        images = np.reshape(images, (-1,) + images.shape[-2:])
+
+        centered_images = np.zeros_like(images)
+        for i in range(images.shape[0]):
+            # fit the image centers
+            rms_size, centroid = image_fitter(images[i])
+
+            # shift the images to center them
+            centered_images[i] = scipy.ndimage.shift(
+                images[i],
+                -(centroid - center_location),
+                order=1,
+                mode="nearest",
+            )
+
+        # reshape back to original shape
+        images = np.reshape(centered_images, batch_shape + images.shape[-2:])
 
     total_image = np.sum(images, axis=batch_dims)
-
     rms_size, centroid = image_fitter(total_image)
 
-    crop_ranges = [
-        (centroid - n_stds * rms_size).astype("int"),
-        (centroid + n_stds * rms_size).astype("int"),
-    ]
+    crop_ranges = np.array(
+        [
+            (centroid - n_stds * rms_size).astype("int"),
+            (centroid + n_stds * rms_size).astype("int"),
+        ]
+    )
+
+    # transpose crop ranges temporarily to clip on image size
+    crop_ranges = crop_ranges.T
+    crop_ranges[0] = np.clip(crop_ranges[0], 0, images.shape[-2])
+    crop_ranges[1] = np.clip(crop_ranges[1], 0, images.shape[-1])
+    crop_ranges = crop_ranges.T
+
     processed_images = images[
         ...,
-        crop_ranges[0][1] : crop_ranges[1][1],
         crop_ranges[0][0] : crop_ranges[1][0],
+        crop_ranges[0][1] : crop_ranges[1][1],
     ]
 
     # apply threshold if provided -- otherwise calculate threshold using triangle method
