@@ -1,4 +1,3 @@
-from matplotlib import pyplot as plt
 import numpy as np
 from gpsr.data_processing import process_images
 import pytest
