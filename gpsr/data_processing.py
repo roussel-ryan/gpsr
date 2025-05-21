@@ -86,6 +86,9 @@ def process_images(
     center_images : bool, optional
         Whether to center the images before processing, by default False.
         If True, the images are centered using the image_fitter function.
+    visualize : bool, optional
+        Whether to visualize the images at each step of the processing, by default False.
+        If True, the images are displayed using matplotlib.
 
     Returns
     -------
