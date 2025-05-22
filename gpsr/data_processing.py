@@ -4,17 +4,60 @@ from skimage.measure import block_reduce
 from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
 import numpy as np
+import matplotlib.pyplot as plt
+
+
+def compute_blob_stats(image):
+    """
+    Compute the center (centroid) and RMS size of a blob in a 2D image
+    using intensity-weighted averages.
+
+    Parameters:
+        image (np.ndarray): 2D array representing the image.
+
+    Returns:
+        center (tuple): (x_center, y_center)
+        rms_size (tuple): (x_rms, y_rms)
+    """
+    if image.ndim != 2:
+        raise ValueError("Input image must be a 2D array")
+
+    # Get coordinate grids
+    y_indices, x_indices = np.indices(image.shape)
+
+    # Flatten everything
+    x = x_indices.ravel()
+    y = y_indices.ravel()
+    weights = image.ravel()
+
+    # Total intensity
+    total_weight = np.sum(weights)
+    if total_weight == 0:
+        raise ValueError(
+            "Total image intensity is zero — can't compute centroid or RMS size."
+        )
+
+    # Weighted centroid
+    x_center = np.sum(x * weights) / total_weight
+    y_center = np.sum(y * weights) / total_weight
+
+    # Weighted RMS size
+    x_rms = np.sqrt(np.sum(weights * (x - x_center) ** 2) / total_weight)
+    y_rms = np.sqrt(np.sum(weights * (y - y_center) ** 2) / total_weight)
+
+    return np.array((x_rms, y_rms)), np.array((x_center, y_center))
 
 
 def process_images(
     images: np.ndarray,
     screen_resolution: float,
-    image_fitter: Callable,
+    image_fitter: Callable = compute_blob_stats,
     pool_size: int = None,
     median_filter_size: int = None,
     threshold: float = None,
     n_stds: int = 8,
     center_images: bool = False,
+    visualize: bool = False,
 ):
     """
     Process a batch of images for use in GPSR.
@@ -43,6 +86,9 @@ def process_images(
     center_images : bool, optional
         Whether to center the images before processing, by default False.
         If True, the images are centered using the image_fitter function.
+    visualize : bool, optional
+        Whether to visualize the images at each step of the processing, by default False.
+        If True, the images are displayed using matplotlib.
 
     Returns
     -------
@@ -56,6 +102,30 @@ def process_images(
     batch_shape = images.shape[:-2]
     batch_dims = tuple(range(len(batch_shape)))
     center_location = np.array(images.shape[-2:]) // 2
+    center_location = center_location[::-1]
+
+    if visualize:
+        plt.figure()
+        plt.imshow(images[(0,) * len(batch_shape)])
+
+    # median filter
+    if median_filter_size is not None:
+        images = median_filter(
+            images,
+            size=median_filter_size,
+            axes=[-2, -1],
+        )
+
+    # apply threshold if provided -- otherwise calculate threshold using triangle method
+    if threshold is None:
+        avg_image = np.mean(images, axis=batch_dims)
+        threshold = threshold_triangle(avg_image)
+    images = np.clip(images - threshold, 0, None)
+
+    if visualize:
+        plt.figure()
+        plt.title("post filtering and thresholding")
+        plt.imshow(images[(0,) * len(batch_shape)])
 
     # center the images
     if center_images:
@@ -70,16 +140,30 @@ def process_images(
             # shift the images to center them
             centered_images[i] = scipy.ndimage.shift(
                 images[i],
-                -(centroid - center_location),
+                -(centroid - center_location)[::-1],
                 order=1,
                 mode="nearest",
             )
 
+            if visualize:
+                fig, ax = plt.subplots(1, 2, sharex=True, sharey=True)
+                ax[0].imshow(images[i])
+                ax[0].plot(*centroid, "r+")
+                ax[1].imshow(centered_images[i])
+                ax[1].plot(*center_location, "r+")
+
         # reshape back to original shape
         images = np.reshape(centered_images, batch_shape + images.shape[-2:])
 
-    total_image = np.sum(images, axis=batch_dims)
+    if visualize:
+        plt.figure()
+        plt.title("post image centering")
+        plt.imshow(images[(0,) * len(batch_shape)])
+
+    total_image = np.mean(images, axis=batch_dims)
     rms_size, centroid = image_fitter(total_image)
+    centroid = centroid[::-1]
+    rms_size = rms_size[::-1]
 
     crop_ranges = np.array(
         [
@@ -92,39 +176,44 @@ def process_images(
     crop_ranges = crop_ranges.T
     crop_ranges[0] = np.clip(crop_ranges[0], 0, images.shape[-2])
     crop_ranges[1] = np.clip(crop_ranges[1], 0, images.shape[-1])
-    crop_ranges = crop_ranges.T
 
-    processed_images = images[
+    print("crop ranges", crop_ranges)
+    print(images.shape)
+
+    if visualize:
+        plt.figure()
+        plt.imshow(total_image)
+        plt.plot(*centroid[::-1], "+r")
+        rect = plt.Rectangle(
+            (crop_ranges[1][0], crop_ranges[0][0]),
+            crop_ranges[1][1] - crop_ranges[1][0],
+            crop_ranges[0][1] - crop_ranges[0][0],
+            linewidth=2,
+            edgecolor="r",
+            facecolor="none",
+        )
+        plt.gca().add_patch(rect)
+
+    images = images[
         ...,
-        crop_ranges[0][0] : crop_ranges[1][0],
-        crop_ranges[0][1] : crop_ranges[1][1],
+        crop_ranges[0][0] : crop_ranges[0][1],
+        crop_ranges[1][0] : crop_ranges[1][1],
     ]
 
-    # apply threshold if provided -- otherwise calculate threshold using triangle method
-    if threshold is None:
-        avg_image = np.mean(processed_images, axis=batch_dims)
-        threshold = threshold_triangle(avg_image)
-    processed_images = np.clip(processed_images - threshold, 0, None)
+    if visualize:
+        plt.figure()
+        plt.title("post cropping")
+        plt.imshow(images[(0,) * len(batch_shape)])
 
     # pooling
     if pool_size is not None:
         block_size = (1,) * len(batch_shape) + (pool_size,) * 2
-        processed_images = block_reduce(
-            processed_images, block_size=block_size, func=np.mean
-        )
-
-    # median filter
-    if median_filter_size is not None:
-        processed_images = median_filter(
-            processed_images,
-            size=median_filter_size,
-            axes=[-2, -1],
-        )
+        images = block_reduce(images, block_size=block_size, func=np.mean)
 
     # normalize image intensities such that the peak intensity image has a sum of 1
-    total_intensities = np.sum(processed_images, axis=(-2, -1))
+    total_intensities = np.sum(images, axis=(-2, -1))
     scale_factor = np.max(total_intensities)
-    processed_images = processed_images / scale_factor
+    images = images / scale_factor
 
     # compute meshgrids for screens
     bins = []
@@ -132,9 +221,9 @@ def process_images(
 
     # returns left sided bins
     for j in [-2, -1]:
-        img_bins = np.arange(processed_images.shape[j])
+        img_bins = np.arange(images.shape[j])
         img_bins = img_bins - len(img_bins) / 2
         img_bins = img_bins * screen_resolution * 1e-6 * pool_size
         bins += [img_bins]
 
-    return processed_images, np.meshgrid(*bins)
+    return images, np.meshgrid(*bins)
