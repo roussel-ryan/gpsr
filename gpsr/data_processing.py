@@ -50,11 +50,12 @@ def compute_blob_stats(image):
 
 def process_images(
     images: np.ndarray,
-    screen_resolution: float,
+    pixel_size: float,
     image_fitter: Callable = compute_blob_stats,
     pool_size: int = None,
     median_filter_size: int = None,
     threshold: float = None,
+    threshold_multiplier: float = 1.0,
     n_stds: int = 8,
     center_images: bool = False,
     visualize: bool = False,
@@ -70,13 +71,15 @@ def process_images(
     ----------
     images : np.ndarray
         A batch of images with shape (..., H, W).
-    screen_resolution : float
-        The resolution of the screen in microns.
+    pixel_size : float
+        Pixel size of the screen in microns.
     image_fitter : Callable
         A function that fits an image and returns the rms size and centroid as a tuple in px coordinates.
         Example: <rms size>, (<x_center>, <y_center>) = image_fitter(image)
     threshold : float, optional
         The threshold to apply to the images before pooling and filters, by default None. If None, the threshold is calculated via the triangle method.
+    threshold_multiplier : float, optional
+        The multiplier for the threshold, by default 1.0.
     pool_size : int, optional
         The size of the pooling window, by default None. If None, no pooling is applied.
     median_filter_size : int, optional
@@ -120,7 +123,7 @@ def process_images(
     if threshold is None:
         avg_image = np.mean(images, axis=batch_dims)
         threshold = threshold_triangle(avg_image)
-    images = np.clip(images - threshold, 0, None)
+    images = np.clip(images - threshold_multiplier * threshold, 0, None)
 
     if visualize:
         plt.figure()
@@ -141,8 +144,7 @@ def process_images(
             centered_images[i] = scipy.ndimage.shift(
                 images[i],
                 -(centroid - center_location)[::-1],
-                order=1,
-                mode="nearest",
+                order=1,  # linear interpolation to avoid artifacts
             )
 
             if visualize:
@@ -223,7 +225,7 @@ def process_images(
     for j in [-2, -1]:
         img_bins = np.arange(images.shape[j])
         img_bins = img_bins - len(img_bins) / 2
-        img_bins = img_bins * screen_resolution * 1e-6 * pool_size
+        img_bins = img_bins * pixel_size * 1e-6 * pool_size
         bins += [img_bins]
 
     return images, np.meshgrid(*bins)
