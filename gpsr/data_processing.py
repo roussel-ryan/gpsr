@@ -1,9 +1,10 @@
-from typing import Callable
+from typing import Callable, Literal
 import scipy
 from skimage.measure import block_reduce
 from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
 import numpy as np
+from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 
 
@@ -52,14 +53,15 @@ def process_images(
     images: np.ndarray,
     pixel_size: float,
     image_fitter: Callable = compute_blob_stats,
-    pool_size: int = None,
-    median_filter_size: int = None,
-    threshold: float = None,
+    pool_size: Optional[int] = None,
+    median_filter_size: Optional[int] = None,
+    threshold: Optional[float] = None,
     threshold_multiplier: float = 1.0,
     n_stds: int = 8,
+    normalization: Literal["independent", "max_intensity_image"] = "independent",
     center_images: bool = False,
     visualize: bool = False,
-):
+) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """
     Process a batch of images for use in GPSR.
     The images are cropped, thresholded, pooled, median filtered, and normalized.
@@ -86,6 +88,8 @@ def process_images(
         The size of the median filter, by default None. If None, no median filter is applied.
     n_stds : int, optional
         The number of standard deviations to crop the images, by default 8.
+    normalization : str, optional
+        Normalization method: 'independent' (default) or 'max_intensity_image'.
     center_images : bool, optional
         Whether to center the images before processing, by default False.
         If True, the images are centered using the image_fitter function.
@@ -134,8 +138,8 @@ def process_images(
     if center_images:
         # flatten batch dimensions
         images = np.reshape(images, (-1,) + images.shape[-2:])
-
         centered_images = np.zeros_like(images)
+
         for i in range(images.shape[0]):
             # fit the image centers
             rms_size, centroid = image_fitter(images[i])
@@ -212,9 +216,18 @@ def process_images(
         block_size = (1,) * len(batch_shape) + (pool_size,) * 2
         images = block_reduce(images, block_size=block_size, func=np.mean)
 
-    # normalize image intensities such that the peak intensity image has a sum of 1
-    total_intensities = np.sum(images, axis=(-2, -1))
-    scale_factor = np.max(total_intensities)
+    # normalize image intensities
+    if normalization == "independent":
+        # normalize each image independently
+        scale_factor = np.sum(images, axis=(-2, -1), keepdims=True)
+    elif normalization == "max_intensity_image":
+        # normalize by the maximum intensity image
+        scale_factor = np.max(np.sum(images, axis=(-2, -1)))
+    else:
+        raise ValueError(
+            "Normalization must be 'independent' or 'max_intensity_image'."
+        )
+
     images = images / scale_factor
 
     # compute meshgrids for screens
