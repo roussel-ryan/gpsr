@@ -84,7 +84,7 @@ class TestProcessImages:
 
         process_images(
             images,
-            screen_resolution=1.0,
+            pixel_size=1.0,
             image_fitter=self.mock_image_fitter,
             center_images=True,
         )

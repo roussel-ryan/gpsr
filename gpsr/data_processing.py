@@ -1,9 +1,10 @@
-from typing import Callable
+from typing import Callable, Literal
 import scipy
 from skimage.measure import block_reduce
 from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
 import numpy as np
+from typing import Optional, Tuple
 import matplotlib.pyplot as plt
 
 
@@ -50,15 +51,17 @@ def compute_blob_stats(image):
 
 def process_images(
     images: np.ndarray,
-    screen_resolution: float,
+    pixel_size: float,
     image_fitter: Callable = compute_blob_stats,
-    pool_size: int = None,
-    median_filter_size: int = None,
-    threshold: float = None,
+    pool_size: Optional[int] = None,
+    median_filter_size: Optional[int] = None,
+    threshold: Optional[float] = None,
+    threshold_multiplier: float = 1.0,
     n_stds: int = 8,
+    normalization: Literal["independent", "max_intensity_image"] = "independent",
     center_images: bool = False,
     visualize: bool = False,
-):
+) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
     """
     Process a batch of images for use in GPSR.
     The images are cropped, thresholded, pooled, median filtered, and normalized.
@@ -70,19 +73,23 @@ def process_images(
     ----------
     images : np.ndarray
         A batch of images with shape (..., H, W).
-    screen_resolution : float
-        The resolution of the screen in microns.
+    pixel_size : float
+        Pixel size of the screen in microns.
     image_fitter : Callable
         A function that fits an image and returns the rms size and centroid as a tuple in px coordinates.
         Example: <rms size>, (<x_center>, <y_center>) = image_fitter(image)
     threshold : float, optional
         The threshold to apply to the images before pooling and filters, by default None. If None, the threshold is calculated via the triangle method.
+    threshold_multiplier : float, optional
+        The multiplier for the threshold, by default 1.0.
     pool_size : int, optional
         The size of the pooling window, by default None. If None, no pooling is applied.
     median_filter_size : int, optional
         The size of the median filter, by default None. If None, no median filter is applied.
     n_stds : int, optional
         The number of standard deviations to crop the images, by default 8.
+    normalization : str, optional
+        Normalization method: 'independent' (default) or 'max_intensity_image'.
     center_images : bool, optional
         Whether to center the images before processing, by default False.
         If True, the images are centered using the image_fitter function.
@@ -120,7 +127,7 @@ def process_images(
     if threshold is None:
         avg_image = np.mean(images, axis=batch_dims)
         threshold = threshold_triangle(avg_image)
-    images = np.clip(images - threshold, 0, None)
+    images = np.clip(images - threshold_multiplier * threshold, 0, None)
 
     if visualize:
         plt.figure()
@@ -131,8 +138,8 @@ def process_images(
     if center_images:
         # flatten batch dimensions
         images = np.reshape(images, (-1,) + images.shape[-2:])
-
         centered_images = np.zeros_like(images)
+
         for i in range(images.shape[0]):
             # fit the image centers
             rms_size, centroid = image_fitter(images[i])
@@ -141,8 +148,7 @@ def process_images(
             centered_images[i] = scipy.ndimage.shift(
                 images[i],
                 -(centroid - center_location)[::-1],
-                order=1,
-                mode="nearest",
+                order=1,  # linear interpolation to avoid artifacts
             )
 
             if visualize:
@@ -210,9 +216,18 @@ def process_images(
         block_size = (1,) * len(batch_shape) + (pool_size,) * 2
         images = block_reduce(images, block_size=block_size, func=np.mean)
 
-    # normalize image intensities such that the peak intensity image has a sum of 1
-    total_intensities = np.sum(images, axis=(-2, -1))
-    scale_factor = np.max(total_intensities)
+    # normalize image intensities
+    if normalization == "independent":
+        # normalize each image independently
+        scale_factor = np.sum(images, axis=(-2, -1), keepdims=True)
+    elif normalization == "max_intensity_image":
+        # normalize by the maximum intensity image
+        scale_factor = np.max(np.sum(images, axis=(-2, -1)))
+    else:
+        raise ValueError(
+            "Normalization must be 'independent' or 'max_intensity_image'."
+        )
+
     images = images / scale_factor
 
     # compute meshgrids for screens
@@ -223,7 +238,7 @@ def process_images(
     for j in [-2, -1]:
         img_bins = np.arange(images.shape[j])
         img_bins = img_bins - len(img_bins) / 2
-        img_bins = img_bins * screen_resolution * 1e-6 * pool_size
+        img_bins = img_bins * pixel_size * 1e-6 * pool_size
         bins += [img_bins]
 
     return images, np.meshgrid(*bins)
