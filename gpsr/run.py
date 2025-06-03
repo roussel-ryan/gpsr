@@ -13,40 +13,69 @@ from gpsr.train import LitGPSR
 import os
 import re
 
-
 class GPSRRun:
     """
     A class to manage the setup and execution of a GPSR training run.
     This includes preparing datasets, models, logging, checkpointing, and trainer setup.
     """
 
-    def __init__(self, gpsr_lattice, hparams, log_name="scans"):
+    def __init__(self,
+                 gpsr_lattice,
+                 log_name="scans",
+                 train_dataset = None,
+                 N_particles = int(5e4),
+                 n_hidden = 2,
+                 hidden_width = 20,
+                 output_scale = 1e-4,
+                 dropout = 0.0,
+                 batch_size = 100,
+                 max_epochs = 5000,
+                 p0c = 1000*1e6,
+                 learning_rate = 10e-3,
+                 checkpoint_period_epochs = 100,
+                 **extra_hparams):
         """
-        Initialize the GPSRRun with hyperparameters and logging setup.
+        Initializes the GPSRRun object with model hyperparameters and training settings.
 
         Args:
-            hparams (dict): Hyperparameters for the model and training.
-            log_name (str): Name for the log directory.
+            gpsr_lattice: The beamline or lattice structure for the GPSR model.
+            log_name (str): Name of the directory where logs will be saved.
+            train_dataset (Dataset, optional): Dataset to be used for training.
+            N_particles (int): Number of particles in the simulation.
+            n_hidden (int): Number of hidden layers in the NNTransform.
+            hidden_width (int): Width of each hidden layer.
+            output_scale (float): Scaling factor for NNTransform outputs.
+            dropout (float): Dropout rate for the model.
+            batch_size (int): Batch size for training.
+            max_epochs (int): Number of epochs to train.
+            p0c (float): Reference momentum of the beam (in eV/c).
+            learning_rate (float): Learning rate for training.
+            checkpoint_period_epochs (int): Interval (in epochs) to save checkpoints.
+            extra_hparams (dict): Any additional hyperparameters.
         """
         self.gpsr_lattice = gpsr_lattice
-        self.hparams = hparams
+        self.hparams =  {'N_particles' : N_particles,
+                        'n_hidden': n_hidden,
+                        'hidden_width': hidden_width,
+                        'output_scale' : output_scale,
+                        'dropout' : dropout,
+                        'batch_size' : batch_size,
+                        'max_epochs' : max_epochs,
+                        'p0c' : p0c,
+                        'learning_rate' : learning_rate,
+                        'checkpoint_period_epochs' : checkpoint_period_epochs} | extra_hparams
+        
         self.log_name = log_name
-        self.train_dataset = None
+        self.train_dataset = train_dataset
 
         print("Hyperparameters:")
         pprint(self.hparams)
 
-    def setup_training(self, train_dataset):
+    def setup_training(self):
         """
         Setup the full training pipeline, including dataset, model, logger, checkpointing, and trainer.
 
-        Args:
-            train_dataset (torch.utils.data.Dataset): The dataset to use for training.
         """
-        self.train_dataset = train_dataset
-
-        # # Initialize the GPSR lattice (likely defining the physics or geometry structure)
-        # self.gpsr_lattice = self.setup_gpsr_lattice()
 
         # Initialize the GPSR model with the lattice and particle generator
         self.gpsr_model = self.setup_gpsr_model()
@@ -74,12 +103,6 @@ class GPSRRun:
         print(f"Running training - results will be saved in {self.logger.log_dir}")
         self.trainer.fit(self.litgpsr, self.train_loader)
 
-    # def setup_gpsr_lattice(self):
-    #     """
-    #     Setup the GPSR lattice component.
-    #     Should be implemented to define the lattice structure.
-    #     """
-    #     pass  # To be implemented by the user
 
     def setup_gpsr_model(self):
         """
@@ -94,7 +117,7 @@ class GPSRRun:
                 self.hparams["p0c"],
                 transformer=NNTransform(
                     self.hparams["n_hidden"],
-                    self.hparams["width"],
+                    self.hparams["hidden_width"],
                     output_scale=self.hparams["output_scale"],
                 ),
             ),
@@ -182,11 +205,12 @@ class GPSRRun:
             hparams = yaml.safe_load(stream)
 
         # Initialize the run
-        run = cls(hparams, log_name)
+        run = cls(gpsr_lattice,
+                   **hparams,
+                   log_name = log_name)
         run.hparams.update(extra_hparams)
 
         # Re-setup model components
-        run.gpsr_lattice = gpsr_lattice
         run.gpsr_model = run.setup_gpsr_model()
 
         # Get checkpoint filename
