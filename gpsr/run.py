@@ -20,9 +20,7 @@ class GPSRRun:
     This includes preparing datasets, models, logging, checkpointing, and trainer setup.
     """
 
-    def __init__(self,
-                 hparams,
-                 log_name="scans"):
+    def __init__(self, hparams, log_name="scans"):
         """
         Initialize the GPSRRun with hyperparameters and logging setup.
 
