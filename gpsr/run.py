@@ -20,7 +20,7 @@ class GPSRRun:
     This includes preparing datasets, models, logging, checkpointing, and trainer setup.
     """
 
-    def __init__(self, hparams, log_name="scans"):
+    def __init__(self, gpsr_lattice, hparams, log_name="scans"):
         """
         Initialize the GPSRRun with hyperparameters and logging setup.
 
@@ -28,6 +28,7 @@ class GPSRRun:
             hparams (dict): Hyperparameters for the model and training.
             log_name (str): Name for the log directory.
         """
+        self.gpsr_lattice = gpsr_lattice
         self.hparams = hparams
         self.log_name = log_name
         self.train_dataset = None
@@ -44,8 +45,8 @@ class GPSRRun:
         """
         self.train_dataset = train_dataset
 
-        # Initialize the GPSR lattice (likely defining the physics or geometry structure)
-        self.gpsr_lattice = self.setup_gpsr_lattice()
+        # # Initialize the GPSR lattice (likely defining the physics or geometry structure)
+        # self.gpsr_lattice = self.setup_gpsr_lattice()
 
         # Initialize the GPSR model with the lattice and particle generator
         self.gpsr_model = self.setup_gpsr_model()
@@ -73,12 +74,12 @@ class GPSRRun:
         print(f"Running training - results will be saved in {self.logger.log_dir}")
         self.trainer.fit(self.litgpsr, self.train_loader)
 
-    def setup_gpsr_lattice(self):
-        """
-        Setup the GPSR lattice component.
-        Should be implemented to define the lattice structure.
-        """
-        pass  # To be implemented by the user
+    # def setup_gpsr_lattice(self):
+    #     """
+    #     Setup the GPSR lattice component.
+    #     Should be implemented to define the lattice structure.
+    #     """
+    #     pass  # To be implemented by the user
 
     def setup_gpsr_model(self):
         """
@@ -162,7 +163,7 @@ class GPSRRun:
 
     @classmethod
     def from_checkpoint(
-        cls, log_name, version_no, checkpoint_number=-1, extra_hparams={}
+        cls, gpsr_lattice, log_name, version_no, checkpoint_number=-1, extra_hparams={}
     ):
         """
         Load a GPSRRun instance from a saved checkpoint.
@@ -185,7 +186,7 @@ class GPSRRun:
         run.hparams.update(extra_hparams)
 
         # Re-setup model components
-        run.gpsr_lattice = run.setup_gpsr_lattice()
+        run.gpsr_lattice = gpsr_lattice
         run.gpsr_model = run.setup_gpsr_model()
 
         # Get checkpoint filename
