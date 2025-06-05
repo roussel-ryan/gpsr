@@ -18,23 +18,25 @@ covariance matrix is also useful for defining a prior distribution over the phas
 space coordinates for relative entropy estimation.
 
 We then train a flow-based generative model to minimize the KL divergence between
-the reconstructed distribution p_{\theta}(x) and the prior distribution q(x), where
-\theta represents the generative model parameters. The KL divergence is the negative
-of the relative entropy, which we write as 
+the reconstructed distribution :math:`p_{\theta}(x)` and the prior distribution 
+:math:`q(x)`, where :math:`\theta` represents the generative model parameters. The 
+KL divergence is the negative of the relative entropy, which we write as 
 
-S(\theta) = S[p_{\theta}(x), q(x)] = \int p_{\theta}(x) ( \log p_{\theta}(x) - \log q(x) ) dx.
+.. math:: 
+    S(\theta) = S[p_{\theta}(x), q(x)] = \int p_{\theta}(x) ( \log p_{\theta}(x) - \log q(x) ) dx.
 
-The entropy can take values over the range [-\infty, 0] with a maximum at S[p, q] = 0 
-when p(x) = q(x).
+The entropy can take values over the range :math:`[-\infty, 0]` with a maximum at
+:math:`S[p(x), q(x)] = 0` when p(x) = q(x).
 
 In this script, we train the model soft constraints and a penalty method. At each epoch,
 we minimize the loss
 
-L(theta) = -S(theta) + \mu * D(theta)
+.. math:: L(theta) = -S(\theta) + \mu * D(\theta)
 
-with respect to \theta, where D(theta) is the mean absolute error between predicted 
-and measured images and \mu is a constant. The initial epoch will pull the distribution to
-the prior, while subsequent epochs will encourage consistency with the data.
+with respect to :math:`\theta`, where :math:`D(\theta)` is the mean absolute error 
+between predicted and measured images and :math:`\mu` is a constant. The initial epoch 
+pulss the distribution to the prior, while subsequent epochs encourage consistency with
+the data.
 """
 
 import abc
@@ -71,10 +73,10 @@ parser.add_argument("--nsamp", type=int, default=10_000)
 parser.add_argument("--iters", type=int, default=250)
 parser.add_argument("--epochs", type=int, default=5)
 parser.add_argument("--lr", type=float, default=0.001)
-parser.add_argument("--prior-scale", type=float, default=1.5)
-parser.add_argument("--penalty-min", type=float, default=500.0)
+parser.add_argument("--prior-scale", type=float, default=1.25)
+parser.add_argument("--penalty-min", type=float, default=1000.0)
 parser.add_argument("--penalty-max", type=float, default=None)
-parser.add_argument("--penalty-step", type=float, default=0.0)
+parser.add_argument("--penalty-step", type=float, default=200.0)
 parser.add_argument("--penalty-scale", type=float, default=2.0)
 parser.add_argument("--eval-nsamp", type=int, default=100_000)
 args = parser.parse_args()
@@ -272,7 +274,7 @@ flow = zuko.flows.Flow(flow.transform.inv, flow.base)
 flow = ZukoFlow(flow=flow, ndim=ndim, cov_matrix=cov_matrix)
 
 prior_loc = torch.zeros(ndim)
-prior_cov = cov_matrix * 1.0
+prior_cov = cov_matrix * args.prior_scale**2
 prior = torch.distributions.MultivariateNormal(prior_loc, prior_cov)
 
 beam_generator = FlowBeamGenerator(
@@ -312,11 +314,17 @@ def train_epoch(gpsr_model, dset, lr: float, penalty: float, iterations: int) ->
             loss_pred += diff[0]
 
         loss = loss_reg + loss_pred * penalty
-
         loss.backward()
         optimizer.step()
 
-        print(f"iter={iteration} loss_reg={loss_reg.item():0.3e} loss_pred={loss_pred.item():0.3e}")
+        print(
+            "iter={} loss_reg={:0.2e} loss_pred={:0.2e} ratio={:0.3f}".format(
+                iteration,
+                loss_reg.item(),
+                loss_pred.item(),
+                loss_pred.item() * penalty / loss_reg.item()
+            )
+        )
 
         history["loss"].append(loss.item())
         history["loss_reg"].append(loss_reg.item())
@@ -352,7 +360,7 @@ for epoch in range(args.epochs):
         fig, ax1 = plt.subplots()
         ax2 = ax1.twinx()
         color = "red"
-        ax1.plot(history["loss_pred"])
+        ax1.plot(history["loss_pred"], color="black",)
         ax2.plot(history["loss_reg"], color=color)
         ax2.tick_params(axis="y", labelcolor=color)
         ax1.set_ylabel("MAE")
@@ -368,13 +376,14 @@ for epoch in range(args.epochs):
         plt.show()
 
         # Plot beam
-        beam.plot_distribution(
+        fig, axs = beam.plot_distribution(
             bins=50,
             bin_ranges=limits,
             plot_2d_kws=dict(
                 pcolormesh_kws=dict(cmap="Blues"),
             ),
         )
+        fig.set_size_inches(7.0, 7.0)
         plt.show()
 
         gpsr_model.beam_generator.n_particles = args.nsamp
