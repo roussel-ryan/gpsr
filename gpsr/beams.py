@@ -247,6 +247,9 @@ class Prior(torch.nn.Module, ABC):
     def log_prob(self, x: torch.Tensor) -> torch.Tensor:
         pass
 
+    def sample(self, n: int) -> torch.Tensor:
+        pass
+
 
 class GaussianPrior(Prior):
     def __init__(self, loc: torch.Tensor, cov: torch.Tensor) -> None:
@@ -258,6 +261,7 @@ class GaussianPrior(Prior):
         self.register_buffer("cov", cov)
         self.register_buffer("cov_inv", torch.linalg.inv(cov))
         self.register_buffer("log_cov_det", torch.log(torch.linalg.det(cov)))
+        self.register_buffer("L", torch.linalg.cholesky(cov))
         
     def log_prob(self, x: torch.Tensor) -> torch.Tensor:
         _x = x - self.loc
@@ -265,3 +269,8 @@ class GaussianPrior(Prior):
         _log_prob -= 0.5 * torch.sum(_x * torch.matmul(_x, self.cov_inv.T), axis=1)
         _log_prob -= 0.5 * (self.ndim * math.log(2.0 * math.pi) + self.log_cov_det)
         return _log_prob
+    
+    def sample(self, n: int) -> torch.Tensor:
+        x = torch.randn((n, self.ndim))
+        x = torch.matmul(x, self.L.T)
+        return x
