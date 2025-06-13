@@ -1,3 +1,4 @@
+import math
 from abc import abstractmethod, ABC
 from typing import Any
 
@@ -95,13 +96,26 @@ class GenModel(torch.nn.Module, ABC):
 
         self.ndim = ndim
 
-        self.cov_matrix = cov_matrix
-        if self.cov_matrix is None:
-            self.cov_matrix = torch.eye(self.ndim)
+        # self.cov_matrix = cov_matrix
+        # if self.cov_matrix is None:
+        #     self.cov_matrix = torch.eye(self.ndim)
 
-        self.unnorm_matrix = torch.linalg.cholesky(cov_matrix)
-        self.unnorm_matrix_log_det = torch.log(torch.linalg.det(self.unnorm_matrix))
-        self.norm_matrix = torch.linalg.inv(self.unnorm_matrix)
+        # self.unnorm_matrix = torch.linalg.cholesky(cov_matrix)
+        # self.unnorm_matrix_log_det = torch.log(torch.linalg.det(self.unnorm_matrix))
+        # self.norm_matrix = torch.linalg.inv(self.unnorm_matrix)
+
+        cov_matrix = torch.clone(cov_matrix)
+        if cov_matrix is None:
+            cov_matrix = torch.eye(self.ndim)
+        self.register_buffer("cov_matrix", cov_matrix)
+
+        unnorm_matrix = torch.linalg.cholesky(cov_matrix)
+        unnorm_matrix_log_det = torch.log(torch.linalg.det(unnorm_matrix))
+        norm_matrix = torch.linalg.inv(unnorm_matrix)
+
+        self.register_buffer("unnorm_matrix", unnorm_matrix)
+        self.register_buffer("unnorm_matrix_log_det", unnorm_matrix_log_det)
+        self.register_buffer("norm_matrix", norm_matrix)
 
     @abstractmethod
     def _sample(self, n: int) -> torch.Tensor:
@@ -208,22 +222,46 @@ class EntropyBeamGenerator(BeamGenerator):
         self.register_buffer("energy", torch.tensor(energy))
         self.register_buffer("mass", torch.tensor(mass))
         self.register_buffer("particle_charges", torch.tensor(particle_charges))
+
+    def set_base_particles(self, n_particles: int) -> None:
+        self.n_particles = n_particles
     
     def forward(self) -> tuple[ParticleBeam, torch.Tensor]:
         """Return beam and estimated entropy."""
-
-        # Sample particles and log probability density at each particle
         x, log_p = self.gen_model.sample_and_log_prob(self.n_particles)
 
-        # Compute prior probability density at each particle
         log_q = 0.0
         if self.prior is not None:
             log_q = self.prior.log_prob(x)
 
-        # Estimate entropy (expected value of log(p) - log(q))
         entropy = -torch.mean(log_p - log_q)
 
-        # Create ParticleBeam from particle coordinates
         x = bmad_to_cheetah_coords(x, self.energy, self.mass)
         beam = ParticleBeam(*x, particle_charges=self.particle_charges)
         return (beam, entropy)
+    
+
+# Classes in torch.distribution classes cannot be sent to GPU.
+class Prior(torch.nn.Module, ABC):
+    @abstractmethod
+    def log_prob(self, x: torch.Tensor) -> torch.Tensor:
+        pass
+
+
+class GaussianPrior(Prior):
+    def __init__(self, loc: torch.Tensor, cov: torch.Tensor) -> None:
+        super().__init__()
+        
+        self.ndim = len(loc)
+
+        self.register_buffer("loc", loc)
+        self.register_buffer("cov", cov)
+        self.register_buffer("cov_inv", torch.linalg.inv(cov))
+        self.register_buffer("log_cov_det", torch.log(torch.linalg.det(cov)))
+        
+    def log_prob(self, x: torch.Tensor) -> torch.Tensor:
+        _x = x - self.loc
+        _log_prob = 0.0
+        _log_prob -= 0.5 * torch.sum(_x * torch.matmul(_x, self.cov_inv.T), axis=1)
+        _log_prob -= 0.5 * (self.ndim * math.log(2.0 * math.pi) + self.log_cov_det)
+        return _log_prob
