@@ -50,9 +50,9 @@ from gpsr.beams import EntropyBeamGenerator
 from gpsr.beams import GaussianPrior
 from gpsr.modeling import GPSR
 from gpsr.modeling import GPSRLattice
-from gpsr.modeling import GPSRQuadScanLattice
+from gpsr.modeling import GPSR6DLattice
 from gpsr.modeling import EntropyGPSR
-from gpsr.datasets import QuadScanDataset
+from gpsr.datasets import SixDReconstructionDataset
 from gpsr.datasets import split_dataset
 from gpsr.train import LitGPSR
 from gpsr.train import EntropyLitGPSR
@@ -69,8 +69,8 @@ parser.add_argument("--flow-depth", type=int, default=3)
 parser.add_argument("--prior-scale", type=float, default=1.1)
 
 parser.add_argument("--nsamp", type=int, default=20_000)
-parser.add_argument("--iters-pre", type=int, default=250)
 parser.add_argument("--iters", type=int, default=250)
+parser.add_argument("--iters-pre", type=int, default=250)
 parser.add_argument("--epochs", type=int, default=8)
 parser.add_argument("--lr", type=float, default=0.001)
 parser.add_argument("--penalty-min", type=float, default=1000.0)
@@ -105,10 +105,10 @@ ndim = 6
 # Data
 # --------------------------------------------------------------------------------------
 
-filename =  "example_data/example_datasets/reconstruction_4D.dset"
+filename =  "example_data/example_datasets/reconstruction_6D.dset"
 dset = torch.load(filename, weights_only=False)
 
-train_k_ids = np.arange(0, len(dset.parameters), 2)
+train_k_ids = np.arange(0, len(dset.six_d_parameters), 2)
 train_dset, test_dset = split_dataset(dset, train_k_ids)
 
 
@@ -116,8 +116,23 @@ train_dset, test_dset = split_dataset(dset, train_k_ids)
 # --------------------------------------------------------------------------------------
 
 p0c = 43.36e+06  # reference particle momentum [eV/c]
-gpsr_lattice = GPSRQuadScanLattice(l_quad=0.1, l_drift=1.0, screen=train_dset.screen)
-    
+
+screens = train_dset.screens
+
+l_quad = 0.11
+l_tdc = 0.01
+f_tdc = 1.3e9
+phi_tdc = 0.0
+l_bend = 0.3018
+theta_on = -20.0 * 3.14 / 180.0
+l1 = 0.790702
+l2 = 0.631698
+l3 = 0.889
+
+gpsr_lattice = GPSR6DLattice(
+    l_quad, l_tdc, f_tdc, phi_tdc, l_bend, theta_on, l1, l2, l3, *screens
+)
+
 
 # Train NN
 # --------------------------------------------------------------------------------------
@@ -135,16 +150,11 @@ with torch.no_grad():
     litgpsr.gpsr_model.beam_generator.set_base_particles(args.plot_nsamp)
     beam = litgpsr.gpsr_model.beam_generator()
 
-    # Ignore longitudinal coordiantes
-    x = beam.particles[:, 0:6].detach().clone()
-    x[:, 4] = torch.randn(x.shape[0]) * 0.002
-    x[:, 5] = torch.randn(x.shape[0]) * 0.01
-
     # Compute covariance matrix
-    cov_matrix = torch.cov(x.T)
+    cov_matrix = torch.cov(beam.particles[:, 0:6].T)
 
     # Compute plotting limits
-    xmax = 4.0 * torch.std(x, axis=0)
+    xmax = 4.0 * torch.std(beam.particles[:, 0:6], axis=0)
     limits = [(-float(_xmax), float(_xmax)) for _xmax in xmax]
 
     # Plot beam
@@ -162,14 +172,15 @@ with torch.no_grad():
         plt.show()
     plt.savefig(os.path.join(output_dir, "fig_pre_corner.png"), dpi=300)
 
-    # Make predictions
-    predictions = litgpsr.gpsr_model(train_dset.parameters)
-    pred_dset = QuadScanDataset(train_dset.parameters, predictions[0].detach(), train_dset.screen)
-
     # Plot predictions
-    fig, ax = train_dset.plot_data(overlay_data=pred_dset)
-    fig.set_size_inches(18.0, 2.5)
-    fig.tight_layout()
+    params = train_dset.six_d_parameters
+    predictions = tuple([ele.detach() for ele in litgpsr.gpsr_model(params)])
+    pred_dset = SixDReconstructionDataset(params, predictions, train_dset.screens)
+    test_dset.plot_data(
+        publication_size=True,
+        overlay_data=pred_dset,
+        overlay_kwargs=dict(levels=[0.1, 0.5, 0.9]),
+    )
     if args.show:
         plt.show()
     plt.savefig(os.path.join(output_dir, f"fig_pre_images.png"), dpi=300)
@@ -231,8 +242,10 @@ for epoch in range(args.epochs):
         litgpsr.gpsr_model.beam_generator.set_base_particles(args.plot_nsamp)
 
         # Generate beam and predictions
-        beam, entropy, predictions = litgpsr.gpsr_model(train_dset.parameters)
-        pred_dset = QuadScanDataset(train_dset.parameters, predictions[0].detach(), train_dset.screen)
+        params = train_dset.six_d_parameters
+        beam, entropy, predictions = litgpsr.gpsr_model(params)
+        predictions = tuple([ele.detach() for ele in predictions])
+        pred_dset = SixDReconstructionDataset(params, predictions, train_dset.screens)
 
         # Plot beam (corner plot)
         fig, axs = beam.plot_distribution(
@@ -250,9 +263,11 @@ for epoch in range(args.epochs):
         plt.savefig(os.path.join(output_dir, f"fig_corner_{epoch:02.0f}.png"), dpi=300)
 
         # Plot predictions
-        fig, ax = train_dset.plot_data(overlay_data=pred_dset)
-        fig.set_size_inches(18.0, 2.5)
-        fig.tight_layout()
+        test_dset.plot_data(
+            publication_size=True,
+            overlay_data=pred_dset,
+            overlay_kwargs=dict(levels=[0.1, 0.5, 0.9]),
+        )
         if args.show:
             plt.show()
         plt.savefig(os.path.join(output_dir, f"fig_images_{epoch:02.0f}.png"), dpi=300)
