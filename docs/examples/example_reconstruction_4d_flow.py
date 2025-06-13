@@ -39,8 +39,17 @@ pulss the distribution to the prior, while subsequent epochs encourage consisten
 the data.
 """
 
+# To do:
+# - Add callback to print/plot loss for data fit and entropy.
+# - Fix GPU issue with Pytorch Lighting.
+
 import abc
 import argparse
+import math
+import os
+import pathlib
+import sys
+import time
 from typing import Any
 from typing import Callable
 
@@ -54,15 +63,18 @@ from cheetah.particles import ParticleBeam
 from cheetah.utils.bmadx import bmad_to_cheetah_coords
 
 from gpsr.beams import NNParticleBeamGenerator 
+from gpsr.beams import NSF
+from gpsr.beams import EntropyBeamGenerator
 from gpsr.modeling import GPSR
 from gpsr.modeling import GPSRLattice
 from gpsr.modeling import GPSRQuadScanLattice
-from gpsr.modeling import BeamGenerator
+from gpsr.modeling import EntropyGPSR
 from gpsr.datasets import QuadScanDataset
 from gpsr.datasets import split_dataset
 from gpsr.losses import mae_loss
 from gpsr.losses import normalize_images
 from gpsr.train import LitGPSR
+from gpsr.train import EntropyLitGPSR
 
 
 # Command line arguments
@@ -70,6 +82,7 @@ from gpsr.train import LitGPSR
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--nsamp", type=int, default=10_000)
+parser.add_argument("--iters-pre", type=int, default=250)
 parser.add_argument("--iters", type=int, default=250)
 parser.add_argument("--epochs", type=int, default=5)
 parser.add_argument("--lr", type=float, default=0.001)
@@ -79,7 +92,22 @@ parser.add_argument("--penalty-max", type=float, default=None)
 parser.add_argument("--penalty-step", type=float, default=200.0)
 parser.add_argument("--penalty-scale", type=float, default=2.0)
 parser.add_argument("--eval-nsamp", type=int, default=100_000)
+parser.add_argument("--device", type=str, default="cpu")  # "auto", "cpu", "mps", ...
+parser.add_argument("--show", action="store_true")
 args = parser.parse_args()
+
+
+# Setup
+# --------------------------------------------------------------------------------------
+
+timestamp = time.strftime("%y%m%d%H%M%S")
+
+path = pathlib.Path(__file__)
+output_dir = os.path.join("outputs", path.stem, timestamp)
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+
+ndim = 6
 
 
 # Data
@@ -97,158 +125,19 @@ train_dset, test_dset = split_dataset(dset, train_k_ids)
 
 p0c = 43.36e+06  # reference particle momentum [eV/c]
 gpsr_lattice = GPSRQuadScanLattice(l_quad=0.1, l_drift=1.0, screen=train_dset.screen)
+    
 
-
-# Model
+# Covariance matrix estimation
 # --------------------------------------------------------------------------------------
 
-class Flow(torch.nn.Module, abc.ABC):
-    """Base class for flow-based generative models.
-    
-    The generative model is defined for coordinates z. The phase space coordinates x 
-    are obtained by a linear transformation x = Lz, where L is obtained by a Cholesky 
-    decomposition of the covariance matrix: S = <xx^T> = LL^T. The probability densities
-    are related by p(x) = p(z) / |det(L)|.
-
-    This allows the base distribution of the generative model to always have identify
-    covariance matrix.
-    """
-    def __init__(self, ndim: int, cov_matrix: torch.Tensor = None) -> None:
-        super().__init__()
-
-        self.ndim = ndim
-
-        self.cov_matrix = cov_matrix
-        if self.cov_matrix is None:
-            self.cov_matrix = torch.eye(self.ndim)
-
-        self.unnorm_matrix = torch.linalg.cholesky(cov_matrix)
-        self.unnorm_matrix_log_det = torch.log(torch.linalg.det(self.unnorm_matrix))
-        self.norm_matrix = torch.linalg.inv(self.unnorm_matrix)
-
-    @abc.abstractmethod
-    def _sample(self, n: int) -> torch.Tensor:
-        """Generate samples {z_i}."""
-        pass
-
-    @abc.abstractmethod
-    def _log_prob(self, z: torch.Tensor) -> torch.Tensor:
-        """Compute log probabilities {log(p(z_i))}."""
-        pass
-
-    @abc.abstractmethod
-    def _sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """Generate samples {z_i} and log probabilities {log(p(z_i))}."""
-        pass
-
-    def sample(self, n: int) -> torch.Tensor:
-        """Generate samples {x_i}."""
-        z = self._sample(n)
-        x = torch.matmul(z, self.unnorm_matrix.T)
-        return x
-    
-    def log_prob(self, x: torch.Tensor) -> torch.Tensor:
-        """Compute log probabilities {log(p(x_i))}."""
-        z = torch.matmul(x, self.norm_matrix.T)
-        log_prob = self._log_prob(z)
-        log_prob = log_prob - self.unnorm_matrix_log_det
-        return log_prob
-    
-    def sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
-        """Generate samples {x_i} and log probabilities {log(p(x_i))}."""
-        z, log_prob = self._sample_and_log_prob(n)
-        x = torch.matmul(z, self.unnorm_matrix.T)
-        log_prob = log_prob - self.unnorm_matrix_log_det
-        return (x, log_prob)
-
-
-class ZukoFlow(Flow):
-    """Implements flow-based generative model using the Zuko library."""
-    def __init__(self, flow: zuko.flows.Flow, ndim: int, cov_matrix: torch.Tensor = None) -> None:
-        super().__init__(ndim=ndim, cov_matrix=cov_matrix)
-        self._flow = flow
-
-    def _sample(self, n: int) -> torch.Tensor:
-        return self._flow().rsample((n,))
-
-    def _log_prob(self, z: torch.Tensor) -> torch.Tensor:
-        return self._flow().log_prob(z)
-    
-    def _sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
-        return self._flow().rsample_and_log_prob((n,))   
-        
-
-class FlowBeamGenerator(BeamGenerator):
-    def __init__(
-        self,
-        flow: Flow,
-        prior: Any,
-        n_particles: int,
-        energy: float,
-        mass: float = 0.511e+06,
-        particle_charges: float = 1.0,
-    ) -> None:
-        """Constructor.
-        
-        flow: Flow-based generative model.
-        prior: Prior distribution over the phase space coordiantes. Must implement
-               `prior.log_prob(x: torch.Tensor) -> torch.Tensor`, where `x` is 
-               a set of particle coordinates.
-        n_particles: Number of macro-particles in the beam
-        energy: Reference particle energy [eV].
-        mass: Reference particle mass [eV/c^2]. Defaults to electron mass.
-        particle_charges: Macro-particle charges [C]. Defaults to 1.
-        """
-        super(FlowBeamGenerator, self).__init__()
-
-        self.n_dim = 6
-        self.n_particles = n_particles
-
-        self.flow = flow
-        self.prior = prior
-
-        self.register_buffer("energy", torch.tensor(energy))
-        self.register_buffer("mass", torch.tensor(mass))
-        self.register_buffer("particle_charges", torch.tensor(particle_charges))
-    
-    def forward(self) -> tuple[ParticleBeam, torch.Tensor]:
-        """Return beam and estimated entropy."""
-        x, log_p = self.flow.sample_and_log_prob(self.n_particles)
-
-        log_q = 0.0
-        if self.prior is not None:
-            log_q = self.prior.log_prob(x)
-
-        entropy = -torch.mean(log_p - log_q)
-
-        x = bmad_to_cheetah_coords(x, self.energy, self.mass)
-        beam = ParticleBeam(*x, particle_charges=self.particle_charges)
-        return (beam, entropy)
-    
-
-class FlowGPSR(GPSR):
-    def __init__(self, beam_generator: FlowBeamGenerator, lattice: GPSRLattice) -> None:
-        super().__init__(beam_generator=beam_generator, lattice=lattice)
-
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Return beam, entropy estimate, and predicted images."""
-        beam, entropy = self.beam_generator()
-        self.lattice.set_lattice_parameters(x)
-        predictions = self.lattice.track_and_observe(beam)
-        return (beam, entropy, predictions)
-    
-
-# Training
-# --------------------------------------------------------------------------------------
-
-## Start with NN generator to estimate covariance matrix.
-gpsr_model = GPSR(NNParticleBeamGenerator(10_000, p0c), gpsr_lattice)
+# Start with NN generator to estimate covariance matrix.
+gpsr_model = GPSR(NNParticleBeamGenerator(args.nsamp, p0c), gpsr_lattice)
 train_loader = torch.utils.data.DataLoader(train_dset, batch_size=10)
 
 litgpsr = LitGPSR(gpsr_model)
-trainer = lightning.Trainer(limit_train_batches=100, max_epochs=250)
+trainer = lightning.Trainer(accelerator=args.device, limit_train_batches=100, max_epochs=args.iters_pre)
 trainer.fit(model=litgpsr, train_dataloaders=train_loader)
-        
+
 beam = litgpsr.gpsr_model.beam_generator()
 
 # Analyze beam
@@ -257,133 +146,108 @@ cov_matrix = torch.cov(x.T)
 xmax = 4.0 * torch.std(x, axis=0)
 limits = [(-float(_xmax), float(_xmax)) for _xmax in xmax]
 
-beam.plot_distribution(
+fig, axs = beam.plot_distribution(
     bins=50,
     bin_ranges=limits,
     plot_2d_kws=dict(
         pcolormesh_kws=dict(cmap="Blues"),
     ),
 )
-plt.show()
+fig.set_size_inches(7.0, 7.0)
+if args.show:
+    plt.show()
+plt.savefig(os.path.join(output_dir, "fig_pre_corner.png"), dpi=300)
 
 
-## Create flow-based generative model
-ndim = 6
-flow = zuko.flows.NSF(features=ndim, transforms=3, hidden_features=(3 * [64]))
-flow = zuko.flows.Flow(flow.transform.inv, flow.base)
-flow = ZukoFlow(flow=flow, ndim=ndim, cov_matrix=cov_matrix)
+# We do not expect to reconstruct the 6D distribution from these measurements,
+# so we will get rid of the linear longitudinal-transverse correlations in
+# the covariance matrix.
+cov_matrix_old = torch.clone(cov_matrix)
+cov_matrix = torch.eye(ndim)
+cov_matrix[4, 4] = 1.0
+cov_matrix[5, 5] = 0.005
+cov_matrix[0:4, 0:4] = cov_matrix_old[0:4, 0:4]
+
+
+# Create flow-based model
+# --------------------------------------------------------------------------------------
+
+gen_model = NSF(
+    ndim=ndim, cov_matrix=cov_matrix, transforms=3, hidden_units=64, hidden_layers=3
+)
 
 prior_loc = torch.zeros(ndim)
 prior_cov = cov_matrix * args.prior_scale**2
 prior = torch.distributions.MultivariateNormal(prior_loc, prior_cov)
 
-beam_generator = FlowBeamGenerator(
-    flow=flow, 
+beam_generator = EntropyBeamGenerator(
+    gen_model=gen_model, 
     prior=prior, 
-    n_particles=10_000,
+    n_particles=args.nsamp,
     energy=p0c,
 )
 
-gpsr_model = FlowGPSR(beam_generator=beam_generator, lattice=gpsr_lattice)
+gpsr_model = EntropyGPSR(beam_generator=beam_generator, lattice=gpsr_lattice)
 
 
-## Train flow-based generative model
-def train_epoch(gpsr_model, dset, lr: float, penalty: float, iterations: int) -> dict:    
-    optimizer = torch.optim.Adam(gpsr_model.parameters(), lr=lr)
+# Train flow-based model
+# --------------------------------------------------------------------------------------
 
-    history = {}
-    history["loss"] = []
-    history["loss_reg"] = []
-    history["loss_pred"] = []
-    
-    for iteration in range(iterations):
-        optimizer.zero_grad()
+train_loader = torch.utils.data.DataLoader(train_dset, batch_size=len(train_k_ids))
 
-        beam, entropy, predictions = gpsr_model(dset.parameters)
+litgpsr = EntropyLitGPSR(gpsr_model, lr=args.lr, penalty=args.penalty_min)
+trainer = lightning.Trainer(
+    accelerator=args.device,  # GPU not working
+    limit_train_batches=100, 
+    max_epochs=args.iters,
+)
 
-        loss_reg = -entropy
-
-        y_meas = [normalize_images(y) for y in dset.observations]
-        y_pred = [normalize_images(y) for y in predictions]
-        diff = [mae_loss(_y_meas, _y_pred) for _y_meas, _y_pred in zip(y_meas, y_pred)]
-
-        loss_pred = 0.0
-        if len(diff) > 1:
-            loss_pred += torch.add(*diff) / len(diff)
-        else:
-            loss_pred += diff[0]
-
-        loss = loss_reg + loss_pred * penalty
-        loss.backward()
-        optimizer.step()
-
-        print(
-            "iter={} loss_reg={:0.2e} loss_pred={:0.2e} ratio={:0.3f}".format(
-                iteration,
-                loss_reg.item(),
-                loss_pred.item(),
-                loss_pred.item() * penalty / loss_reg.item()
-            )
-        )
-
-        history["loss"].append(loss.item())
-        history["loss_reg"].append(loss_reg.item())
-        history["loss_pred"].append(loss_pred.item())
-
-    return history
-
-
-penalty = args.penalty_min
 for epoch in range(args.epochs):
     print("EPOCH={}".format(epoch))
-    print("penalty={}".format(penalty))
+    print("PENALTY={}".format(litgpsr.penalty))
 
-    # Train generative model
-    history = train_epoch(
-        gpsr_model=gpsr_model,
-        dset=train_dset,
-        lr=args.lr,
-        penalty=penalty,
-        iterations=args.iters,
-    )
+    trainer.fit(model=litgpsr, train_dataloaders=train_loader)
+    trainer.fit_loop.max_epochs += args.iters
 
     # Update penalty parameter
-    penalty *= args.penalty_scale
-    penalty += args.penalty_step
+    litgpsr.penalty *= args.penalty_scale
+    litgpsr.penalty += args.penalty_step
     if args.penalty_max is not None:
-        penalty = min(penalty, args.penalty_max)
+        litgpsr.penalty = min(litgpsr.penalty, args.penalty_max)
 
     with torch.no_grad():
+        # Increase particle count
+        gpsr_model.eval()
         gpsr_model.beam_generator.n_particles = args.eval_nsamp
 
-        # Plot loss
-        fig, ax1 = plt.subplots()
-        ax2 = ax1.twinx()
-        color = "red"
-        ax1.plot(history["loss_pred"], color="black",)
-        ax2.plot(history["loss_reg"], color=color)
-        ax2.tick_params(axis="y", labelcolor=color)
-        ax1.set_ylabel("MAE")
-        ax2.set_ylabel("Negative entropy", color=color)
-        plt.show()
+        # Generate beam
+        beam, _ = gpsr_model.beam_generator()
+        print(beam.particles.shape)
 
-        # Plot data
-        beam, entropy, predictions = gpsr_model(train_dset.parameters)
+        # Make predictions
+        beam_out, entropy, predictions = gpsr_model(train_dset.parameters)
         pred_dset = QuadScanDataset(train_dset.parameters, predictions[0].detach(), train_dset.screen)
 
+        # Plot predictions
         fig, ax = train_dset.plot_data(overlay_data=pred_dset)
         fig.set_size_inches(20, 3)
-        plt.show()
+        if args.show:
+            plt.show()
+        plt.savefig(os.path.join(output_dir, f"fig_images_{epoch:02.0f}.png"), dpi=300)
 
-        # Plot beam
+        # Plot beam (corner plot)
         fig, axs = beam.plot_distribution(
             bins=50,
-            bin_ranges=limits,
+            # bin_ranges=limits,
             plot_2d_kws=dict(
                 pcolormesh_kws=dict(cmap="Blues"),
             ),
         )
         fig.set_size_inches(7.0, 7.0)
-        plt.show()
+        if args.show:
+            plt.show()
+        plt.savefig(os.path.join(output_dir, f"fig_corner_{epoch:02.0f}.png"), dpi=300)
 
+        # Reset particle count
         gpsr_model.beam_generator.n_particles = args.nsamp
+        gpsr_model.train()

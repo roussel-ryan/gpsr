@@ -1,4 +1,5 @@
 from abc import abstractmethod, ABC
+from typing import Any
 
 import torch
 from torch import Size, Tensor
@@ -76,3 +77,153 @@ class NNParticleBeamGenerator(BeamGenerator):
             *transformed_beam,
             particle_charges=self.particle_charges,
         )
+
+
+class GenModel(torch.nn.Module, ABC):
+    """Base class for generative model.
+    
+    The generative model is defined for coordinates z. The phase space coordinates x 
+    are obtained by a linear transformation x = Lz, where L is obtained by a Cholesky 
+    decomposition of the covariance matrix: S = <xx^T> = LL^T. The probability densities
+    are related by p(x) = p(z) / |det(L)|.
+
+    This allows the base distribution of the generative model to always have identify
+    covariance matrix.
+    """
+    def __init__(self, ndim: int, cov_matrix: torch.Tensor = None) -> None:
+        super().__init__()
+
+        self.ndim = ndim
+
+        self.cov_matrix = cov_matrix
+        if self.cov_matrix is None:
+            self.cov_matrix = torch.eye(self.ndim)
+
+        self.unnorm_matrix = torch.linalg.cholesky(cov_matrix)
+        self.unnorm_matrix_log_det = torch.log(torch.linalg.det(self.unnorm_matrix))
+        self.norm_matrix = torch.linalg.inv(self.unnorm_matrix)
+
+    @abstractmethod
+    def _sample(self, n: int) -> torch.Tensor:
+        """Generate samples {z_i}."""
+        pass
+
+    @abstractmethod
+    def _log_prob(self, z: torch.Tensor) -> torch.Tensor:
+        """Compute log probabilities {log(p(z_i))}."""
+        pass
+
+    @abstractmethod
+    def _sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Generate samples {z_i} and log probabilities {log(p(z_i))}."""
+        pass
+
+    def sample(self, n: int) -> torch.Tensor:
+        """Generate samples {x_i}."""
+        z = self._sample(n)
+        x = torch.matmul(z, self.unnorm_matrix.T)
+        return x
+    
+    def log_prob(self, x: torch.Tensor) -> torch.Tensor:
+        """Compute log probabilities {log(p(x_i))}."""
+        z = torch.matmul(x, self.norm_matrix.T)
+        log_prob = self._log_prob(z)
+        log_prob = log_prob - self.unnorm_matrix_log_det
+        return log_prob
+    
+    def sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
+        """Generate samples {x_i} and log probabilities {log(p(x_i))}."""
+        z, log_prob = self._sample_and_log_prob(n)
+        x = torch.matmul(z, self.unnorm_matrix.T)
+        log_prob = log_prob - self.unnorm_matrix_log_det
+        return (x, log_prob)
+    
+
+class NSF(GenModel):
+    """Implements flow-based generative model using rational-quadratic splines.
+    
+    This class uses the Zuko library.
+    """
+    def __init__(
+        self,
+        transforms: int = 3, 
+        hidden_layers: int = 3, 
+        hidden_units: int = 64, 
+        **kwargs
+    ) -> None:
+        super().__init__(**kwargs)
+
+        import zuko
+
+        self._flow = zuko.flows.NSF(
+            features=self.ndim, 
+            transforms=transforms, 
+            hidden_features=(hidden_layers * [hidden_units])
+        )
+        self._flow = zuko.flows.Flow(self._flow.transform.inv, self._flow.base)
+    
+    def _sample(self, n: int) -> torch.Tensor:
+        return self._flow().rsample((n,))
+
+    def _log_prob(self, z: torch.Tensor) -> torch.Tensor:
+        return self._flow().log_prob(z)
+    
+    def _sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
+        return self._flow().rsample_and_log_prob((n,))   
+
+
+class EntropyBeamGenerator(BeamGenerator):
+    """Generates beam and entropy in forward pass."""
+    def __init__(
+        self,
+        gen_model: GenModel,
+        prior: Any,
+        n_particles: int,
+        energy: float,
+        mass: float = 0.511e+06,
+        particle_charges: float = 1.0,
+        device: torch.device = None
+    ) -> None:
+        """Constructor.
+        
+        gen_model: Generative model
+        prior: Prior distribution over the phase space coordiantes. Must implement
+               `prior.log_prob(x: torch.Tensor) -> torch.Tensor`, where `x` is 
+               a set of particle coordinates.
+        n_particles: Number of macro-particles in the beam
+        energy: Reference particle energy [eV].
+        mass: Reference particle mass [eV/c^2]. Defaults to electron mass.
+        particle_charges: Macro-particle charges [C].
+        """
+        super(EntropyBeamGenerator, self).__init__()
+
+        self.n_dim = 6
+        self.n_particles = n_particles
+
+        self.gen_model = gen_model
+        self.prior = prior
+
+        self.device = device
+
+        self.register_buffer("energy", torch.tensor(energy))
+        self.register_buffer("mass", torch.tensor(mass))
+        self.register_buffer("particle_charges", torch.tensor(particle_charges))
+    
+    def forward(self) -> tuple[ParticleBeam, torch.Tensor]:
+        """Return beam and estimated entropy."""
+
+        # Sample particles and log probability density at each particle
+        x, log_p = self.gen_model.sample_and_log_prob(self.n_particles)
+
+        # Compute prior probability density at each particle
+        log_q = 0.0
+        if self.prior is not None:
+            log_q = self.prior.log_prob(x)
+
+        # Estimate entropy (expected value of log(p) - log(q))
+        entropy = -torch.mean(log_p - log_q)
+
+        # Create ParticleBeam from particle coordinates
+        x = bmad_to_cheetah_coords(x, self.energy, self.mass)
+        beam = ParticleBeam(*x, particle_charges=self.particle_charges)
+        return (beam, entropy)

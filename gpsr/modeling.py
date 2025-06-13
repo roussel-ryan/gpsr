@@ -17,6 +17,7 @@ from cheetah.accelerator import (
 from cheetah.particles import Beam
 from cheetah.accelerator import Element
 from gpsr.beams import BeamGenerator
+from gpsr.beams import EntropyBeamGenerator
 
 
 class GPSRLattice(torch.nn.Module, ABC):
@@ -269,3 +270,16 @@ class GenericGPSRLattice(GPSRLattice):
         """
         for i, element in enumerate(self.variable_elements, 0):
             setattr(element[0], element[1], settings[..., i])
+
+
+class EntropyGPSR(GPSR):
+    """Generates beam, entropy, and predicted images in forward pass."""
+    def __init__(self, beam_generator: EntropyBeamGenerator, lattice: GPSRLattice) -> None:
+        super().__init__(beam_generator=beam_generator, lattice=lattice)
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Return beam, entropy estimate, and predicted images."""
+        beam, entropy = self.beam_generator()
+        self.lattice.set_lattice_parameters(x)
+        predictions = self.lattice.track_and_observe(beam)
+        return (beam, entropy, predictions)
