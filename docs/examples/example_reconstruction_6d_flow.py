@@ -176,7 +176,7 @@ with torch.no_grad():
     params = train_dset.six_d_parameters
     predictions = tuple([ele.detach() for ele in litgpsr.gpsr_model(params)])
     pred_dset = SixDReconstructionDataset(params, predictions, train_dset.screens)
-    test_dset.plot_data(
+    train_dset.plot_data(
         publication_size=True,
         overlay_data=pred_dset,
         overlay_kwargs=dict(levels=[0.1, 0.5, 0.9]),
@@ -263,7 +263,7 @@ for epoch in range(args.epochs):
         plt.savefig(os.path.join(output_dir, f"fig_corner_{epoch:02.0f}.png"), dpi=300)
 
         # Plot predictions
-        test_dset.plot_data(
+        train_dset.plot_data(
             publication_size=True,
             overlay_data=pred_dset,
             overlay_kwargs=dict(levels=[0.1, 0.5, 0.9]),
