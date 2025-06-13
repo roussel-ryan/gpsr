@@ -73,10 +73,10 @@ parser.add_argument("--iters", type=int, default=250)
 parser.add_argument("--iters-pre", type=int, default=250)
 parser.add_argument("--epochs", type=int, default=8)
 parser.add_argument("--lr", type=float, default=0.001)
-parser.add_argument("--penalty-min", type=float, default=1000.0)
+parser.add_argument("--penalty-min", type=float, default=2000.0)
 parser.add_argument("--penalty-max", type=float, default=None)
-parser.add_argument("--penalty-step", type=float, default=1000.0)
-parser.add_argument("--penalty-scale", type=float, default=2.0)
+parser.add_argument("--penalty-step", type=float, default=2000.0)
+parser.add_argument("--penalty-scale", type=float, default=3.0)
 
 parser.add_argument("--eval-nsamp", type=int, default=256_000)
 
@@ -244,8 +244,16 @@ for epoch in range(args.epochs):
         # Generate beam and predictions
         params = train_dset.six_d_parameters
         beam, entropy, predictions = litgpsr.gpsr_model(params)
-        predictions = tuple([ele.detach() for ele in predictions])
-        pred_dset = SixDReconstructionDataset(params, predictions, train_dset.screens)
+        pred = tuple([ele.detach() for ele in predictions])
+        pred_dset = SixDReconstructionDataset(params, pred, train_dset.screens)
+        
+        ##################### TEMP
+        cov_matrix_pred = torch.cov(beam.particles[:, :6].T)
+        print(np.round(cov_matrix_pred.numpy() * 1e6, 2))        
+        print()
+        print(np.round(cov_matrix.numpy() * 1e6, 2))      
+        print()  
+        #####################
 
         # Plot beam (corner plot)
         fig, axs = beam.plot_distribution(
