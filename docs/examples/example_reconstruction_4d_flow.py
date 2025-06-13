@@ -85,7 +85,6 @@ parser.add_argument("--eval-nsamp", type=int, default=256_000)
 
 parser.add_argument("--plot-nsamp", type=int, default=256_000)
 parser.add_argument("--plot-bins", type=int, default=50)
-parser.add_argument("--plot-cmap", type=str, default="Blues")
 parser.add_argument("--plot-smooth", type=float, default=0.0)
 
 parser.add_argument("--device", type=str, default="cpu")
@@ -157,12 +156,11 @@ with torch.no_grad():
         bin_ranges=limits,
         plot_2d_kws=dict(
             histogram_smoothing=args.plot_smooth,
-            pcolormesh_kws=dict(cmap=args.plot_cmap),
+            pcolormesh_kws=dict(cmap="Blues"),
         ),
     )
     fig.set_size_inches(9.0, 8.0)
     fig.tight_layout()
-
     if args.show:
         plt.show()
     plt.savefig(os.path.join(output_dir, "fig_pre_corner.png"), dpi=300)
@@ -245,7 +243,7 @@ for epoch in range(args.epochs):
             bin_ranges=limits,
             plot_2d_kws=dict(
                 histogram_smoothing=args.plot_smooth,
-                pcolormesh_kws=dict(cmap=args.plot_cmap),
+                pcolormesh_kws=dict(cmap="Blues"),
             ),
         )
         fig.set_size_inches(9.0, 8.0)
