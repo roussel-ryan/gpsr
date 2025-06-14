@@ -166,8 +166,6 @@ class EntropyLitGPSR(L.LightningModule, ABC):
 
         # compute regularization term (negative entropy) 
         loss_reg = -entropy
-
-        # final loss
         loss = loss_reg + self.penalty * loss_pred
 
         self.log("loss_pred", loss_pred, on_epoch=True)

@@ -246,14 +246,6 @@ for epoch in range(args.epochs):
         beam, entropy, predictions = litgpsr.gpsr_model(params)
         pred = tuple([ele.detach() for ele in predictions])
         pred_dset = SixDReconstructionDataset(params, pred, train_dset.screens)
-        
-        ##################### TEMP
-        cov_matrix_pred = torch.cov(beam.particles[:, :6].T)
-        print(np.round(cov_matrix_pred.numpy() * 1e6, 2))        
-        print()
-        print(np.round(cov_matrix.numpy() * 1e6, 2))      
-        print()  
-        #####################
 
         # Plot beam (corner plot)
         fig, axs = beam.plot_distribution(
