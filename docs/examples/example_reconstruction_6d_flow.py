@@ -70,12 +70,12 @@ parser.add_argument("--prior-scale", type=float, default=1.1)
 
 parser.add_argument("--nsamp", type=int, default=20_000)
 parser.add_argument("--iters", type=int, default=250)
-parser.add_argument("--iters-pre", type=int, default=250)
+parser.add_argument("--iters-pre", type=int, default=500)
 parser.add_argument("--epochs", type=int, default=8)
 parser.add_argument("--lr", type=float, default=0.001)
-parser.add_argument("--penalty-min", type=float, default=2000.0)
+parser.add_argument("--penalty-min", type=float, default=2000)
 parser.add_argument("--penalty-max", type=float, default=None)
-parser.add_argument("--penalty-step", type=float, default=2000.0)
+parser.add_argument("--penalty-step", type=float, default=10_000)
 parser.add_argument("--penalty-scale", type=float, default=3.0)
 
 parser.add_argument("--eval-nsamp", type=int, default=256_000)
@@ -214,7 +214,7 @@ gpsr_model = EntropyGPSR(beam_generator=beam_generator, lattice=gpsr_lattice)
 # Train normalizing flow
 # --------------------------------------------------------------------------------------
 
-train_loader = torch.utils.data.DataLoader(train_dset, batch_size=len(train_k_ids))
+train_loader = torch.utils.data.DataLoader(train_dset, batch_size=10)
 
 litgpsr = EntropyLitGPSR(gpsr_model, lr=args.lr, penalty=args.penalty_min)
 trainer = lightning.Trainer(
