@@ -199,7 +199,7 @@ gpsr_model = EntropyGPSR(beam_generator=beam_generator, lattice=gpsr_lattice)
 # Train normalizing flow
 # --------------------------------------------------------------------------------------
 
-train_loader = torch.utils.data.DataLoader(train_dset, batch_size=10),
+train_loader = torch.utils.data.DataLoader(train_dset, batch_size=10)
 
 litgpsr = EntropyLitGPSR(gpsr_model, lr=args.lr, penalty=args.penalty_min)
 trainer = lightning.Trainer(limit_train_batches=100, max_epochs=args.iters)
