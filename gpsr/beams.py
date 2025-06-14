@@ -96,14 +96,6 @@ class GenModel(torch.nn.Module, ABC):
 
         self.ndim = ndim
 
-        # self.cov_matrix = cov_matrix
-        # if self.cov_matrix is None:
-        #     self.cov_matrix = torch.eye(self.ndim)
-
-        # self.unnorm_matrix = torch.linalg.cholesky(cov_matrix)
-        # self.unnorm_matrix_log_det = torch.log(torch.linalg.det(self.unnorm_matrix))
-        # self.norm_matrix = torch.linalg.inv(self.unnorm_matrix)
-
         cov_matrix = torch.clone(cov_matrix)
         if cov_matrix is None:
             cov_matrix = torch.eye(self.ndim)
@@ -236,8 +228,9 @@ class EntropyBeamGenerator(BeamGenerator):
 
         entropy = -torch.mean(log_p - log_q)
 
-        x = bmad_to_cheetah_coords(x, self.energy, self.mass)
-        beam = ParticleBeam(*x, particle_charges=self.particle_charges)
+        particles, ref_energy = bmad_to_cheetah_coords(x, self.energy, self.mass)
+        particles[:, 4] *= -1.0  # [TO DO] why is sign wrong?
+        beam = ParticleBeam(particles, energy=ref_energy, particle_charges=self.particle_charges)
         return (beam, entropy)
     
 
