@@ -81,15 +81,12 @@ class NNParticleBeamGenerator(BeamGenerator):
 
 
 class GenModel(torch.nn.Module, ABC):
-    """Base class for generative model.
+    """Base class for generative models.
     
-    The generative model is defined for coordinates z. The phase space coordinates x 
-    are obtained by a linear transformation x = Lz, where L is obtained by a Cholesky 
-    decomposition of the covariance matrix: S = <xx^T> = LL^T. The probability densities
-    are related by p(x) = p(z) / |det(L)|.
-
-    This allows the base distribution of the generative model to always have identify
-    covariance matrix.
+    The generative model is defined for "normalized" coordinate vector z. The phase
+    space coordinates are x = Lz, where L is the Cholesky decomposition of a 
+    covariance matrix: S = <xx^T> = LL^T. The probability densities are related by 
+    p(x) = p(z) / |det(L)|.
     """
     def __init__(self, ndim: int, cov_matrix: torch.Tensor = None) -> None:
         super().__init__()
@@ -102,7 +99,7 @@ class GenModel(torch.nn.Module, ABC):
         self.register_buffer("cov_matrix", cov_matrix)
 
         unnorm_matrix = torch.linalg.cholesky(cov_matrix)
-        unnorm_matrix_log_det = torch.log(torch.linalg.det(unnorm_matrix))
+        unnorm_matrix_log_det = torch.log(torch.abs(torch.linalg.det(unnorm_matrix)))
         norm_matrix = torch.linalg.inv(unnorm_matrix)
 
         self.register_buffer("unnorm_matrix", unnorm_matrix)
@@ -146,9 +143,9 @@ class GenModel(torch.nn.Module, ABC):
     
 
 class NSF(GenModel):
-    """Implements flow-based generative model using rational-quadratic splines.
+    """Implements a normalizing flow using rational-quadratic splines.
     
-    This class uses the Zuko library.
+    This class uses the Zuko library: https://github.com/probabilists/zuko/blob/master/zuko/flows/autoregressive.py
     """
     def __init__(
         self,
@@ -166,6 +163,7 @@ class NSF(GenModel):
             transforms=transforms, 
             hidden_features=(hidden_layers * [hidden_units])
         )
+        # Reverse for faster sampling
         self._flow = zuko.flows.Flow(self._flow.transform.inv, self._flow.base)
     
     def _sample(self, n: int) -> torch.Tensor:
@@ -188,14 +186,13 @@ class EntropyBeamGenerator(BeamGenerator):
         energy: float,
         mass: float = 0.511e+06,
         particle_charges: float = 1.0,
-        device: torch.device = None
     ) -> None:
         """Constructor.
         
         gen_model: Generative model
         prior: Prior distribution over the phase space coordiantes. Must implement
                `prior.log_prob(x: torch.Tensor) -> torch.Tensor`, where `x` is 
-               a set of particle coordinates.
+               a batch of particle coordinates.
         n_particles: Number of macro-particles in the beam
         energy: Reference particle energy [eV].
         mass: Reference particle mass [eV/c^2]. Defaults to electron mass.
@@ -209,8 +206,6 @@ class EntropyBeamGenerator(BeamGenerator):
         self.gen_model = gen_model
         self.prior = prior
 
-        self.device = device
-
         self.register_buffer("energy", torch.tensor(energy))
         self.register_buffer("mass", torch.tensor(mass))
         self.register_buffer("particle_charges", torch.tensor(particle_charges))
@@ -219,7 +214,6 @@ class EntropyBeamGenerator(BeamGenerator):
         self.n_particles = n_particles
     
     def forward(self) -> tuple[ParticleBeam, torch.Tensor]:
-        """Return beam and estimated entropy."""
         x, log_p = self.gen_model.sample_and_log_prob(self.n_particles)
 
         log_q = 0.0
@@ -234,7 +228,6 @@ class EntropyBeamGenerator(BeamGenerator):
         return (beam, entropy)
     
 
-# Classes in torch.distribution classes cannot be sent to GPU.
 class Prior(torch.nn.Module, ABC):
     @abstractmethod
     def log_prob(self, x: torch.Tensor) -> torch.Tensor:
