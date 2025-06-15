@@ -232,7 +232,7 @@ def main(args: argparse.Namespace) -> None:
             print("LOSS (PRED) = {:0.3e}".format(loss_pred))
             print("LOSS (PRED) REL CHANGE = {:0.3e}".format(loss_pred_rel))
 
-            if loss_pred_rel > -args.loss_pred_rtol:
+            if (epoch > 2) and (loss_pred_rel > -args.loss_pred_rtol):
                 print("Stopping early")
                 break
 
