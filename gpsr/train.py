@@ -125,7 +125,8 @@ def train_gpsr(
 class EntropyLitGPSR(L.LightningModule, ABC):
     """Minimizes entropy-regularized loss function.
 
-    L = H + lambda * D, where H is the entropy and D is the prediction error.
+    L = H + lambda * D, where H is the entropy and D is the prediction error, and 
+    lambda is a constant (penalty parameter).
     """
     def __init__(self, gpsr_model: EntropyGPSR, lr: float = 0.001, penalty: float = 0.0) -> None:
         super().__init__()
