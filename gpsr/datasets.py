@@ -387,23 +387,23 @@ class SixDReconstructionDataset(ObservableDataset):
 
 class FiveDReconstructionDataset(ObservableDataset):
     def __init__(
-            self, 
-            parameters: Tensor, 
-            observations: Tuple[Tensor, Tensor], 
-            screens: Tuple[Screen, Screen]
-        ):
+        self,
+        parameters: Tensor,
+        observations: Tuple[Tensor, Tensor],
+        screens: Tuple[Screen, Screen],
+    ):
         """
         parameters:
         """
-        
+
         super().__init__(parameters, tuple(observations))
         self.screens = screens
 
     def plot_data(self):
         fig, ax = plt.subplots(
-            2, 
-            self.observations[0].shape[0], 
-            figsize=(2*self.observations[0].shape[0], 2*2),
+            2,
+            self.observations[0].shape[0],
+            figsize=(2 * self.observations[0].shape[0], 2 * 2),
             sharex="all",
             sharey="all",
         )
@@ -419,9 +419,7 @@ class FiveDReconstructionDataset(ObservableDataset):
                     vmin=0,
                 )
                 ax[screen, k1].set_aspect("equal")
-                ax[screen, k1].set_title(
-                    f"{self.parameters[k1][screen][-1]:.2f}"
-                )
+                ax[screen, k1].set_title(f"{self.parameters[k1][screen][-1]:.2f}")
         for ele in ax[-1]:
             ele.set_xlabel("x (mm)")
         for ele in ax[:, 0]:
