@@ -150,14 +150,13 @@ class QuadScanDataset(ObservableDataset):
         n_k = len(parameters)
         fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all", sharey="all")
 
-        xbins, ybins = self.screen.pixel_bin_centers
-        xx = torch.meshgrid(xbins * 1e3, ybins * 1e3, indexing="ij")
+        px_bin_centers = self.screen.pixel_bin_centers
+        px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
         images = self.observations[0]
 
         for i in range(n_k):
             ax[i].pcolormesh(
-                xx[0].numpy(),
-                xx[1].numpy(),
+                *px_bin_centers,
                 images[i] / images[i].max(),
                 rasterized=True,
                 vmax=1.0,
@@ -170,8 +169,7 @@ class QuadScanDataset(ObservableDataset):
                     overlay_image = gaussian_filter(overlay_image.numpy(), filter_size)
 
                 ax[i].contour(
-                    xx[0].numpy(),
-                    xx[1].numpy(),
+                    *px_bin_centers,
                     overlay_image / overlay_image.max(),
                     **overlay_kwargs,
                 )
@@ -380,6 +378,50 @@ class SixDReconstructionDataset(ObservableDataset):
                             transform=ax[row_number, 0].transAxes,
                         )
         # fig.tight_layout()
+        for ele in ax[-1]:
+            ele.set_xlabel("x (mm)")
+        for ele in ax[:, 0]:
+            ele.set_ylabel("y (mm)")
+        return fig, ax
+
+
+class FiveDReconstructionDataset(ObservableDataset):
+    def __init__(
+            self, 
+            parameters: Tensor, 
+            observations: Tuple[Tensor, Tensor], 
+            screens: Tuple[Screen, Screen]
+        ):
+        """
+        parameters:
+        """
+        
+        super().__init__(parameters, tuple(observations))
+        self.screens = screens
+
+    def plot_data(self):
+        fig, ax = plt.subplots(
+            2, 
+            self.observations[0].shape[0], 
+            figsize=(2*self.observations[0].shape[0], 2*2),
+            sharex="all",
+            sharey="all",
+        )
+        for screen in range(2):
+            for k1 in range(self.observations[0].shape[0]):
+                px_bin_centers = self.screens[screen].pixel_bin_centers
+                px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
+                ax[screen, k1].pcolormesh(
+                    *px_bin_centers,
+                    self.observations[screen][k1] / self.observations[screen][k1].max(),
+                    rasterized=True,
+                    vmax=1.0,
+                    vmin=0,
+                )
+                ax[screen, k1].set_aspect("equal")
+                ax[screen, k1].set_title(
+                    f"{self.parameters[k1][screen][-1]:.2f}"
+                )
         for ele in ax[-1]:
             ele.set_xlabel("x (mm)")
         for ele in ax[:, 0]:
