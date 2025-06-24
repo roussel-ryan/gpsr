@@ -150,14 +150,13 @@ class QuadScanDataset(ObservableDataset):
         n_k = len(parameters)
         fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all", sharey="all")
 
-        xbins, ybins = self.screen.pixel_bin_centers
-        xx = torch.meshgrid(xbins * 1e3, ybins * 1e3, indexing="ij")
+        px_bin_centers = self.screen.pixel_bin_centers
+        px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
         images = self.observations[0]
 
         for i in range(n_k):
             ax[i].pcolormesh(
-                xx[0].numpy(),
-                xx[1].numpy(),
+                *px_bin_centers,
                 images[i] / images[i].max(),
                 rasterized=True,
                 vmax=1.0,
@@ -170,8 +169,7 @@ class QuadScanDataset(ObservableDataset):
                     overlay_image = gaussian_filter(overlay_image.numpy(), filter_size)
 
                 ax[i].contour(
-                    xx[0].numpy(),
-                    xx[1].numpy(),
+                    *px_bin_centers,
                     overlay_image / overlay_image.max(),
                     **overlay_kwargs,
                 )
