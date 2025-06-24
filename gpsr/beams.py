@@ -6,7 +6,6 @@ from torch.nn import Module
 from torch.distributions import MultivariateNormal, Distribution
 
 from cheetah.particles import ParticleBeam
-from cheetah.utils.bmadx import bmad_to_cheetah_coords
 
 
 class BeamGenerator(torch.nn.Module, ABC):
