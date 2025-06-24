@@ -58,7 +58,6 @@ class NNParticleBeamGenerator(BeamGenerator):
         self.transformer = transformer
         self.base_dist = base_dist
         self.register_buffer("beam_energy", torch.tensor(energy))
-        self.register_buffer("particle_charges", torch.tensor(1.0))
 
         self.set_base_particles(n_particles)
 
@@ -69,10 +68,16 @@ class NNParticleBeamGenerator(BeamGenerator):
 
     def forward(self) -> ParticleBeam:
         transformed_beam = self.transformer(self.base_particles)
-        transformed_beam = bmad_to_cheetah_coords(
-            transformed_beam, self.beam_energy, torch.tensor(0.511e6)
+        transformed_beam = torch.cat(
+            [
+                transformed_beam,
+                torch.ones(
+                    (transformed_beam.shape[-2], 1), device=transformed_beam.device
+                ),
+            ],
+            dim=-1,
         )
         return ParticleBeam(
-            *transformed_beam,
-            particle_charges=self.particle_charges,
+            particles=transformed_beam,
+            energy=self.beam_energy,
         )
