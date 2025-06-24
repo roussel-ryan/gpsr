@@ -340,7 +340,7 @@ class GPSR5DLattice(GPSRLattice):
 
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way
-        final_beam = self.segment(beam)
+        self.segment(beam)
 
         # get the readings from the screens
         obs = (self.screen_1.reading[:, 0, :, :], self.screen_2.reading[:, 1, :, :])
