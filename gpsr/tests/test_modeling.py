@@ -54,6 +54,7 @@ class TestModeling:
         screen.transfer_map = lambda x, y: torch.eye(7)
         screen.reading = torch.eye(3)
         screen.name = "test"
+        screen.length = torch.tensor(0.0)
 
         lattice = GPSRQuadScanLattice(l_quad, l_drift, screen)
 
