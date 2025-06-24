@@ -56,7 +56,7 @@ class GPSR(torch.nn.Module):
 class GPSRQuadScanLattice(GPSRLattice):
     def __init__(self, l_quad: float, l_drift: float, screen: Screen):
         super().__init__()
-        q1 = Quadrupole(torch.tensor(l_quad), torch.tensor(0.0))
+        q1 = Quadrupole(torch.tensor(l_quad), torch.tensor(0.0), name="SCAN_QUAD")
         d1 = Drift(torch.tensor(l_drift))
         self.segment = Segment([q1, d1, screen])
         self.screen = screen
@@ -103,8 +103,6 @@ class GPSR6DLattice(GPSRLattice):
             torch.tensor(l_quad),
             torch.tensor(0.0),
             name="SCAN_QUAD",
-            num_steps=5,
-            tracking_method="bmadx",
         )
         d1 = Drift(torch.tensor(l_d1))
 
@@ -128,7 +126,6 @@ class GPSR6DLattice(GPSRLattice):
             angle=torch.tensor(0.0).float(),
             dipole_e1=torch.tensor(0.0).float(),
             dipole_e2=torch.tensor(theta_on).float(),
-            tracking_method="bmadx",
         )
 
         d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3).float())
@@ -290,25 +287,13 @@ class GPSR5DLattice(GPSRLattice):
         tensor_kwargs = {"dtype": l_quad.dtype}
 
         # DQ6
-        dq6 = Quadrupole(
-            l_quad,
-            torch.tensor(0.0, **tensor_kwargs),
-            name="DQ6",
-            num_steps=5,
-            tracking_method="bmadx",
-        )
+        dq6 = Quadrupole(l_quad, torch.tensor(0.0, **tensor_kwargs), name="DQ6")
 
         # Drift from DQ6 to DQ7
         d1 = Drift(l1 - l_quad)
 
         # DQ7
-        dq7 = Quadrupole(
-            l_quad,
-            torch.tensor(0.0, **tensor_kwargs),
-            name="DQ7",
-            num_steps=5,
-            tracking_method="bmadx",
-        )
+        dq7 = Quadrupole(l_quad, torch.tensor(0.0, **tensor_kwargs), name="DQ7")
 
         # Drift from DQ7 to SCREEN_A
         d2 = Drift(l2 - l_quad / 2)
@@ -324,7 +309,6 @@ class GPSR5DLattice(GPSRLattice):
             angle=torch.tensor(0.0, **tensor_kwargs),
             dipole_e1=torch.tensor(0.0, **tensor_kwargs),
             dipole_e2=theta_dipole,
-            tracking_method="bmadx",
         )
 
         # Drift from Dipole to SCREEN_B
