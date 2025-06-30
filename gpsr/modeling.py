@@ -102,9 +102,7 @@ class GPSR6DLattice(GPSRLattice):
         q = Quadrupole(
             torch.tensor(l_quad),
             torch.tensor(0.0),
-            name="SCAN_QUAD",
-            num_steps=5,
-            tracking_method="bmadx",
+            name="SCAN_QUAD"
         )
         d1 = Drift(torch.tensor(l_d1))
 
@@ -125,9 +123,10 @@ class GPSR6DLattice(GPSRLattice):
         bend = Dipole(
             name="SCAN_DIPOLE",
             length=torch.tensor(l_arc).float(),
-            angle=torch.tensor(0.0).float(),
+            angle=torch.tensor(theta_on).float(),
             dipole_e1=torch.tensor(0.0).float(),
             dipole_e2=torch.tensor(theta_on).float(),
+            tracking_method="bmadx",
         )
 
         d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3).float())
