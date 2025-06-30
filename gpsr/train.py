@@ -1,24 +1,26 @@
-from abc import ABC
 import os
+from abc import ABC
+from typing import Callable
 
 import lightning as L
 import torch
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import CSVLogger
 from torch import optim
 
 from gpsr.losses import mae_loss, normalize_images
-from gpsr.modeling import (
-    GPSR,
-)
-
-from lightning.pytorch.loggers import CSVLogger
-from lightning.pytorch.callbacks import ModelCheckpoint
+from gpsr.modeling import GPSR
 
 
 class LitGPSR(L.LightningModule, ABC):
-    def __init__(self, gpsr_model: GPSR, lr=1e-3):
+
+    def __init__(
+        self, gpsr_model: GPSR, lr: float = 1e-3, loss_func: Callable = mae_loss
+    ):
         super().__init__()
         self.gpsr_model = gpsr_model
         self.lr = lr
+        self.loss_func = loss_func
 
     def training_step(self, batch, batch_idx):
         # get the training data batch
@@ -39,9 +41,8 @@ class LitGPSR(L.LightningModule, ABC):
         y_normalized = [normalize_images(y_ele) for y_ele in y]
         pred_normalized = [normalize_images(pred_ele) for pred_ele in pred]
 
-        # add up the loss functions from each prediction (in a tuple)
         diff = [
-            mae_loss(y_ele, pred_ele)
+            self.loss_func(y_ele, pred_ele)
             for y_ele, pred_ele in zip(y_normalized, pred_normalized)
         ]
 
@@ -62,11 +63,12 @@ class LitGPSR(L.LightningModule, ABC):
 def train_gpsr(
     model,
     train_dataloader,
-    n_epochs=100,
-    lr=1e-3,
+    n_epochs: int = 100,
+    lr: float = 1e-3,
+    loss_func: Callable = mae_loss,
     logger=None,
     dirpath=None,
-    checkpoint_period_epochs=100,
+    checkpoint_period_epochs: int = 100,
     **kwargs,
 ):
     """
@@ -114,7 +116,7 @@ def train_gpsr(
         **kwargs,
     )
 
-    gpsr_model = LitGPSR(model, lr)
+    gpsr_model = LitGPSR(model, lr, loss_func=loss_func)
     trainer.fit(
         gpsr_model,
         train_dataloader,
