@@ -99,11 +99,7 @@ class GPSR6DLattice(GPSRLattice):
         # Drift from Bend to YAG 2 (corrected for dipole on/off)
         l_d3 = l3 - l_bend / 2 / np.cos(theta_on)
 
-        q = Quadrupole(
-            torch.tensor(l_quad),
-            torch.tensor(0.0),
-            name="SCAN_QUAD"
-        )
+        q = Quadrupole(torch.tensor(l_quad), torch.tensor(0.0), name="SCAN_QUAD")
         d1 = Drift(torch.tensor(l_d1))
 
         tdc = TransverseDeflectingCavity(
