@@ -176,6 +176,7 @@ class QuadScanDataset(ObservableDataset):
 
             ax[i].set_title(f"{parameters[i]:.1f}")
             ax[i].set_xlabel("x (mm)")
+            ax[i].set_aspect("equal")
 
         ax[0].set_ylabel("y (mm)")
         ax[0].text(
@@ -377,6 +378,8 @@ class SixDReconstructionDataset(ObservableDataset):
                             ha="right",
                             transform=ax[row_number, 0].transAxes,
                         )
+
+                    ax[row_number, i].set_aspect("equal")
         # fig.tight_layout()
         for ele in ax[-1]:
             ele.set_xlabel("x (mm)")
