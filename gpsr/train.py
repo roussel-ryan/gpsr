@@ -13,7 +13,6 @@ from gpsr.modeling import GPSR
 
 
 class LitGPSR(L.LightningModule, ABC):
-
     def __init__(
         self, gpsr_model: GPSR, lr: float = 1e-3, loss_func: Callable = mae_loss
     ):
