@@ -269,10 +269,15 @@ class GenericGPSRLattice(GPSRLattice):
 
 class EntropyGPSR(GPSR):
     """Generates beam, entropy, and predicted images in forward pass."""
-    def __init__(self, beam_generator: EntropyBeamGenerator, lattice: GPSRLattice) -> None:
+
+    def __init__(
+        self, beam_generator: EntropyBeamGenerator, lattice: GPSRLattice
+    ) -> None:
         super().__init__(beam_generator=beam_generator, lattice=lattice)
 
-    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def forward(
+        self, x: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Return beam, entropy estimate, and predicted images."""
         beam, entropy = self.beam_generator()
         self.lattice.set_lattice_parameters(x)
