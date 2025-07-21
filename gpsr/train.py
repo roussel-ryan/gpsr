@@ -12,9 +12,6 @@ from gpsr.losses import mae_loss, normalize_images
 from gpsr.modeling import GPSR
 from gpsr.modeling import EntropyGPSR
 
-from lightning.pytorch.loggers import CSVLogger
-from lightning.pytorch.callbacks import ModelCheckpoint
-
 
 class LitGPSR(L.LightningModule, ABC):
     def __init__(
