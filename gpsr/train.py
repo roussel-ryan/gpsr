@@ -40,15 +40,11 @@ class LitGPSR(L.LightningModule, ABC):
         y_normalized = [normalize_images(y_ele) for y_ele in y]
         pred_normalized = [normalize_images(pred_ele) for pred_ele in pred]
 
-        diff = [
-            self.loss_func(y_ele, pred_ele)
-            for y_ele, pred_ele in zip(y_normalized, pred_normalized)
-        ]
+        # add up the loss functions from each prediction
+        loss = 0.0
+        for y_ele, pred_ele in zip(y_normalized, pred_normalized):
+            loss += torch.sum(self.loss_func(y_ele, pred_ele))
 
-        if len(diff) > 1:
-            loss = torch.add(*diff) / len(diff)
-        else:
-            loss = diff[0]
         # log the loss function at the end of each epoch
         self.log("loss", loss, on_epoch=True)
 
