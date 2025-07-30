@@ -256,7 +256,7 @@ def crop_images(
     return cropped_images
 
 
-def pool_images(images: np.ndarray) -> np.ndarray:
+def pool_images(images: np.ndarray, pool_size) -> np.ndarray:
     """
     Pools (downsamples) the input images by applying mean pooling over non-overlapping blocks.
 
