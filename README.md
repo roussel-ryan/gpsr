@@ -16,8 +16,11 @@ the following publications:
 </div>
 
 ## Installation
-Using `pip`
-
+Using `pip` for the latest release:
+```shell
+pip install gpsr
+```
+or for the most recent updates in the github repo (may be unstable):
 ```shell
 git clone https://github.com/roussel-ryan/gpsr.git
 cd gpsr

@@ -1,5 +1,6 @@
-from typing import Tuple, List
+from typing import Tuple, List, Union
 
+import numpy as np
 import torch
 from matplotlib import pyplot as plt
 from scipy.ndimage import gaussian_filter
@@ -24,7 +25,8 @@ class ObservableDataset(Dataset):
         or the number of different observations. Tensor shapes should be (B x D)
         where B is a batch dimension shape that corresponds to the `parameter`
         tensor, and D is an arbitrary shape corresponding to the dimensionality of
-        the observable.
+        the observable. The images must follow the matrix convention,
+        where axis -2 is Y and axis -1 is X.
 
     Notes
     -----
@@ -123,6 +125,8 @@ class QuadScanDataset(ObservableDataset):
         observations : Tensor
             Tensor contaning observed images, where the tensor shape
             should be (K x bins x bins). First entry should be dipole off images.
+            The images must follow the matrix convention, where axis -2 is Y and
+            axis -1 is X.
         screen: Screen
             Cheetah screen object that corresponds to the observed images.
 
@@ -146,14 +150,13 @@ class QuadScanDataset(ObservableDataset):
         n_k = len(parameters)
         fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all", sharey="all")
 
-        xbins, ybins = self.screen.pixel_bin_centers
-        xx = torch.meshgrid(xbins * 1e3, ybins * 1e3, indexing="ij")
+        px_bin_centers = self.screen.pixel_bin_centers
+        px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
         images = self.observations[0]
 
         for i in range(n_k):
             ax[i].pcolormesh(
-                xx[0].numpy(),
-                xx[1].numpy(),
+                *px_bin_centers,
                 images[i] / images[i].max(),
                 rasterized=True,
                 vmax=1.0,
@@ -166,14 +169,14 @@ class QuadScanDataset(ObservableDataset):
                     overlay_image = gaussian_filter(overlay_image.numpy(), filter_size)
 
                 ax[i].contour(
-                    xx[0].numpy(),
-                    xx[1].numpy(),
+                    *px_bin_centers,
                     overlay_image / overlay_image.max(),
                     **overlay_kwargs,
                 )
 
             ax[i].set_title(f"{parameters[i]:.1f}")
             ax[i].set_xlabel("x (mm)")
+            ax[i].set_aspect("equal")
 
         ax[0].set_ylabel("y (mm)")
         ax[0].text(
@@ -191,34 +194,47 @@ class QuadScanDataset(ObservableDataset):
 class SixDReconstructionDataset(ObservableDataset):
     def __init__(
         self,
-        parameters: Tensor,
-        observations: Tuple[Tensor, Tensor],
+        six_d_parameters: Tensor,
+        six_d_observations: Tuple[Tensor, Tensor],
         screens: Tuple[Screen, Screen],
     ):
         """
-        Light wrapper dataset class for 6D phase space reconstructions with quadrupole,
-        dipole and TDC. Checks for correct sizes of parameters and observations.
+        Light wrapper dataset class for 6D phase space reconstructions with
+        quadrupole, dipole, and TDC. Checks for correct sizes of parameters
+        and observations.
 
         Parameters
         ----------
-        parameters : Tensor
+        six_d_parameters : Tensor
             Tensor of beamline parameters that correspond to data observations.
-            Should elements along the last dimension should be ordered by (dipole
-            strengths, TDC voltages, quadrupole focusing strengths) and should have a
-            shape of (K x N x 2 x 3) where K is the number of quadrupole strengths.
-        observations : Tuple[Tensor, Tensor]
-            Tuple of tensors contaning observed images, where the tensor shapes
-            should be (K x N x n_bins x n_bins). First entry should be dipole off
-            images, second entry should be dipole on images.
+            Shape should be (K x N x 2 x 3) where K is the number of quadrupole
+            strengths, N the number of TDC voltages, and 2 is the number of
+            dipole strengths. The last dimension should be ordered as
+            (quadrupole focusing strengths, TDC voltages, dipole strengths).
 
+        six_d_observations : Tuple[Tensor, Tensor]
+            Tuple of tensors containing observed images, where the tensor shapes
+            should be (K x N x n_bins x n_bins). Here, K is the number of
+            quadrupole strengths, and N is the number of TDC voltages. The first
+            entry should be dipole-off images, and the second entry should be
+            dipole-on images. The images must follow the matrix convention,
+            where axis -2 is Y and axis -1 is X.
+
+        screens: Tuple[Screen, Screen]
+            Tuple of cheetah screen objects that corresponds to the observed images.
+
+        Notes
+        -----
+
+        Only squared images are supported for now.
         """
 
         # keep unflattened parameters and observations for visualization
-        self.six_d_params = parameters
-        self.six_d_observations = observations
+        self.six_d_parameters = six_d_parameters
+        self.six_d_observations = six_d_observations
 
         # flatten stuff here for the parent class
-        parameters = self.six_d_params.clone().flatten(end_dim=-3)
+        parameters = self.six_d_parameters.clone().flatten(end_dim=-3)
         observations = tuple(
             [ele.clone().flatten(end_dim=-3) for ele in self.six_d_observations]
         )
@@ -248,8 +264,8 @@ class SixDReconstructionDataset(ObservableDataset):
             }
             okwargs.update(overlay_kwargs or {})
 
-        n_k, n_v, n_g = self.six_d_params.shape[:-1]
-        params = self.six_d_params
+        n_k, n_v, n_g = self.six_d_parameters.shape[:-1]
+        params = self.six_d_parameters
         images = self.six_d_observations
 
         # plot
@@ -304,7 +320,7 @@ class SixDReconstructionDataset(ObservableDataset):
                         diff = torch.abs(
                             images[j][i, k] - overlay_data.six_d_observations[j][i, k]
                         )
-                        ax[row_number, i].pcolor(
+                        ax[row_number, i].pcolormesh(
                             *px_bin_centers,
                             diff,
                             rasterized=True,
@@ -321,7 +337,7 @@ class SixDReconstructionDataset(ObservableDataset):
                         )
 
                     else:
-                        ax[row_number, i].pcolor(
+                        ax[row_number, i].pcolormesh(
                             *px_bin_centers,
                             images[j][i, k] / images[j][i, k].max(),
                             rasterized=True,
@@ -362,9 +378,95 @@ class SixDReconstructionDataset(ObservableDataset):
                             ha="right",
                             transform=ax[row_number, 0].transAxes,
                         )
+
+                    ax[row_number, i].set_aspect("equal")
         # fig.tight_layout()
         for ele in ax[-1]:
             ele.set_xlabel("x (mm)")
         for ele in ax[:, 0]:
             ele.set_ylabel("y (mm)")
         return fig, ax
+
+
+def split_dataset(
+    dataset: Union[SixDReconstructionDataset, QuadScanDataset],
+    train_k_ids: np.ndarray,
+    test_k_ids: np.ndarray = None,
+) -> Tuple[
+    Union[SixDReconstructionDataset, QuadScanDataset],
+    Union[SixDReconstructionDataset, QuadScanDataset],
+]:
+    """
+    Splits a dataset into training and testing subsets based on provided indices.
+
+    Args:
+        dataset (Union[SixDReconstructionDataset, QuadScanDataset]):
+            The dataset to be split. It can be either a SixDReconstructionDataset
+            or a QuadScanDataset.
+        train_k_ids (np.ndarray):
+            An array of indices specifying the samples to include in the training subset.
+        test_k_ids (np.ndarray, optional):
+            An array of indices specifying the samples to include in the testing subset.
+            If not provided, the testing subset will include all indices not in `train_k_ids`.
+
+    Returns:
+        Tuple[Union[SixDReconstructionDataset, QuadScanDataset],
+              Union[SixDReconstructionDataset, QuadScanDataset]]:
+            A tuple containing the training dataset and the testing dataset, both of the
+            same type as the input dataset.
+
+    Raises:
+        ValueError: If the input dataset is not of type SixDReconstructionDataset or
+                    QuadScanDataset.
+    """
+
+    def generate_test_indices(all_k_ids, train_k_ids, test_k_ids=None):
+        """
+        Generate test indices based on the provided train indices and optional test indices.
+        If test_k_ids is None, compute the difference between all_k_ids and train_k_ids.
+        """
+        if test_k_ids is None:
+            return np.setdiff1d(all_k_ids, train_k_ids)
+        return test_k_ids
+
+    if isinstance(dataset, SixDReconstructionDataset):
+        all_k_ids = np.arange(dataset.six_d_parameters.shape[0])
+        test_k_ids_copy = generate_test_indices(all_k_ids, train_k_ids, test_k_ids)
+
+        train_dataset = SixDReconstructionDataset(
+            six_d_parameters=dataset.six_d_parameters[train_k_ids],
+            six_d_observations=tuple(
+                observation[train_k_ids] for observation in dataset.six_d_observations
+            ),
+            screens=dataset.screens,
+        )
+
+        test_dataset = SixDReconstructionDataset(
+            six_d_parameters=dataset.six_d_parameters[test_k_ids_copy],
+            six_d_observations=tuple(
+                observation[test_k_ids_copy]
+                for observation in dataset.six_d_observations
+            ),
+            screens=dataset.screens,
+        )
+
+    elif isinstance(dataset, QuadScanDataset):
+        all_k_ids = np.arange(dataset.parameters.shape[0])
+        test_k_ids_copy = generate_test_indices(all_k_ids, train_k_ids, test_k_ids)
+
+        train_dataset = QuadScanDataset(
+            parameters=dataset.parameters[train_k_ids],
+            observations=dataset.observations[0][train_k_ids],
+            screen=dataset.screen,
+        )
+
+        test_dataset = QuadScanDataset(
+            parameters=dataset.parameters[test_k_ids_copy],
+            observations=dataset.observations[0][test_k_ids_copy],
+            screen=dataset.screen,
+        )
+
+    else:
+        raise ValueError("Unknown dataset type")
+
+    return train_dataset, test_dataset

@@ -54,20 +54,20 @@ class GPSR(torch.nn.Module):
 
 
 class GPSRQuadScanLattice(GPSRLattice):
-    def __init__(self, l_quad: float, l_drift: float, diagnostic: Screen):
+    def __init__(self, l_quad: float, l_drift: float, screen: Screen):
         super().__init__()
         q1 = Quadrupole(torch.tensor(l_quad), torch.tensor(0.0))
         d1 = Drift(torch.tensor(l_drift))
-        self.lattice = Segment([q1, d1, diagnostic])
-        self.diagnostic = diagnostic
+        self.segment = Segment([q1, d1, screen])
+        self.screen = screen
 
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way
-        self.lattice(beam)
-        return tuple(self.lattice.elements[-1].reading.transpose(-1, -2).unsqueeze(0))
+        self.segment(beam)
+        return tuple(self.segment.elements[-1].reading.transpose(-1, -2).unsqueeze(0))
 
     def set_lattice_parameters(self, x: torch.Tensor):
-        self.lattice.elements[0].k1.data = x[:, 0]
+        self.segment.elements[0].k1.data = x[:, 0]
 
 
 class GPSR6DLattice(GPSRLattice):
@@ -99,13 +99,7 @@ class GPSR6DLattice(GPSRLattice):
         # Drift from Bend to YAG 2 (corrected for dipole on/off)
         l_d3 = l3 - l_bend / 2 / np.cos(theta_on)
 
-        q = Quadrupole(
-            torch.tensor(l_quad),
-            torch.tensor(0.0),
-            name="SCAN_QUAD",
-            num_steps=5,
-            tracking_method="bmadx",
-        )
+        q = Quadrupole(torch.tensor(l_quad), torch.tensor(0.0), name="SCAN_QUAD")
         d1 = Drift(torch.tensor(l_d1))
 
         tdc = TransverseDeflectingCavity(
@@ -125,23 +119,25 @@ class GPSR6DLattice(GPSRLattice):
         bend = Dipole(
             name="SCAN_DIPOLE",
             length=torch.tensor(l_arc).float(),
-            angle=torch.tensor(0.0).float(),
+            angle=torch.tensor(theta_on).float(),
             dipole_e1=torch.tensor(0.0).float(),
             dipole_e2=torch.tensor(theta_on).float(),
+            tracking_method="bmadx",
         )
 
         d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3).float())
 
-        lattice = Segment([*upstream_elements, q, d1, tdc, d2, bend, d3])
+        segment = Segment([*upstream_elements, q, d1, tdc, d2, bend, d3])
 
         self.l_bend = l_bend
         self.l3 = l3
-        self.screens = [screen_1, screen_2]
-        self.lattice = lattice
+        self.screen_1 = screen_1
+        self.screen_2 = screen_2
+        self.segment = segment
 
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way
-        final_beam = self.lattice(beam)
+        final_beam = self.segment(beam)
 
         # note that the axis that speicfies the screen number is the axis after the batch axis
         # e.g. (N x 2 x 3) where N is the batch size, 2 is the number of screens,
@@ -157,7 +153,7 @@ class GPSR6DLattice(GPSRLattice):
         batch_size = (slice(None),) * n_batch_dims  # Use a tuple instead of a list
 
         obs = []
-        for i, screen in enumerate(self.screens):
+        for i, screen in enumerate((self.screen_1, self.screen_2)):
             screen.track(final_beam[batch_size + (i,)])  # Concatenate explicitly
             obs.append(screen.reading)
 
@@ -178,19 +174,19 @@ class GPSR6DLattice(GPSRLattice):
 
         """
         # set quad/TDC parameters
-        self.lattice.SCAN_QUAD.k1.data = x[..., 0]
-        self.lattice.SCAN_TDC.voltage.data = x[..., 1]
+        self.segment.SCAN_QUAD.k1.data = x[..., 0]
+        self.segment.SCAN_TDC.voltage.data = x[..., 1]
 
         # set dipole parameters
         G = x[..., 2]
         bend_angle = torch.arcsin(self.l_bend * G)
         arc_length = bend_angle / G
-        self.lattice.SCAN_DIPOLE.angle.data = bend_angle
-        self.lattice.SCAN_DIPOLE.length.data = arc_length
-        self.lattice.SCAN_DIPOLE.dipole_e2.data = bend_angle
+        self.segment.SCAN_DIPOLE.angle.data = bend_angle
+        self.segment.SCAN_DIPOLE.length.data = arc_length
+        self.segment.SCAN_DIPOLE.dipole_e2.data = bend_angle
 
         # set parameters of drift between dipole and screen
-        self.lattice.DIPOLE_TO_SCREEN.length.data = (
+        self.segment.DIPOLE_TO_SCREEN.length.data = (
             self.l3 - self.l_bend / 2 / torch.cos(bend_angle)
         )
 
@@ -198,7 +194,7 @@ class GPSR6DLattice(GPSRLattice):
 class GenericGPSRLattice(GPSRLattice):
     """
     Attributes:
-        lattice: The base lattice structure used for beam tracking.
+        segment: The base cheetah Segment structure used for beam tracking.
         variable_elements: A list of tuples, where each tuple contains an element object and
                           the name of the parameter to be varied as a string.
         observable_elements: A list of elements that have the 'reading' property.
@@ -206,7 +202,7 @@ class GenericGPSRLattice(GPSRLattice):
 
     def __init__(
         self,
-        lattice,
+        segment,
         variable_elements: List[Tuple[Element, str]],
         observable_elements: List[Element],
     ):
@@ -214,7 +210,7 @@ class GenericGPSRLattice(GPSRLattice):
         Initializes the GPSRLattice instance.
 
         Args:
-            lattice: The cheetah lattice used for beam tracking.
+            segment: The cheetah Segment used for beam tracking.
             variable_elements: A list of tuples, where each tuple contains a cheetah element object and
                               the name of the parameter to be varied as a string.
             observable_elements: A list of elements that have the 'reading' property.
@@ -233,13 +229,13 @@ class GenericGPSRLattice(GPSRLattice):
                     f"Observable element {element.name} does not have a 'reading' property."
                 )
 
-        self.lattice = lattice
+        self.segment = segment
         self.variable_elements = variable_elements
         self.observable_elements = observable_elements
 
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         """
-        Tracks a beam through the lattice and collects observations from designated elements.
+        Tracks a beam through the segment and collects observations from designated elements.
 
         Args:
             beam: The beam object to be tracked.
@@ -248,11 +244,11 @@ class GenericGPSRLattice(GPSRLattice):
             A tuple of tensors representing the observations from the observable elements.
         """
 
-        # Compute the merged transfer maps for the lattice
-        merged_lattice = self.lattice.transfer_maps_merged(beam)
+        # Compute the merged transfer maps for the segment
+        merged_segment = self.segment.transfer_maps_merged(beam)
 
-        # Apply the merged lattice transformations to the beam
-        merged_lattice(beam)
+        # Apply the merged segment transformations to the beam
+        merged_segment(beam)
 
         # Collect observations from the observable elements
         observations = tuple([element.reading for element in self.observable_elements])
@@ -261,7 +257,7 @@ class GenericGPSRLattice(GPSRLattice):
 
     def set_lattice_parameters(self, settings: torch.Tensor):
         """
-        Sets the parameters of variable elements in the lattice.
+        Sets the parameters of variable elements in the segment.
 
         Args:
             settings: A tensor containing the new parameter values for the variable elements.

@@ -6,11 +6,11 @@ dependencies:
   - pip
   - pip:
     - numpy
-    - matplotlib
+    - matplotlib>=3.3.0
     - scipy
     - ipykernel
     - tqdm
     - torch
     - lightning
     - tensorboard
-    - cheetah-accelerator
+    - cheetah-accelerator>=0.7.2
