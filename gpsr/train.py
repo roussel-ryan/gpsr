@@ -10,6 +10,7 @@ from torch import optim
 
 from gpsr.losses import mae_loss, normalize_images
 from gpsr.modeling import GPSR
+from gpsr.modeling import EntropyGPSR
 
 
 class LitGPSR(L.LightningModule, ABC):
@@ -118,3 +119,64 @@ def train_gpsr(
     )
 
     return model
+
+
+class EntropyLitGPSR(L.LightningModule, ABC):
+    """Minimizes entropy-regularized loss function.
+
+    L = H + lambda * D, where H is the entropy and D is the prediction error, and
+    lambda is a constant (penalty parameter).
+    """
+
+    def __init__(
+        self, gpsr_model: EntropyGPSR, lr: float = 0.001, penalty: float = 0.0
+    ) -> None:
+        super().__init__()
+        self.gpsr_model = gpsr_model
+        self.lr = lr
+        self.penalty = penalty
+
+    def training_step(self, batch, batch_idx):
+        # get the training data batch
+        x, y = batch
+
+        # make predictions using the GPSR model
+        (beam, entropy, pred) = self.gpsr_model(x)
+
+        # check to make sure the prediction shape matches the target shape EXACTLY
+        # removing this check will allow the model to run, but it will not be correct
+        for i in range(len(pred)):
+            if not pred[i].shape == y[i].shape:
+                raise RuntimeError(
+                    f"prediction {i} shape {pred[i].shape} does not match target shape {y[i].shape}"
+                )
+
+        # normalize images
+        y_normalized = [normalize_images(y_ele) for y_ele in y]
+        pred_normalized = [normalize_images(pred_ele) for pred_ele in pred]
+
+        # add up the loss functions from each prediction (in a tuple)
+        diff = [
+            mae_loss(y_ele, pred_ele)
+            for y_ele, pred_ele in zip(y_normalized, pred_normalized)
+        ]
+
+        loss_pred = 0.0
+        if len(diff) > 1:
+            loss_pred += torch.add(*diff) / len(diff)
+        else:
+            loss_pred += diff[0]
+
+        # compute regularization term (negative entropy)
+        loss_reg = -entropy
+        loss = loss_reg + self.penalty * loss_pred
+
+        self.log("loss_pred", loss_pred, on_epoch=True)
+        self.log("loss_reg", loss_reg, on_epoch=True)
+        self.log("loss", loss, on_epoch=True)
+
+        return loss
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.gpsr_model.parameters(), lr=self.lr)
+        return optimizer
