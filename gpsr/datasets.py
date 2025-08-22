@@ -122,8 +122,8 @@ class QuadScanDataset(ObservableDataset):
         parameters : Tensor
             Tensor of beamline parameters that correspond to data observations.
             Should have a shape of (K x 1) where K is the number of quadrupole strengths.
-        observations : Tensor
-            Tensor contaning observed images, where the tensor shape
+        observations : tuple
+            tuple contaning tensor of observed images, where the tensor shape
             should be (K x bins x bins). First entry should be dipole off images.
             The images must follow the matrix convention, where axis -2 is Y and
             axis -1 is X.
@@ -132,7 +132,7 @@ class QuadScanDataset(ObservableDataset):
 
         """
 
-        super().__init__(parameters, tuple([observations]))
+        super().__init__(parameters, observations)
         self.screen = screen
 
     def plot_data(
