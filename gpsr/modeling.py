@@ -64,7 +64,7 @@ class GPSRQuadScanLattice(GPSRLattice):
     def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
         # track the beam through the accelerator in a batched way
         self.segment(beam)
-        return tuple(self.segment.elements[-1].reading.transpose(-1, -2).unsqueeze(0))
+        return tuple(self.segment.elements[-1].reading.unsqueeze(0))
 
     def set_lattice_parameters(self, x: torch.Tensor):
         self.segment.elements[0].k1.data = x[:, 0]
