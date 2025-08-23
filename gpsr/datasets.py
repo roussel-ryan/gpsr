@@ -111,7 +111,7 @@ DEFAULT_COLORMAP = "Greys"
 
 
 class QuadScanDataset(ObservableDataset):
-    def __init__(self, parameters: Tensor, observations: Tensor, screen: Screen):
+    def __init__(self, parameters: Tensor, observations: Tuple[Tensor], screen: Screen):
         """
         Light wrapper dataset class for 4D phase space reconstructions with
         quadrupole. Checks for correct sizes of parameters and observations
