@@ -41,29 +41,29 @@ class TestModeling:
         screen.name = "test"
 
         lattice = GPSRQuadScanLattice(l_quad, l_drift, screen)
-
         x = torch.tensor([0.1]).unsqueeze(0)
         lattice.set_lattice_parameters(x)
 
         assert torch.isclose(lattice.segment.elements[0].k1, torch.tensor(0.1))
 
     def test_gpsr_quad_scan_lattice_track_and_observe(self):
+        torch.set_default_tensor_type(torch.FloatTensor)
         l_quad = 0.5
         l_drift = 1.0
         screen = MagicMock(spec=Screen)
         screen.transfer_map = lambda x, y: torch.eye(7)
-        screen.reading = torch.eye(3)
+        screen.reading = torch.eye(2)
         screen.name = "test"
         screen.length = torch.tensor(0.0)
 
         lattice = GPSRQuadScanLattice(l_quad, l_drift, screen)
-
+        lattice.set_lattice_parameters(torch.rand(10, 1))
         beam = ParticleBeam(energy=torch.tensor(1e6), particles=torch.rand((10, 7)))
         observations = lattice.track_and_observe(beam)
 
         assert isinstance(observations, tuple)
         assert len(observations) == 1
-        assert torch.equal(observations[0], torch.eye(3))
+        assert torch.equal(observations[0], torch.eye(2))
 
     def test_gpsr_6d_lattice_initialization(self):
         l_quad = 0.5

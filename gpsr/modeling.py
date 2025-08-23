@@ -58,13 +58,14 @@ class GPSRQuadScanLattice(GPSRLattice):
         super().__init__()
         q1 = Quadrupole(torch.tensor(l_quad), torch.tensor(0.0))
         d1 = Drift(torch.tensor(l_drift))
-        self.segment = Segment([q1, d1, screen])
+        self.segment = Segment([q1, d1])
         self.screen = screen
 
-    def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
+    def track_and_observe(self, beam) -> Tuple[Tensor]:
         # track the beam through the accelerator in a batched way
-        self.segment(beam)
-        return tuple(self.segment.elements[-1].reading.transpose(-1, -2).unsqueeze(0))
+        final_beam = self.segment(beam)
+        self.screen.track(final_beam)
+        return tuple([self.screen.reading])
 
     def set_lattice_parameters(self, x: torch.Tensor):
         self.segment.elements[0].k1.data = x[:, 0]
