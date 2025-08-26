@@ -136,7 +136,12 @@ class QuadScanDataset(ObservableDataset):
         self.screen = screen
 
     def plot_data(
-        self, overlay_data=None, overlay_kwargs: dict = None, filter_size: int = None
+        self,
+        overlay_data=None,
+        overlay_kwargs: dict = None,
+        filter_size: int = None,
+        ax=None,
+        add_labels: bool = True,
     ):
         # check overlay data size if specified
         if overlay_data is not None:
@@ -148,7 +153,15 @@ class QuadScanDataset(ObservableDataset):
 
         parameters = self.parameters.flatten()
         n_k = len(parameters)
-        fig, ax = plt.subplots(1, n_k, figsize=(n_k + 1, 1), sharex="all", sharey="all")
+        if ax is None:
+            fig, ax = plt.subplots(
+                1, n_k, figsize=(n_k + 1, 1), sharex="all", sharey="all"
+            )
+        else:
+            if isinstance(ax, np.ndarray):
+                fig = ax[*np.zeros(len(ax.shape), dtype=int)].get_figure()
+            else:
+                fig = ax.get_figure()
 
         px_bin_centers = self.screen.pixel_bin_centers
         px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
@@ -157,7 +170,7 @@ class QuadScanDataset(ObservableDataset):
         for i in range(n_k):
             ax[i].pcolormesh(
                 *px_bin_centers,
-                images[i] / images[i].max(),
+                images[i][:-1, :-1].T / images[i].max(),
                 rasterized=True,
                 vmax=1.0,
                 vmin=0,
@@ -170,23 +183,25 @@ class QuadScanDataset(ObservableDataset):
 
                 ax[i].contour(
                     *px_bin_centers,
-                    overlay_image / overlay_image.max(),
+                    overlay_image.T / overlay_image.max(),
                     **overlay_kwargs,
                 )
 
-            ax[i].set_title(f"{parameters[i]:.1f}")
-            ax[i].set_xlabel("x (mm)")
-            ax[i].set_aspect("equal")
+            if add_labels:
+                ax[i].set_title(f"{parameters[i]:.1f}")
+                ax[i].set_xlabel("x (mm)")
+                ax[i].set_aspect("equal")
 
-        ax[0].set_ylabel("y (mm)")
-        ax[0].text(
-            -0.1,
-            1.1,
-            "$k_1$ (1/m$^2$)",
-            va="bottom",
-            ha="right",
-            transform=ax[0].transAxes,
-        )
+        if add_labels:
+            ax[0].set_ylabel("y (mm)")
+            ax[0].text(
+                -0.1,
+                1.1,
+                "$k_1$ (1/m$^2$)",
+                va="bottom",
+                ha="right",
+                transform=ax[0].transAxes,
+            )
 
         return fig, ax
 
