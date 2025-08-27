@@ -53,12 +53,17 @@ class NNParticleBeamGenerator(BeamGenerator):
         self,
         n_particles: int,
         energy: float,
-        base_dist: Distribution = MultivariateNormal(torch.zeros(6), torch.eye(6)),
-        transformer: NNTransform = NNTransform(2, 20, output_scale=1e-2),
+        base_dist: Distribution = None,
+        transformer: NNTransform = None,
+        n_dim: int = 6,
     ):
         super(NNParticleBeamGenerator, self).__init__()
-        self.transformer = transformer
-        self.base_dist = base_dist
+        self.base_dist = base_dist or MultivariateNormal(
+            torch.zeros(n_dim), torch.eye(n_dim)
+        )
+        self.transformer = transformer or NNTransform(
+            2, 20, output_scale=1e-2, phase_space_dim=n_dim
+        )
         self.register_buffer("beam_energy", torch.tensor(energy))
         self.register_buffer("particle_charges", torch.tensor(1.0))
 
@@ -71,8 +76,12 @@ class NNParticleBeamGenerator(BeamGenerator):
 
     def forward(self) -> ParticleBeam:
         transformed_beam = self.transformer(self.base_particles)
+
+        bmad_coords = torch.zeros(len(transformed_beam), 6).to(transformed_beam)
+        bmad_coords[:, : transformed_beam.shape[1]] = transformed_beam
+
         transformed_beam = bmad_to_cheetah_coords(
-            transformed_beam, self.beam_energy, torch.tensor(0.511e6)
+            bmad_coords, self.beam_energy, torch.tensor(0.511e6)
         )
         return ParticleBeam(
             *transformed_beam,
