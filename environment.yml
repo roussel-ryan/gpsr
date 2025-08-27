@@ -14,3 +14,4 @@ dependencies:
     - lightning
     - tensorboard
     - cheetah-accelerator>=0.7.2
+    - zuko==1.4.0
