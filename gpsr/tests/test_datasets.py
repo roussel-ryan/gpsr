@@ -44,7 +44,9 @@ class TestDatasets:
 
     def test_four_d_reconstruction_dataset_initialization(self):
         parameters = torch.rand((5, 3))  # K = 5, N = 3
-        observations = torch.rand((5, 100, 100))  # K = 5, bins x bins = 100 x 100
+        observations = tuple(
+            [torch.rand((5, 100, 100))]
+        )  # K = 5, bins x bins = 100 x 100
         dataset = QuadScanDataset(parameters, observations, screen=Mock(Screen))
 
         assert dataset.parameters.shape == (5, 3)
