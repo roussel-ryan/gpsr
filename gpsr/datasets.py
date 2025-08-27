@@ -159,7 +159,7 @@ class QuadScanDataset(ObservableDataset):
             )
         else:
             if isinstance(ax, np.ndarray):
-                fig = ax[*np.zeros(len(ax.shape), dtype=int)].get_figure()
+                fig = ax[tuple(np.zeros(len(ax.shape), dtype=int))].get_figure()
             else:
                 fig = ax.get_figure()
 
