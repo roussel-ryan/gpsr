@@ -77,7 +77,9 @@ class NNParticleBeamGenerator(BeamGenerator):
     def forward(self) -> ParticleBeam:
         transformed_beam = self.transformer(self.base_particles)
 
-        bmad_coords = torch.zeros(len(transformed_beam), 6).to(transformed_beam)
+        # create near zero coordinates into which we deposit the transformed beam
+        # Note: these need to be near zero to maintain finite emittances
+        bmad_coords = torch.randn(len(transformed_beam), 6).to(transformed_beam) * 1e-7
         bmad_coords[:, : transformed_beam.shape[1]] = transformed_beam
 
         transformed_beam = bmad_to_cheetah_coords(
