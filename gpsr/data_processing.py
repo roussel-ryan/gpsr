@@ -1,8 +1,11 @@
 from typing import Callable, Literal
+from math import gcd
+
 import scipy
 from skimage.measure import block_reduce
 from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
+from skimage.transform import resize
 import numpy as np
 from typing import Optional, Tuple
 import matplotlib.pyplot as plt
@@ -279,6 +282,79 @@ def pool_images(images: np.ndarray, pool_size) -> np.ndarray:
     return pooled_images
 
 
+def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
+    """
+    Reduce array size adaptively while keeping at least `min_images` images
+    (if available) and maximum resolution under the element budget.
+
+    Subsamples along the last batch axis (axis=-3).
+    Tries block_reduce with exact divisors first, falls back to interpolation resize
+    if pooling cannot meet the constraint.
+
+    Args:
+        x: (..., B, N, M) numpy array of images
+        max_elems: maximum allowed total elements
+        min_images: minimum number of images to keep (if available)
+
+    Returns:
+        (reduced_x, k)
+        reduced_x: Reduced array (..., B', N', M')
+        k: pooling factor if block_reduce used, else "resize"
+    """
+    if x.ndim < 3:
+        raise ValueError("Input must have at least 3 dims (..., B, N, M)")
+
+    *batch_prefix, B, N, M = x.shape
+    prefix_size = int(np.prod(batch_prefix, dtype=int)) if batch_prefix else 1
+
+    total = x.size
+    if total <= max_elems:
+        return x, 1  # already under budget
+
+    # --- Step 1: Determine how many images we can afford at full resolution ---
+    max_fullres_images = max_elems // (N * M * prefix_size)
+    if B <= min_images:
+        B_target = B
+    else:
+        B_target = max(min_images, min(B, max_fullres_images))
+
+    # --- Step 2: Subsample evenly along axis=-3 ---
+    if B > B_target:
+        idxs = np.linspace(0, B - 1, B_target).round().astype(int)
+        x = np.take(x, idxs, axis=-3)
+        B = B_target
+
+    # --- Step 3: Try block_reduce with progressively larger k ---
+    k = 1
+    reduced = x
+    while reduced.size > max_elems and min(N // k, M // k) > 1:
+        k += 1
+        if N % k == 0 and M % k == 0:  # only valid divisors
+            block_shape = (1,) * (x.ndim - 2) + (k, k)
+            reduced = block_reduce(x, block_size=block_shape, func=np.mean)
+
+    if reduced.size <= max_elems:
+        return reduced, k
+
+    # --- Step 4: Fall back to interpolation resize if integral pooling fails ---
+    # Compute target resolution
+    target_area = max_elems // (B * prefix_size)
+    scale = np.sqrt(target_area / (N * M))
+    N_target = max(1, int(N * scale))
+    M_target = max(1, int(M * scale))
+
+    # Resize each image (handling arbitrary batch prefix)
+    new_shape = (*batch_prefix, B, N_target, M_target)
+    reduced = np.zeros(new_shape, dtype=x.dtype)
+    flat = x.reshape((-1, N, M))  # flatten batch dims
+    for i in range(flat.shape[0]):
+        reduced.reshape((-1, N_target, M_target))[i] = resize(
+            flat[i], (N_target, M_target), anti_aliasing=True, preserve_range=True
+        )
+
+    return reduced, scale
+
+
 def normalize_images(
     images: np.ndarray,
     normalization: Literal["independent", "max_intensity_image"] = "independent",
@@ -324,6 +400,7 @@ def process_images(
     pixel_size: float,
     image_fitter: Callable = compute_blob_stats,
     pool_size: Optional[int] = None,
+    max_pixels: Optional[int] = None,
     median_filter_size: Optional[int] = None,
     threshold: Optional[float] = None,
     threshold_multiplier: float = 1.0,
@@ -343,8 +420,11 @@ def process_images(
     - Thresholding (using a provided value or the triangle method)
     - Centering (optional, using an image fitter function)
     - Cropping (optional, based on fitted centroid and RMS size)
-    - Pooling (optional, block reduction)
     - Normalization (independent or max intensity image)
+
+    If max_pixels is not None, images are subsampled / pooled to ensure
+    they contain at most max_pixels pixels. This ignores values specified by
+    `pool_size`.
 
     Parameters
     ----------
@@ -356,6 +436,8 @@ def process_images(
         Function that fits an image and returns (centroid, rms) in pixel coordinates.
     pool_size : int, optional
         Size of the pooling window. If None, no pooling is applied.
+    max_pixels : int, optional
+        Maximum number of pixels per image after pooling. If specified, `pool_size` is ignored.
     median_filter_size : int, optional
         Size of the median filter. If None, no median filter is applied.
     threshold : float, optional
@@ -440,7 +522,10 @@ def process_images(
         cropped_images = centered_images
 
     # pooling
-    if pool_size is not None:
+    if max_pixels is not None:
+        pooled_images, pool_size = adaptive_reduce(cropped_images, max_elems=max_pixels)
+        pixel_size = pixel_size * pool_size
+    elif pool_size is not None:
         pooled_images = pool_images(cropped_images, pool_size=pool_size)
         pixel_size = pixel_size * pool_size
     else:

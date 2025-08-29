@@ -4,7 +4,12 @@ import pytest
 
 
 class TestProcessImages:
-    image_shapes = [(5, 100, 100), (10, 10, 100, 100), (5, 2, 10, 100, 100)]
+    image_shapes = [
+        (5, 100, 100),
+        (10, 10, 100, 100),
+        (5, 2, 10, 100, 100),
+        (20, 100, 100),
+    ]
     rms_size = np.array([5, 5])
     centroid = np.array([55, 55])
 
@@ -84,3 +89,31 @@ class TestProcessImages:
             image_fitter=self.mock_image_fitter,
             center=True,
         )
+
+    @pytest.mark.parametrize("image_shape", image_shapes)
+    def test_process_images_with_adaptive_reduction(self, image_shape):
+        images = np.zeros(image_shape)
+        images[..., 50:60, 50:60] = 1.0
+
+        processed_images = process_images(
+            images,
+            pixel_size=1.0,
+            image_fitter=self.mock_image_fitter,
+            max_pixels=1000,
+        )
+        pimages = processed_images["images"]
+        psize = processed_images["pixel_size"]
+
+        assert pimages.size <= 1000
+        if image_shape == (5, 2, 10, 100, 100):
+            assert pimages.shape == (5, 2, 10, 2, 2)
+            assert psize == 50.0
+        elif image_shape == (10, 10, 100, 100):
+            assert pimages.shape == (10, 10, 2, 2)
+            assert psize == 50.0
+        elif image_shape == (5, 100, 100):
+            assert psize == 10.0
+            assert pimages.shape == (5, 10, 10)
+        elif image_shape == (20, 100, 100):
+            assert psize == 10.0
+            assert pimages.shape == (10, 10, 10)
