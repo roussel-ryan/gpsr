@@ -299,7 +299,8 @@ def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
     Returns:
         (reduced_x, k)
         reduced_x: Reduced array (..., B', N', M')
-        k: pooling factor if block_reduce used, else "resize"
+        k: pooling factor if block_reduce / resize
+        idxs: indicies of subsampled data along the batch axis
     """
     if x.ndim < 3:
         raise ValueError("Input must have at least 3 dims (..., B, N, M)")
@@ -309,7 +310,7 @@ def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
 
     total = x.size
     if total <= max_elems:
-        return x, 1  # already under budget
+        return x, 1, np.arange(B - 1)  # already under budget
 
     # --- Step 1: Determine how many images we can afford at full resolution ---
     max_fullres_images = max_elems // (N * M * prefix_size)
@@ -323,6 +324,8 @@ def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
         idxs = np.linspace(0, B - 1, B_target).round().astype(int)
         x = np.take(x, idxs, axis=-3)
         B = B_target
+    else:
+        idxs = np.arange(B - 1)
 
     # --- Step 3: Try block_reduce with progressively larger k ---
     k = 1
@@ -334,7 +337,7 @@ def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
             reduced = block_reduce(x, block_size=block_shape, func=np.mean)
 
     if reduced.size <= max_elems:
-        return reduced, k
+        return reduced, k, idxs
 
     # --- Step 4: Fall back to interpolation resize if integral pooling fails ---
     # Compute target resolution
@@ -352,7 +355,7 @@ def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
             flat[i], (N_target, M_target), anti_aliasing=True, preserve_range=True
         )
 
-    return reduced, scale
+    return reduced, scale, idxs
 
 
 def normalize_images(
@@ -523,14 +526,16 @@ def process_images(
 
     # pooling
     if max_pixels is not None:
-        pooled_images, pool_size = adaptive_reduce(cropped_images, max_elems=max_pixels)
+        pooled_images, pool_size, subsample_idx = adaptive_reduce(cropped_images, max_elems=max_pixels)
         pixel_size = pixel_size * pool_size
     elif pool_size is not None:
         pooled_images = pool_images(cropped_images, pool_size=pool_size)
         pixel_size = pixel_size * pool_size
+        subsample_idx = np.arange(cropped_images.shape[-3])
     else:
         pooled_images = cropped_images
         pixel_size = pixel_size
+        subsample_idx = np.arange(cropped_images.shape[-3])
 
     # normalize image intensities
     normalized_images = normalize_images(pooled_images, normalization=normalization)
@@ -540,6 +545,7 @@ def process_images(
         "pixel_size": pixel_size,
         "centroids": image_centroids,
         "crop_ranges": crop_ranges,
+        "subsample_idx": subsample_idx,
     }
     return post_processing_results
 

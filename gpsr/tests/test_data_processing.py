@@ -103,17 +103,23 @@ class TestProcessImages:
         )
         pimages = processed_images["images"]
         psize = processed_images["pixel_size"]
+        subsample_idx = processed_images["subsample_idx"]
 
         assert pimages.size <= 1000
         if image_shape == (5, 2, 10, 100, 100):
             assert pimages.shape == (5, 2, 10, 2, 2)
             assert psize == 50.0
+            assert np.all(subsample_idx == np.arange(0, 9))
         elif image_shape == (10, 10, 100, 100):
             assert pimages.shape == (10, 10, 2, 2)
             assert psize == 50.0
+            assert np.all(subsample_idx == np.arange(0, 9))
         elif image_shape == (5, 100, 100):
             assert psize == 10.0
             assert pimages.shape == (5, 10, 10)
+            assert np.all(subsample_idx == np.arange(0, 4))
+
         elif image_shape == (20, 100, 100):
             assert psize == 10.0
             assert pimages.shape == (10, 10, 10)
+            assert np.all(subsample_idx == np.linspace(0, 19, 10).round().astype(int))
