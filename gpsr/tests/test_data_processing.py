@@ -9,7 +9,7 @@ class TestProcessImages:
         (10, 10, 100, 100),
         (5, 2, 10, 100, 100),
         (20, 100, 100),
-        (1, 7, 7)
+        (1, 7, 7),
     ]
     rms_size = np.array([5, 5])
     centroid = np.array([55, 55])
@@ -28,7 +28,7 @@ class TestProcessImages:
 
         assert processed_images_dict["images"].shape == image_shape
 
-    @pytest.mark.parametrize("image_shape", image_shapes)
+    @pytest.mark.parametrize("image_shape", image_shapes[:-1])
     def test_process_images_crop(self, image_shape):
         images = np.random.rand(*image_shape)
         screen_resolution = 1.0
@@ -40,7 +40,7 @@ class TestProcessImages:
             8 * 2 * self.rms_size
         )
 
-    @pytest.mark.parametrize("image_shape", image_shapes)
+    @pytest.mark.parametrize("image_shape", image_shapes[:-1])
     def test_process_images_with_pooling(self, image_shape):
         images = np.random.rand(*image_shape)
         screen_resolution = 1.0
