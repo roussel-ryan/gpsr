@@ -9,6 +9,7 @@ class TestProcessImages:
         (10, 10, 100, 100),
         (5, 2, 10, 100, 100),
         (20, 100, 100),
+        (1, 7, 7)
     ]
     rms_size = np.array([5, 5])
     centroid = np.array([55, 55])
@@ -107,19 +108,22 @@ class TestProcessImages:
 
         assert pimages.size <= 1000
         if image_shape == (5, 2, 10, 100, 100):
-            assert pimages.shape == (5, 2, 10, 2, 2)
-            assert psize == 50.0
-            assert np.all(subsample_idx == np.arange(0, 9))
+            assert pimages.shape == (5, 2, 10, 3, 3)
+            assert np.isclose(psize, 31.62, rtol=1e-2)
+            assert np.all(subsample_idx == np.arange(0, 10))
         elif image_shape == (10, 10, 100, 100):
-            assert pimages.shape == (10, 10, 2, 2)
-            assert psize == 50.0
-            assert np.all(subsample_idx == np.arange(0, 9))
+            assert pimages.shape == (10, 10, 3, 3)
+            assert np.isclose(psize, 31.62, rtol=1e-2)
+            assert np.all(subsample_idx == np.arange(0, 10))
         elif image_shape == (5, 100, 100):
-            assert psize == 10.0
-            assert pimages.shape == (5, 10, 10)
-            assert np.all(subsample_idx == np.arange(0, 4))
-
+            assert np.isclose(psize, 7.07, rtol=1e-2)
+            assert pimages.shape == (5, 14, 14)
+            assert np.all(subsample_idx == np.arange(0, 5))
         elif image_shape == (20, 100, 100):
-            assert psize == 10.0
+            assert np.isclose(psize, 10.0, rtol=1e-2)
             assert pimages.shape == (10, 10, 10)
             assert np.all(subsample_idx == np.linspace(0, 19, 10).round().astype(int))
+        elif image_shape == (1, 75, 75):
+            assert np.isclose(psize, 1.0, rtol=1e-2)
+            assert pimages.shape == (1, 75, 75)
+            assert np.all(subsample_idx == np.arange(0))

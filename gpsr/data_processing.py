@@ -310,7 +310,7 @@ def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
 
     total = x.size
     if total <= max_elems:
-        return x, 1, np.arange(B - 1)  # already under budget
+        return x, 1, np.arange(B)  # already under budget
 
     # --- Step 1: Determine how many images we can afford at full resolution ---
     max_fullres_images = max_elems // (N * M * prefix_size)
@@ -325,23 +325,11 @@ def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
         x = np.take(x, idxs, axis=-3)
         B = B_target
     else:
-        idxs = np.arange(B - 1)
+        idxs = np.arange(B)
 
-    # --- Step 3: Try block_reduce with progressively larger k ---
-    k = 1
-    reduced = x
-    while reduced.size > max_elems and min(N // k, M // k) > 1:
-        k += 1
-        if N % k == 0 and M % k == 0:  # only valid divisors
-            block_shape = (1,) * (x.ndim - 2) + (k, k)
-            reduced = block_reduce(x, block_size=block_shape, func=np.mean)
-
-    if reduced.size <= max_elems:
-        return reduced, k, idxs
-
-    # --- Step 4: Fall back to interpolation resize if integral pooling fails ---
+    # --- Step 3: Interpolation resize  ---
     # Compute target resolution
-    target_area = max_elems // (B * prefix_size)
+    target_area = max_elems / (B * prefix_size)
     scale = np.sqrt(target_area / (N * M))
     N_target = max(1, int(N * scale))
     M_target = max(1, int(M * scale))
@@ -355,7 +343,7 @@ def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
             flat[i], (N_target, M_target), anti_aliasing=True, preserve_range=True
         )
 
-    return reduced, scale, idxs
+    return reduced, 1 / scale, idxs
 
 
 def normalize_images(
@@ -526,7 +514,9 @@ def process_images(
 
     # pooling
     if max_pixels is not None:
-        pooled_images, pool_size, subsample_idx = adaptive_reduce(cropped_images, max_elems=max_pixels)
+        pooled_images, pool_size, subsample_idx = adaptive_reduce(
+            cropped_images, max_elems=max_pixels
+        )
         pixel_size = pixel_size * pool_size
     elif pool_size is not None:
         pooled_images = pool_images(cropped_images, pool_size=pool_size)
