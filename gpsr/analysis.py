@@ -95,11 +95,8 @@ def get_beam_fraction(beam_distribution, beam_fraction, particle_slices=None):
 
     return frac_particle
 
-def compute_fractional_emittance_curve(
-    fractions,
-    distribution,
-    _slice
-):
+
+def compute_fractional_emittance_curve(fractions, distribution, _slice):
     """
     Compute the fractional emittance curve for a given distribution.
 
@@ -124,7 +121,7 @@ def compute_fractional_emittance_curve(
 
         particles = frac_dist.particles[..., _slice]
         n_dims = particles.shape[-1]
-        
-        result += [torch.det(torch.cov(particles.T)).pow(1/n_dims)]
+
+        result += [torch.det(torch.cov(particles.T)).pow(1 / n_dims)]
 
     return torch.tensor(result)
