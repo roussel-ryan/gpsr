@@ -148,9 +148,10 @@ def center_images(
 
 
 def calc_crop_ranges(
-    images: np.ndarray,
+    images,
     n_stds: int = 8,
-    image_fitter: Callable = compute_blob_stats,
+    image_fitter=compute_blob_stats,
+    filter_size: int = 5,
     visualize: bool = False,
 ) -> np.ndarray:
     """
@@ -177,7 +178,17 @@ def calc_crop_ranges(
     batch_shape = images.shape[:-2]
     batch_dims = tuple(range(len(batch_shape)))
 
-    total_image = np.mean(images, axis=batch_dims)
+    test_images = np.copy(images)
+    total_image = np.mean(test_images, axis=batch_dims)
+
+    # apply a strong median filter to remove noise
+    total_image = median_filter(total_image, size=filter_size)
+
+    # apply a threshold to remove background noise
+    threshold = threshold_triangle(total_image)
+
+    total_image[total_image < threshold] = 0
+
     centroid, rms_size = image_fitter(total_image)
     centroid = centroid[::-1]
     rms_size = rms_size[::-1]
