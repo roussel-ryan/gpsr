@@ -75,7 +75,7 @@ def get_beam_fraction(beam_distribution, beam_fraction, particle_slices=None):
     # diagonal and try again
     try:
         cov_cholesky = torch.linalg.cholesky(cov)
-    except torch._C._LinAlgError as e:
+    except torch._C._LinAlgError:
         cov_cholesky = torch.linalg.cholesky(cov + 1e-8 * torch.eye(6))
 
     # transform particles to normalized coordinates
