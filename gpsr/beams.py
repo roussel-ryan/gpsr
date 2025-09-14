@@ -66,6 +66,7 @@ class NNParticleBeamGenerator(BeamGenerator):
         )
         self.register_buffer("beam_energy", torch.tensor(energy))
         self.register_buffer("particle_charges", torch.tensor(1.0))
+        self.register_buffer("survival_probabilities", torch.ones(n_particles))
 
         self.set_base_particles(n_particles)
 
@@ -88,6 +89,7 @@ class NNParticleBeamGenerator(BeamGenerator):
         return ParticleBeam(
             *transformed_beam,
             particle_charges=self.particle_charges,
+            survival_probabilities=self.survival_probabilities,
         )
 
 
