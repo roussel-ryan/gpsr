@@ -79,6 +79,7 @@ class GPSR6DLattice(GPSRLattice):
         l_tdc: float,
         f_tdc: float,
         phi_tdc: float,
+        tilt_tdc: float,
         l_bend: float,
         theta_on: float,
         l1: float,
@@ -105,11 +106,11 @@ class GPSR6DLattice(GPSRLattice):
         d1 = Drift(torch.tensor(l_d1))
 
         tdc = TransverseDeflectingCavity(
-            length=torch.tensor(l_tdc),
-            voltage=torch.tensor(0.0),
-            frequency=torch.tensor(f_tdc),
-            phase=torch.tensor(phi_tdc),
-            tilt=torch.tensor(3.14 / 2),
+            length=torch.tensor(l_tdc).float(),
+            voltage=torch.tensor(0.0).float(),
+            frequency=torch.tensor(f_tdc).float(),
+            phase=torch.tensor(phi_tdc).float(),
+            tilt=torch.tensor(tilt_tdc).float(),
             name="SCAN_TDC",
         )
 
