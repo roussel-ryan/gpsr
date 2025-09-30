@@ -10,6 +10,8 @@ from torch.distributions import MultivariateNormal, Distribution
 from cheetah.particles import ParticleBeam
 from cheetah.utils.bmadx import bmad_to_cheetah_coords
 
+import zuko
+
 
 class BeamGenerator(torch.nn.Module, ABC):
     @abstractmethod
@@ -164,8 +166,10 @@ class GenModel(torch.nn.Module, ABC):
         return (x, log_prob)
 
 
-class NSF(GenModel):
+class NSFDist(GenModel):
     """Implements a normalizing flow using rational-quadratic splines.
+
+    Note that the RQS transformation is only defined in the range [-5, 5].
 
     This class uses the Zuko library: https://github.com/probabilists/zuko/blob/master/zuko/flows/autoregressive.py
     """
@@ -178,8 +182,6 @@ class NSF(GenModel):
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
-
-        import zuko
 
         self._flow = zuko.flows.NSF(
             features=self.ndim,
@@ -200,6 +202,13 @@ class NSF(GenModel):
 
     def sample_base(self, n: int) -> torch.Tensor:
         return self._flow.base().sample((n,))
+
+    def to(self, device):
+        self.flow = self.flow.to(device)
+        self.norm_matrix = self.norm_matrix.to(device)
+        self.unnorm_matrix = self.unnorm_matrix.to(device)
+        self.unnorm_matrix_log_det = self.unnorm_matrix_log_det.to(device)
+        return self
 
 
 class EntropyBeamGenerator(BeamGenerator):
