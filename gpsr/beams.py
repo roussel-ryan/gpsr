@@ -173,46 +173,44 @@ class GenModel(torch.nn.Module, ABC):
         x = torch.matmul(z, self.unnorm_matrix.T)
         log_prob = log_prob - self.unnorm_matrix_log_det
         return (x, log_prob)
-    
+
     def entropy(self, n: int, prior: Any = None) -> torch.Tensor:
         """Estimate the entropy of the distribution.
-        
+
         Args:
             n: Number of samples.
-            prior: Prior distribution q(x). Must have method 
+            prior: Prior distribution q(x). Must have method
                 `prior.log_prob(x: torch.Tensor) -> torch.Tensor`.
 
         Returns:
             Entropy estimate. If `prior` is None, return the absolute entropy:
-        
+
             H[p(x)] = -\int p(x) \log(p(x)) dx. \in [-\infty, 0],
 
-        which is maximum at p(x) = uniform (H = 0). Otherwise, return the relative 
+        which is maximum at p(x) = uniform (H = 0). Otherwise, return the relative
         entropy (KL divergence):
-        
+
             H[p(x), q(x)] = -\int p(x) \log(p(x)) dx \in [0, \infty],
 
         which is maximum at p(x) = q(x).
         """
         x, log_p = self.sample_and_log_prob(n)
-    
+
         if prior is None:
             return -torch.mean(log_p)
         else:
             log_q = prior.log_prob(x)
             return -torch.mean(log_p - log_q)
-    
+
 
 class NNDist(GenModel):
     """Generative model using non-invertible NN transform."""
+
     def __init__(self, width: int = 20, depth: int = 2, **kwargs) -> None:
         super().__init__(**kwargs)
         self.transform = NNTransform(
-            n_hidden=depth,
-            width=width,
-            phase_space_dim=self.ndim,
-            output_scale=1.0
-        )            
+            n_hidden=depth, width=width, phase_space_dim=self.ndim, output_scale=1.0
+        )
         self.base_dist = torch.distributions.MultivariateNormal(
             loc=torch.zeros(self.ndim),
             covariance_matrix=torch.eye(self.ndim),
@@ -244,7 +242,7 @@ class NNDist(GenModel):
         self.unnorm_matrix_log_det = self.unnorm_matrix_log_det.to(device)
         self.norm_matrix = self.norm_matrix.to(device)
         return self
-    
+
 
 class NSFDist(GenModel):
     """Implements a normalizing flow using rational-quadratic splines.
@@ -253,6 +251,7 @@ class NSFDist(GenModel):
 
     This class uses the Zuko library: https://github.com/probabilists/zuko/blob/master/zuko/flows/autoregressive.py
     """
+
     def __init__(
         self,
         transforms: int = 3,
