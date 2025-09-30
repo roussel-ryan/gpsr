@@ -66,6 +66,7 @@ class NNParticleBeamGenerator(BeamGenerator):
         )
         self.register_buffer("beam_energy", torch.tensor(energy))
         self.register_buffer("particle_charges", torch.tensor(1.0))
+        self.register_buffer("survival_probabilities", torch.ones(n_particles))
 
         self.set_base_particles(n_particles)
 
@@ -77,7 +78,9 @@ class NNParticleBeamGenerator(BeamGenerator):
     def forward(self) -> ParticleBeam:
         transformed_beam = self.transformer(self.base_particles)
 
-        bmad_coords = torch.zeros(len(transformed_beam), 6).to(transformed_beam)
+        # create near zero coordinates into which we deposit the transformed beam
+        # Note: these need to be near zero to maintain finite emittances
+        bmad_coords = torch.randn(len(transformed_beam), 6).to(transformed_beam) * 1e-7
         bmad_coords[:, : transformed_beam.shape[1]] = transformed_beam
 
         transformed_beam = bmad_to_cheetah_coords(
@@ -86,6 +89,7 @@ class NNParticleBeamGenerator(BeamGenerator):
         return ParticleBeam(
             *transformed_beam,
             particle_charges=self.particle_charges,
+            survival_probabilities=self.survival_probabilities,
         )
 
 

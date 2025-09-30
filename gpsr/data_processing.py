@@ -1,8 +1,10 @@
 from typing import Callable, Literal
+
 import scipy
 from skimage.measure import block_reduce
 from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
+from skimage.transform import resize
 import numpy as np
 from typing import Optional, Tuple
 import matplotlib.pyplot as plt
@@ -145,9 +147,10 @@ def center_images(
 
 
 def calc_crop_ranges(
-    images: np.ndarray,
+    images,
     n_stds: int = 8,
-    image_fitter: Callable = compute_blob_stats,
+    image_fitter=compute_blob_stats,
+    filter_size: int = 5,
     visualize: bool = False,
 ) -> np.ndarray:
     """
@@ -174,7 +177,17 @@ def calc_crop_ranges(
     batch_shape = images.shape[:-2]
     batch_dims = tuple(range(len(batch_shape)))
 
-    total_image = np.mean(images, axis=batch_dims)
+    test_images = np.copy(images)
+    total_image = np.mean(test_images, axis=batch_dims)
+
+    # apply a strong median filter to remove noise
+    total_image = median_filter(total_image, size=filter_size)
+
+    # apply a threshold to remove background noise
+    threshold = threshold_triangle(total_image)
+
+    total_image[total_image < threshold] = 0
+
     centroid, rms_size = image_fitter(total_image)
     centroid = centroid[::-1]
     rms_size = rms_size[::-1]
@@ -279,6 +292,70 @@ def pool_images(images: np.ndarray, pool_size) -> np.ndarray:
     return pooled_images
 
 
+def adaptive_reduce(x: np.ndarray, max_elems: int, min_images: int = 10):
+    """
+    Reduce array size adaptively while keeping at least `min_images` images
+    (if available) and maximum resolution under the element budget.
+
+    Subsamples along the last batch axis (axis=-3).
+    Tries block_reduce with exact divisors first, falls back to interpolation resize
+    if pooling cannot meet the constraint.
+
+    Args:
+        x: (..., B, N, M) numpy array of images
+        max_elems: maximum allowed total elements
+        min_images: minimum number of images to keep (if available)
+
+    Returns:
+        (reduced_x, k)
+        reduced_x: Reduced array (..., B', N', M')
+        k: pooling factor if block_reduce / resize
+        idxs: indicies of subsampled data along the batch axis
+    """
+    if x.ndim < 3:
+        raise ValueError("Input must have at least 3 dims (..., B, N, M)")
+
+    *batch_prefix, B, N, M = x.shape
+    prefix_size = int(np.prod(batch_prefix, dtype=int)) if batch_prefix else 1
+
+    total = x.size
+    if total <= max_elems:
+        return x, 1, np.arange(B)  # already under budget
+
+    # --- Step 1: Determine how many images we can afford at full resolution ---
+    max_fullres_images = max_elems // (N * M * prefix_size)
+    if B <= min_images:
+        B_target = B
+    else:
+        B_target = max(min_images, min(B, max_fullres_images))
+
+    # --- Step 2: Subsample evenly along axis=-3 ---
+    if B > B_target:
+        idxs = np.linspace(0, B - 1, B_target).round().astype(int)
+        x = np.take(x, idxs, axis=-3)
+        B = B_target
+    else:
+        idxs = np.arange(B)
+
+    # --- Step 3: Interpolation resize  ---
+    # Compute target resolution
+    target_area = max_elems / (B * prefix_size)
+    scale = np.sqrt(target_area / (N * M))
+    N_target = max(1, int(N * scale))
+    M_target = max(1, int(M * scale))
+
+    # Resize each image (handling arbitrary batch prefix)
+    new_shape = (*batch_prefix, B, N_target, M_target)
+    reduced = np.zeros(new_shape, dtype=x.dtype)
+    flat = x.reshape((-1, N, M))  # flatten batch dims
+    for i in range(flat.shape[0]):
+        reduced.reshape((-1, N_target, M_target))[i] = resize(
+            flat[i], (N_target, M_target), anti_aliasing=True, preserve_range=True
+        )
+
+    return reduced, 1 / scale, idxs
+
+
 def normalize_images(
     images: np.ndarray,
     normalization: Literal["independent", "max_intensity_image"] = "independent",
@@ -324,6 +401,7 @@ def process_images(
     pixel_size: float,
     image_fitter: Callable = compute_blob_stats,
     pool_size: Optional[int] = None,
+    max_pixels: Optional[int] = None,
     median_filter_size: Optional[int] = None,
     threshold: Optional[float] = None,
     threshold_multiplier: float = 1.0,
@@ -343,8 +421,11 @@ def process_images(
     - Thresholding (using a provided value or the triangle method)
     - Centering (optional, using an image fitter function)
     - Cropping (optional, based on fitted centroid and RMS size)
-    - Pooling (optional, block reduction)
     - Normalization (independent or max intensity image)
+
+    If max_pixels is not None, images are subsampled / pooled to ensure
+    they contain at most max_pixels pixels. This ignores values specified by
+    `pool_size`.
 
     Parameters
     ----------
@@ -356,6 +437,8 @@ def process_images(
         Function that fits an image and returns (centroid, rms) in pixel coordinates.
     pool_size : int, optional
         Size of the pooling window. If None, no pooling is applied.
+    max_pixels : int, optional
+        Maximum number of pixels per image after pooling. If specified, `pool_size` is ignored.
     median_filter_size : int, optional
         Size of the median filter. If None, no median filter is applied.
     threshold : float, optional
@@ -440,12 +523,19 @@ def process_images(
         cropped_images = centered_images
 
     # pooling
-    if pool_size is not None:
+    if max_pixels is not None:
+        pooled_images, pool_size, subsample_idx = adaptive_reduce(
+            cropped_images, max_elems=max_pixels
+        )
+        pixel_size = pixel_size * pool_size
+    elif pool_size is not None:
         pooled_images = pool_images(cropped_images, pool_size=pool_size)
         pixel_size = pixel_size * pool_size
+        subsample_idx = np.arange(cropped_images.shape[-3])
     else:
         pooled_images = cropped_images
         pixel_size = pixel_size
+        subsample_idx = np.arange(cropped_images.shape[-3])
 
     # normalize image intensities
     normalized_images = normalize_images(pooled_images, normalization=normalization)
@@ -455,6 +545,7 @@ def process_images(
         "pixel_size": pixel_size,
         "centroids": image_centroids,
         "crop_ranges": crop_ranges,
+        "subsample_idx": subsample_idx,
     }
     return post_processing_results
 

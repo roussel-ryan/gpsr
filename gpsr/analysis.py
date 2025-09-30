@@ -1,10 +1,5 @@
-import numpy as np
 import torch
-from bmadx.bmad_torch.track_torch import Beam
-from bmadx.structures import Particle
-from pmd_beamphysics.particles import ParticleGroup
-
-# --------------------------------------------------------------------------
+from cheetah.particles import ParticleBeam
 
 
 def screen_stats(image, bins_x, bins_y):
@@ -42,87 +37,91 @@ def screen_stats(image, bins_x, bins_y):
 # --------------------------------------------------------------------------
 
 
-def calculate_beam_matrix(beam_distribution: ParticleGroup, beam_fraction: float = 1.0):
-    fractional_beam = get_beam_fraction_openpmd_par(beam_distribution, beam_fraction)
-    return fractional_beam.cov("x", "py", "y", "py", "t", "pz")
+def get_beam_fraction(beam_distribution, beam_fraction, particle_slices=None):
+    """
+    Get the core of the beam according to 6D normalized beam coordinates.
+    Particles from the beam distribution are scaled to normalized coordinates
+    via the covariance matrix. Then they are sorted by distance from the origin.
 
+    Parameters
+    ----------
+    beam_distribution: ParticleBeam
+        Cheetah ParticleBeam object representing the beam distribution.
+    beam_fraction: float
+        The fraction of the beam to keep from 0 - 1.
+    particle_slices: list[slice] or slice, optional
+        List of slices to apply along the particle coordinates
 
-def get_beam_fraction_openpmd_par(beam_distribution: ParticleGroup, beam_fraction):
-    """get core of the beam according to 6D normalized beam coordinates"""
-    vnames = ["x", "px", "y", "py", "t", "pz"]
-    data = np.copy(np.stack([beam_distribution[name] for name in vnames]).T)
-    data[:, -2] = data[:, -2] - np.mean(data[:, -2])
-    data[:, -1] = data[:, -1] - np.mean(data[:, -1])
-    cov = np.cov(data.T)
+    Returns
+    -------
+    ParticleBeam
+        The core of the beam represented as a Cheetah ParticleBeam object.
 
-    # get inverse cholesky decomp
-    t_data = (np.linalg.inv(np.linalg.cholesky(cov)) @ data.T).T
+    """
+    # extract macroparticles
+    macroparticles = beam_distribution.particles.detach()[..., :6]
 
-    J = np.linalg.norm(t_data, axis=1)
-    sort_idx = np.argsort(J)
-    frac_beam = beam_distribution[sort_idx][
-        : int(len(beam_distribution) * beam_fraction)
-    ]
+    if isinstance(particle_slices, list):
+        data = macroparticles[..., particle_slices]
+    elif isinstance(particle_slices, slice):
+        data = macroparticles[..., particle_slices]
+    else:
+        data = macroparticles
 
-    return frac_beam
+    # calculate covariance matrix
+    cov = torch.cov(data.T)
 
+    # get inverse cholesky decomp -- if it fails, add a small value to the
+    # diagonal and try again
+    try:
+        cov_cholesky = torch.linalg.cholesky(cov)
+    except torch._C._LinAlgError:
+        cov_cholesky = torch.linalg.cholesky(cov + 1e-8 * torch.eye(6))
 
-def get_beam_fraction_bmadx_beam(beam_distribution: Beam, beam_fraction):
-    """get core of the beam according to 6D normalized beam coordinates"""
-    data = beam_distribution.data.detach().clone().numpy()
-    # data[:, -2] = data[:, -2] - np.mean(data[:, -2])
-    # data[:, -1] = data[:, -1] - np.mean(data[:, -1])
-    cov = np.cov(data.T)
+    # transform particles to normalized coordinates
+    t_data = (torch.linalg.inv(cov_cholesky) @ data.T).T
 
-    # get inverse cholesky decomp
-    t_data = (np.linalg.inv(np.linalg.cholesky(cov)) @ data.T).T
+    # sort particles by their distance from the origin and hold onto a fraction of them
+    J = torch.linalg.norm(t_data, axis=1)
+    sort_idx = torch.argsort(J)
+    frac_coords = macroparticles[sort_idx][: int(len(data) * beam_fraction)]
 
-    J = np.linalg.norm(t_data, axis=1)
-    sort_idx = np.argsort(J)
-    frac_coords = data[sort_idx][: int(len(data) * beam_fraction)]
-    frac_beam = Beam(
-        torch.tensor(frac_coords),
-        p0c=beam_distribution.p0c,
-        s=beam_distribution.s,
-        mc2=beam_distribution.mc2,
-    )
-
-    return frac_beam
-
-
-def get_beam_fraction_bmadx_particle(beam_distribution: Particle, beam_fraction):
-    """get core of the beam according to 6D normalized beam coordinates"""
-    data = np.stack(beam_distribution[:6]).T
-    # data[:, -2] = data[:, -2] - np.mean(data[:, -2])
-    # data[:, -1] = data[:, -1] - np.mean(data[:, -1])
-    cov = np.cov(data.T)
-
-    # get inverse cholesky decomp
-    t_data = (np.linalg.inv(np.linalg.cholesky(cov)) @ data.T).T
-
-    J = np.linalg.norm(t_data, axis=1)
-    sort_idx = np.argsort(J)
-    frac_coords = data[sort_idx][: int(len(data) * beam_fraction)]
-    frac_particle = Particle(
-        *frac_coords.T,
-        p0c=beam_distribution.p0c,
-        s=beam_distribution.s,
-        mc2=beam_distribution.mc2,
+    # create a beam distribution to return
+    frac_coords = torch.hstack((frac_coords, torch.ones((len(frac_coords), 1))))
+    frac_particle = ParticleBeam(
+        frac_coords.to(beam_distribution.energy),
+        energy=beam_distribution.energy,
     )
 
     return frac_particle
 
 
-def get_beam_fraction_numpy_coords(beam_distribution, beam_fraction):
-    """get core of the beam according to 6D normalized beam coordinates"""
-    data = np.stack(beam_distribution[:6]).T
-    cov = np.cov(data.T)
+def compute_fractional_emittance_curve(fractions, distribution, _slice):
+    """
+    Compute the fractional emittance curve for a given distribution.
 
-    # get inverse cholesky decomp
-    t_data = (np.linalg.inv(np.linalg.cholesky(cov)) @ data.T).T
+    Parameters
+    ----------
+    fractions: list[float]
+        List of fractions to compute the emittance for.
+    distribution: ParticleBeam
+        The particle beam distribution to analyze.
+    _slice: slice
+        The slice of particle coordinates to consider.
 
-    J = np.linalg.norm(t_data, axis=1)
-    sort_idx = np.argsort(J)
-    frac_coords = data[sort_idx][: int(len(data) * beam_fraction)].T
+    Returns
+    -------
+    torch.Tensor
+        A tensor containing the fractional emittance values for each fraction.
+    """
 
-    return frac_coords
+    result = []
+    for f in fractions:
+        frac_dist = get_beam_fraction(distribution, f, particle_slices=_slice)
+
+        particles = frac_dist.particles[..., _slice]
+        n_dims = particles.shape[-1]
+
+        result += [torch.det(torch.cov(particles.T)).pow(1 / n_dims)]
+
+    return torch.tensor(result)
