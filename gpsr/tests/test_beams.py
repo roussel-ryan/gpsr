@@ -38,6 +38,39 @@ class TestBeams:
         assert torch.is_tensor(output)
 
     @pytest.mark.parametrize("dim", [2, 4, 6])
+    def test_jacobian_sin(self, dim):
+        # Compute Jacobian of f(x) = sin(x). The Jacobian matrix
+        # is J = diag(cos(x1), ..., cos(xn)).
+        def transform(x: torch.Tensor) -> torch.Tensor:
+            return torch.sin(x)
+
+        def transform_deriv(x: torch.Tensor) -> torch.Tensor:
+            return torch.cos(x)
+
+        batch_size = 100
+        x = torch.randn(batch_size, dim)
+        J = compute_batched_jacobian(x, transform)
+
+        # Test correct shape of Jacobian matrix.
+        assert J.shape == (x.shape[0], x.shape[1], x.shape[1])
+
+        # Test correct values of Jacobian matrix.
+        xp = transform_deriv(x)
+        for i in range(x.shape[0]):
+            correct = torch.diag(torch.cos(x[i]))
+            assert torch.all(torch.isclose(J[i], correct))
+            
+    @pytest.mark.parametrize("dim", [2, 4, 6])
+    def test_nn_transform_jacobian(self, dim):
+        # Test batched Jacobian matrix calculation for NNTransform.
+        transformer = NNTransform(2, 10, phase_space_dim=dim)
+        x = torch.rand(5, dim)
+        jacobians = compute_batched_jacobian(x, transformer)
+        for i, jacobian in enumerate(jacobians):
+            jacobian_exp = torch.func.jacrev(transformer)(x[i, :])
+            assert torch.all(torch.isclose(jacobian, jacobian_exp))
+
+    @pytest.mark.parametrize("dim", [2, 4, 6])
     def test_nn_particle_beam_generator_initialization(self, dim):
         # Test NNParticleBeamGenerator initialization
         n_particles = 1000
@@ -81,29 +114,3 @@ class TestBeams:
         # check to make sure emittances are not nan
         assert not torch.isnan(beam.emittance_x)
         assert not torch.isnan(beam.emittance_y)
-
-    @pytest.mark.parametrize("dim", [2, 4, 6])
-    def test_jacobian_sin(self, dim):
-        # Compute Jacobian of f(x) = sin(x). The Jacobian matrix
-        # is J = diag(cos(x1), ..., cos(xn)).
-        def transform(x: torch.Tensor) -> torch.Tensor:
-            return torch.sin(x)
-
-        def transform_deriv(x: torch.Tensor) -> torch.Tensor:
-            return torch.cos(x)
-
-        batch_size = 100
-        x = torch.randn(batch_size, dim)
-        J = compute_batched_jacobian(x, transform)
-
-        # Test correct shape of Jacobian matrix.
-        assert J.shape == (x.shape[0], x.shape[1], x.shape[1])
-
-        # Test correct values of Jacobian matrix.
-        xp = transform_deriv(x)
-        for i in range(x.shape[0]):
-            for j in range(dim):
-                for k in range(dim):
-                    if j != k:
-                        assert torch.isclose(J[i, j, k], torch.tensor(0.0)) 
-            assert torch.all(torch.isclose(torch.diag(J[i, :, :]), xp[i, :]))
