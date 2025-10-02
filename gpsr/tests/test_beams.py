@@ -59,7 +59,7 @@ class TestBeams:
         for i in range(x.shape[0]):
             correct = torch.diag(torch.cos(x[i]))
             assert torch.all(torch.isclose(J[i], correct))
-            
+
     @pytest.mark.parametrize("dim", [2, 4, 6])
     def test_nn_transform_jacobian(self, dim):
         # Test batched Jacobian matrix calculation for NNTransform.
