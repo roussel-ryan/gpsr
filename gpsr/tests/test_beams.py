@@ -3,6 +3,7 @@ import torch
 from torch.distributions import MultivariateNormal
 from cheetah.particles import ParticleBeam
 from gpsr.beams import NNTransform, NNParticleBeamGenerator
+from gpsr.beams import compute_batched_jacobian
 
 
 class TestBeams:
@@ -80,3 +81,29 @@ class TestBeams:
         # check to make sure emittances are not nan
         assert not torch.isnan(beam.emittance_x)
         assert not torch.isnan(beam.emittance_y)
+
+    @pytest.mark.parametrize("dim", [2, 4, 6])
+    def test_jacobian_sin(self, dim):
+        # Compute Jacobian of f(x) = sin(x). The Jacobian matrix
+        # is J = diag(cos(x1), ..., cos(xn)).
+        def transform(x: torch.Tensor) -> torch.Tensor:
+            return torch.sin(x)
+
+        def transform_deriv(x: torch.Tensor) -> torch.Tensor:
+            return torch.cos(x)
+
+        batch_size = 100
+        x = torch.randn(batch_size, dim)
+        J = compute_batched_jacobian(x, transform)
+
+        # Test correct shape of Jacobian matrix.
+        assert J.shape == (x.shape[0], x.shape[1], x.shape[1])
+
+        # Test correct values of Jacobian matrix.
+        xp = transform_deriv(x)
+        for i in range(x.shape[0]):
+            for j in range(dim):
+                for k in range(dim):
+                    if j != k:
+                        assert torch.isclose(J[i, j, k], torch.tensor(0.0)) 
+            assert torch.all(torch.isclose(torch.diag(J[i, :, :]), xp[i, :]))
