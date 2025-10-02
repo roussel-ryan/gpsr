@@ -285,3 +285,76 @@ class EntropyGPSR(GPSR):
         self.lattice.set_lattice_parameters(x)
         predictions = self.lattice.track_and_observe(beam)
         return (beam, entropy, predictions)
+
+
+class GPSR5DLattice(GPSRLattice):
+    def __init__(
+        self,
+        l_quad: Tensor,
+        l_bend: Tensor,
+        theta_dipole: Tensor,
+        l1: Tensor,
+        l2: Tensor,
+        l3: Tensor,
+        l4: Tensor,
+        screen_1: Screen,
+        screen_2: Screen,
+    ):
+        super().__init__()
+
+        tensor_kwargs = {"dtype": l_quad.dtype}
+
+        # DQ6
+        q = Quadrupole(l_quad, torch.tensor(0.0, **tensor_kwargs), name="SCAN_QUAD")
+
+        # Drift from DQ6 to DQ7
+        d1 = Drift(l1 - l_quad)
+
+        # DQ7
+        dq7 = Quadrupole(l_quad, torch.tensor(0.0, **tensor_kwargs), name="DQ7")
+
+        # Drift from DQ7 to SCREEN_A
+        d2 = Drift(l2 - l_quad / 2)
+
+        # Drift from SCREEN_A to Dipole
+        d3 = Drift(l3 - l_dipole / 2)
+
+        # Dipole
+        l_arc = l_dipole * theta_dipole / torch.sin(theta_dipole)
+        dipole = Dipole(
+            name="DIPOLE",
+            length=l_arc,
+            angle=torch.tensor(0.0, **tensor_kwargs),
+            dipole_e1=torch.tensor(0.0, **tensor_kwargs),
+            dipole_e2=theta_dipole,
+        )
+
+        # Drift from Dipole to SCREEN_B
+        d4 = Drift(l4)
+
+        segment = Segment([dq6, d1, dq7, d2, screen_1, d3, dipole, d4, screen_2])
+
+        self.screen_1 = screen_1
+        self.screen_2 = screen_2
+        self.segment = segment
+
+    def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
+        # track the beam through the accelerator in a batched way
+        self.segment(beam)
+
+        # get the readings from the screens
+        obs = (self.screen_1.reading[:, 0, :, :], self.screen_2.reading[:, 1, :, :])
+        return obs
+
+    def set_lattice_parameters(self, x: torch.Tensor) -> None:
+        """
+        sets the quadrupole parameters
+
+        Parameters:
+        -----------
+        x : Tensor
+
+        """
+        # set quad parameters
+        self.segment.DQ6.k1.data = x[..., 0]
+        self.segment.DQ7.k1.data = x[..., 1]
