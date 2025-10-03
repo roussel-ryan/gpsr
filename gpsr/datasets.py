@@ -405,6 +405,7 @@ class FiveDReconstructionDataset(ObservableDataset):
     parameters : Tensor
         Shape (K x 2 x 2): K quadrupole strengths (1/m^2), 2 dipole strengths (1/m).
         Last dim: (quadrupole focusing, dipole strengths).
+        Dipole strengths should be sorted from OFF to ON. 
     observations : Tuple[Tensor, Tensor]
         Tuple of tensors, each (K x n_bins x n_bins).
         First: dipole-off images, second: dipole-on images.
@@ -424,7 +425,7 @@ class FiveDReconstructionDataset(ObservableDataset):
 
     def plot_data(self):
         """
-        Visualize dataset collected for 5-D phase space reconstructions
+        Visualize dataset collected for 5-D phase space reconstructions.
         """
 
         fig, ax = plt.subplots(

@@ -14,7 +14,7 @@ from cheetah.accelerator import (
     Segment,
     Screen,
 )
-from cheetah.particles import Beam
+from cheetah.particles import ParticleBeam
 from cheetah.accelerator import Element
 from gpsr.beams import BeamGenerator
 from gpsr.beams import EntropyBeamGenerator
@@ -26,7 +26,7 @@ class GPSRLattice(torch.nn.Module, ABC):
         pass
 
     @abstractmethod
-    def track_and_observe(self, beam: Beam) -> Tuple[Tensor, ...]:
+    def track_and_observe(self, beam: ParticleBeam) -> Tuple[Tensor, ...]:
         """
         tracks beam through the lattice and returns observations
 
@@ -289,7 +289,7 @@ class EntropyGPSR(GPSR):
 
 class GPSR5DLattice(GPSRLattice):
     """
-    Lattice for the GPSR 5D reconstruction experiment at the PSR.
+    Lattice for the GPSR 5D reconstruction.
     Consists of a quadrupole, a dipole, and two screens.
 
     Parameters:
@@ -299,7 +299,7 @@ class GPSR5DLattice(GPSRLattice):
     l_bend : float
         length of the dipole (m)
     theta_bend : float
-        bend angle of the dipole when ON (rad)
+        bend angle of the dipole when ON (rad). Positive bends in -x.
     l1 : float
         distance from the quadrupole center to the dipole center (m)
     l2 : float
@@ -319,18 +319,18 @@ class GPSR5DLattice(GPSRLattice):
         drift length from dipole to screen a (dipole off)
     l_b : Tensor
         drift length from dipole to screen b (dipole on)
+    l_bend : Tensor
+        length of the dipole (m)
     screen_a : Screen
         screen object for screen a (dipole off)
     screen_b : Screen
         screen object for screen b (dipole on)
-    l_bend : float
-        length of the dipole (m)
 
     Methods:
     -----------
-    track_and_observe(beam) -> Tuple[Tensor, ...]
+    track_and_observe(beam) -> Tuple[Tensor, Tensor]
         tracks the beam through the lattice and returns the screen readings
-    set_lattice_parameters(x: Tensor) -> None
+    set_lattice_parameters(parameters: Tensor) -> None
         sets the quadrupole strength and dipole angle based on parameters tensor x
 
     Notes:
@@ -401,8 +401,24 @@ class GPSR5DLattice(GPSRLattice):
 
         self.segment = Segment([q, d1, bend, d2])
 
-    def track_and_observe(self, beam) -> Tuple[Tensor, Tensor]:
-        # track the beam through the accelerator in a batched way
+    def track_and_observe(self, beam: ParticleBeam) -> Tuple[Tensor, Tensor]:
+        """
+        Tracks beam in a batched way and reads on the correct screen.
+
+        Parameters
+        ----------
+        beam : ParticleBeam
+            Cheetah particle beam to be tracked. Dimensions of
+            beam.particles should be (N x 2 x M x 7) where N is the
+            batch size, 2 corresponds to dipole off/on, and M is the
+            number of particles.
+
+        Returns
+        -------
+        obs : Tuple[Tensor, Tensor]
+            Tuple of screen readings (dipole off screen, dipole on
+            screen).
+        """
         final_beam = self.segment(beam)
         if len(final_beam.sigma_x.shape) < 2:
             raise ValueError(
@@ -412,6 +428,8 @@ class GPSR5DLattice(GPSRLattice):
         n_batch_dims = len(final_beam.sigma_x.shape) - 1
         batch_size = (slice(None),) * n_batch_dims
         obs = []
+        # track through the correct screen:
+        # first dipole-off images and then dipole-on images
         for i, screen in enumerate((self.screen_a, self.screen_b)):
             screen.track(final_beam[batch_size + (i,)])
             obs.append(screen.reading)
@@ -427,6 +445,7 @@ class GPSR5DLattice(GPSRLattice):
         parameters : Tensor
             Shape (K x 2 x 2): K quadrupole strengths (1/m^2), 2 dipole strengths (1/m).
             Last dim: (quadrupole focusing, dipole strengths).
+            dipole strengths should be sorted from OFF to ON. 
         """
         # set quad parameters
         self.segment.SCAN_QUAD.k1.data = parameters[..., 0]
