@@ -44,9 +44,6 @@ class TestBeams:
         def transform(x: torch.Tensor) -> torch.Tensor:
             return torch.sin(x)
 
-        def transform_deriv(x: torch.Tensor) -> torch.Tensor:
-            return torch.cos(x)
-
         batch_size = 100
         x = torch.randn(batch_size, dim)
         J = compute_batched_jacobian(x, transform)
@@ -55,7 +52,6 @@ class TestBeams:
         assert J.shape == (x.shape[0], x.shape[1], x.shape[1])
 
         # Test correct values of Jacobian matrix.
-        xp = transform_deriv(x)
         for i in range(x.shape[0]):
             correct = torch.diag(torch.cos(x[i]))
             assert torch.all(torch.isclose(J[i], correct))
