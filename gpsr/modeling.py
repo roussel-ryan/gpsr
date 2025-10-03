@@ -339,6 +339,7 @@ class GPSR5DLattice(GPSRLattice):
     - dipole is modeled using bmadx tracking method
     - quadrupole is modeled using cheetah default tracking method
     """
+
     def __init__(
         self,
         l_quad: float,
@@ -359,29 +360,18 @@ class GPSR5DLattice(GPSRLattice):
 
         self.l_bend = torch.tensor(l_bend, **tensor_kwargs)
 
-        self.l_a = torch.tensor(
-            l2 - l_bend/2,
-            **tensor_kwargs
-        )
-        self.l_b = torch.tensor(
-            l3 - l_bend / 2 / np.cos(theta_bend),
-            **tensor_kwargs
-        )
+        self.l_a = torch.tensor(l2 - l_bend / 2, **tensor_kwargs)
+        self.l_b = torch.tensor(l3 - l_bend / 2 / np.cos(theta_bend), **tensor_kwargs)
 
         # DQ7
         q = Quadrupole(
-            torch.tensor(l_quad, **tensor_kwargs),   
-            torch.tensor(0.0, **tensor_kwargs), 
-            name="SCAN_QUAD"
+            torch.tensor(l_quad, **tensor_kwargs),
+            torch.tensor(0.0, **tensor_kwargs),
+            name="SCAN_QUAD",
         )
 
         # Drift from DQ7 to BEND
-        d1 = Drift(
-            torch.tensor(
-                l1 - l_quad/2 - l_bend/2,
-                **tensor_kwargs
-            )
-        )
+        d1 = Drift(torch.tensor(l1 - l_quad / 2 - l_bend / 2, **tensor_kwargs))
         # BEND
         l_arc = l_bend * theta_bend / np.sin(theta_bend)
         bend = Dipole(
@@ -390,14 +380,11 @@ class GPSR5DLattice(GPSRLattice):
             angle=torch.tensor(theta_bend, **tensor_kwargs),
             dipole_e1=torch.tensor(0.0, **tensor_kwargs),
             dipole_e2=torch.tensor(theta_bend, **tensor_kwargs),
-            tracking_method="bmadx"
+            tracking_method="bmadx",
         )
 
         # Drift from BEND to SCREEN_B when dipole is ON
-        d2 = Drift(
-            self.l_b,
-            name="DIPOLE_TO_SCREEN"
-        )
+        d2 = Drift(self.l_b, name="DIPOLE_TO_SCREEN")
 
         self.segment = Segment([q, d1, bend, d2])
 
@@ -424,7 +411,7 @@ class GPSR5DLattice(GPSRLattice):
             raise ValueError(
                 "Beam must have at least 2 dimensions corresponding to the dipole strengths for each screen"
             )
-        
+
         n_batch_dims = len(final_beam.sigma_x.shape) - 1
         batch_size = (slice(None),) * n_batch_dims
         obs = []
@@ -445,7 +432,7 @@ class GPSR5DLattice(GPSRLattice):
         parameters : Tensor
             Shape (K x 2 x 2): K quadrupole strengths (1/m^2), 2 dipole strengths (1/m).
             Last dim: (quadrupole focusing, dipole strengths).
-            dipole strengths should be sorted from OFF to ON. 
+            dipole strengths should be sorted from OFF to ON.
         """
         # set quad parameters
         self.segment.SCAN_QUAD.k1.data = parameters[..., 0]
@@ -457,7 +444,7 @@ class GPSR5DLattice(GPSRLattice):
         self.segment.SCAN_DIPOLE.angle.data = bend_angle
         self.segment.SCAN_DIPOLE.length.data = arc_length
         self.segment.SCAN_DIPOLE.dipole_e2.data = bend_angle
-        dipole_on = abs(g)>1e-15
+        dipole_on = abs(g) > 1e-15
         dipole_off = torch.logical_not(dipole_on)
         self.segment.DIPOLE_TO_SCREEN.length.data = (
             self.l_a * dipole_off + self.l_b * dipole_on

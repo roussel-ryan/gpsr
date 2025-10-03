@@ -395,7 +395,8 @@ class SixDReconstructionDataset(ObservableDataset):
         for ele in ax[:, 0]:
             ele.set_ylabel("y (mm)")
         return fig, ax
-    
+
+
 class FiveDReconstructionDataset(ObservableDataset):
     """
     Light wrapper dataset for 5D phase space reconstructions with quadrupole and dipole.
@@ -405,7 +406,7 @@ class FiveDReconstructionDataset(ObservableDataset):
     parameters : Tensor
         Shape (K x 2 x 2): K quadrupole strengths (1/m^2), 2 dipole strengths (1/m).
         Last dim: (quadrupole focusing, dipole strengths).
-        Dipole strengths should be sorted from OFF to ON. 
+        Dipole strengths should be sorted from OFF to ON.
     observations : Tuple[Tensor, Tensor]
         Tuple of tensors, each (K x n_bins x n_bins).
         First: dipole-off images, second: dipole-on images.
@@ -413,13 +414,13 @@ class FiveDReconstructionDataset(ObservableDataset):
     screens : Tuple[Screen, Screen]
         Tuple of cheetah screen objects for the observed images.
     """
+
     def __init__(
         self,
         parameters: Tensor,
         observations: Tuple[Tensor, Tensor],
         screens: Tuple[Screen, Screen],
     ):
-        
         super().__init__(parameters, observations)
         self.screens = screens
 
