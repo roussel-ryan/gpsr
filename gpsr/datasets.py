@@ -237,11 +237,6 @@ class SixDReconstructionDataset(ObservableDataset):
 
         screens: Tuple[Screen, Screen]
             Tuple of cheetah screen objects that corresponds to the observed images.
-
-        Notes
-        -----
-
-        Only squared images are supported for now.
         """
 
         # keep unflattened parameters and observations for visualization
@@ -267,7 +262,6 @@ class SixDReconstructionDataset(ObservableDataset):
     ):
         """
         Visualize dataset collected for 6-D phase space reconstructions
-
         """
 
         # check overlay data size if specified
@@ -403,20 +397,36 @@ class SixDReconstructionDataset(ObservableDataset):
         return fig, ax
     
 class FiveDReconstructionDataset(ObservableDataset):
+    """
+    Light wrapper dataset for 5D phase space reconstructions with quadrupole and dipole.
+
+    Parameters
+    ----------
+    parameters : Tensor
+        Shape (K x 2 x 2): K quadrupole strengths (1/m^2), 2 dipole strengths (1/m).
+        Last dim: (quadrupole focusing, dipole strengths).
+    observations : Tuple[Tensor, Tensor]
+        Tuple of tensors, each (K x n_bins x n_bins).
+        First: dipole-off images, second: dipole-on images.
+        Images: axis -2 is Y, axis -1 is X.
+    screens : Tuple[Screen, Screen]
+        Tuple of cheetah screen objects for the observed images.
+    """
     def __init__(
         self,
         parameters: Tensor,
         observations: Tuple[Tensor, Tensor],
         screens: Tuple[Screen, Screen],
     ):
-        """
-        parameters:
-        """
-
+        
         super().__init__(parameters, observations)
         self.screens = screens
 
     def plot_data(self):
+        """
+        Visualize dataset collected for 5-D phase space reconstructions
+        """
+
         fig, ax = plt.subplots(
             2,
             self.observations[0].shape[0],
@@ -441,6 +451,22 @@ class FiveDReconstructionDataset(ObservableDataset):
             ele.set_xlabel("x (mm)")
         for ele in ax[:, 0]:
             ele.set_ylabel("y (mm)")
+        ax[0, 0].text(
+            -0.6,
+            0.5,
+            f"DIPOLE: OFF",
+            va="center",
+            ha="right",
+            transform=ax[0, 0].transAxes,
+        )
+        ax[1, 0].text(
+            -0.6,
+            0.5,
+            f"DIPOLE: ON",
+            va="center",
+            ha="right",
+            transform=ax[1, 0].transAxes,
+        )
         return fig, ax
 
 

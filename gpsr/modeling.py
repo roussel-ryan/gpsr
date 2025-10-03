@@ -288,73 +288,158 @@ class EntropyGPSR(GPSR):
 
 
 class GPSR5DLattice(GPSRLattice):
+    """
+    Lattice for the GPSR 5D reconstruction experiment at the PSR.
+    Consists of a quadrupole, a dipole, and two screens.
+
+    Parameters:
+    -----------
+    l_quad : float
+        length of the quadrupole (m)
+    l_bend : float
+        length of the dipole (m)
+    theta_bend : float
+        bend angle of the dipole when ON (rad)
+    l1 : float
+        distance from the quadrupole center to the dipole center (m)
+    l2 : float
+        distance from the dipole center to screen a (dipole off) (m)
+    l3 : float
+        distance from the dipole center to screen b (dipole on) (m)
+    screen_a : Screen
+        screen object for screen a (dipole off)
+    screen_b : Screen
+        screen object for screen b (dipole on)
+
+    Attributes:
+    -----------
+    segment : Segment
+        the cheetah Segment object representing the lattice
+    l_a : Tensor
+        drift length from dipole to screen a (dipole off)
+    l_b : Tensor
+        drift length from dipole to screen b (dipole on)
+    screen_a : Screen
+        screen object for screen a (dipole off)
+    screen_b : Screen
+        screen object for screen b (dipole on)
+    l_bend : float
+        length of the dipole (m)
+
+    Methods:
+    -----------
+    track_and_observe(beam) -> Tuple[Tensor, ...]
+        tracks the beam through the lattice and returns the screen readings
+    set_lattice_parameters(x: Tensor) -> None
+        sets the quadrupole strength and dipole angle based on parameters tensor x
+
+    Notes:
+    -----------
+    - dtype is inferred from screen pixel size dtype
+    - dipole is modeled using bmadx tracking method
+    - quadrupole is modeled using cheetah default tracking method
+    """
     def __init__(
         self,
-        l_quad: Tensor,
-        l_bend: Tensor,
-        theta_dipole: Tensor,
-        l1: Tensor,
-        l2: Tensor,
-        l3: Tensor,
-        l4: Tensor,
-        screen_1: Screen,
-        screen_2: Screen,
+        l_quad: float,
+        l_bend: float,
+        theta_bend: float,
+        l1: float,
+        l2: float,
+        l3: float,
+        screen_a: Screen,
+        screen_b: Screen,
     ):
         super().__init__()
 
-        tensor_kwargs = {"dtype": l_quad.dtype}
+        tensor_kwargs = {"dtype": screen_a.pixel_size.dtype}
 
-        # DQ6
-        q = Quadrupole(l_quad, torch.tensor(0.0, **tensor_kwargs), name="SCAN_QUAD")
+        self.screen_a = screen_a
+        self.screen_b = screen_b
 
-        # Drift from DQ6 to DQ7
-        d1 = Drift(l1 - l_quad)
+        self.l_bend = torch.tensor(l_bend, **tensor_kwargs)
 
-        # DQ7
-        dq7 = Quadrupole(l_quad, torch.tensor(0.0, **tensor_kwargs), name="DQ7")
-
-        # Drift from DQ7 to SCREEN_A
-        d2 = Drift(l2 - l_quad / 2)
-
-        # Drift from SCREEN_A to Dipole
-        d3 = Drift(l3 - l_dipole / 2)
-
-        # Dipole
-        l_arc = l_dipole * theta_dipole / torch.sin(theta_dipole)
-        dipole = Dipole(
-            name="DIPOLE",
-            length=l_arc,
-            angle=torch.tensor(0.0, **tensor_kwargs),
-            dipole_e1=torch.tensor(0.0, **tensor_kwargs),
-            dipole_e2=theta_dipole,
+        self.l_a = torch.tensor(
+            l2 - l_bend/2,
+            **tensor_kwargs
+        )
+        self.l_b = torch.tensor(
+            l3 - l_bend / 2 / np.cos(theta_bend),
+            **tensor_kwargs
         )
 
-        # Drift from Dipole to SCREEN_B
-        d4 = Drift(l4)
+        # DQ7
+        q = Quadrupole(
+            torch.tensor(l_quad, **tensor_kwargs),   
+            torch.tensor(0.0, **tensor_kwargs), 
+            name="SCAN_QUAD"
+        )
 
-        segment = Segment([dq6, d1, dq7, d2, screen_1, d3, dipole, d4, screen_2])
+        # Drift from DQ7 to BEND
+        d1 = Drift(
+            torch.tensor(
+                l1 - l_quad/2 - l_bend/2,
+                **tensor_kwargs
+            )
+        )
+        # BEND
+        l_arc = l_bend * theta_bend / np.sin(theta_bend)
+        bend = Dipole(
+            name="SCAN_DIPOLE",
+            length=torch.tensor(l_arc, **tensor_kwargs),
+            angle=torch.tensor(theta_bend, **tensor_kwargs),
+            dipole_e1=torch.tensor(0.0, **tensor_kwargs),
+            dipole_e2=torch.tensor(theta_bend, **tensor_kwargs),
+            tracking_method="bmadx"
+        )
 
-        self.screen_1 = screen_1
-        self.screen_2 = screen_2
-        self.segment = segment
+        # Drift from BEND to SCREEN_B when dipole is ON
+        d2 = Drift(
+            self.l_b,
+            name="DIPOLE_TO_SCREEN"
+        )
 
-    def track_and_observe(self, beam) -> Tuple[Tensor, ...]:
+        self.segment = Segment([q, d1, bend, d2])
+
+    def track_and_observe(self, beam) -> Tuple[Tensor, Tensor]:
         # track the beam through the accelerator in a batched way
-        self.segment(beam)
+        final_beam = self.segment(beam)
+        if len(final_beam.sigma_x.shape) < 2:
+            raise ValueError(
+                "Beam must have at least 2 dimensions corresponding to the dipole strengths for each screen"
+            )
+        
+        n_batch_dims = len(final_beam.sigma_x.shape) - 1
+        batch_size = (slice(None),) * n_batch_dims
+        obs = []
+        for i, screen in enumerate((self.screen_a, self.screen_b)):
+            screen.track(final_beam[batch_size + (i,)])
+            obs.append(screen.reading)
 
-        # get the readings from the screens
-        obs = (self.screen_1.reading[:, 0, :, :], self.screen_2.reading[:, 1, :, :])
-        return obs
+        return tuple(obs)
 
-    def set_lattice_parameters(self, x: torch.Tensor) -> None:
+    def set_lattice_parameters(self, parameters: torch.Tensor) -> None:
         """
-        sets the quadrupole parameters
+        sets the quadrupole and dipole parameters
 
         Parameters:
         -----------
-        x : Tensor
-
+        parameters : Tensor
+            Shape (K x 2 x 2): K quadrupole strengths (1/m^2), 2 dipole strengths (1/m).
+            Last dim: (quadrupole focusing, dipole strengths).
         """
         # set quad parameters
-        self.segment.DQ6.k1.data = x[..., 0]
-        self.segment.DQ7.k1.data = x[..., 1]
+        self.segment.SCAN_QUAD.k1.data = parameters[..., 0]
+
+        # set dipole parameters
+        g = parameters[..., 1]
+        bend_angle = torch.arcsin(self.l_bend * g)
+        arc_length = bend_angle / g
+        self.segment.SCAN_DIPOLE.angle.data = bend_angle
+        self.segment.SCAN_DIPOLE.length.data = arc_length
+        self.segment.SCAN_DIPOLE.dipole_e2.data = bend_angle
+        dipole_on = abs(g)>1e-15
+        dipole_off = torch.logical_not(dipole_on)
+        self.segment.DIPOLE_TO_SCREEN.length.data = (
+            self.l_a * dipole_off + self.l_b * dipole_on
+        )
