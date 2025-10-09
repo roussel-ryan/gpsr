@@ -157,7 +157,8 @@ class QuadScanDataset(ObservableDataset):
         should be (K x bins x bins). The images must follow the matrix
         convention, where axis -2 is Y and axis -1 is X.
     screens: Tuple[Screen]
-        Cheetah screen object that corresponds to the observed images.
+        Tuple containing cheetah screen object that corresponds to the
+        observed images.
     """
 
     def __init__(
