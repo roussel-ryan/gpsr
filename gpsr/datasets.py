@@ -108,13 +108,14 @@ class ObservableDataset(Dataset):
         if len(screens) != len(observations):
             raise ValueError("Number of screens must match number of observations")
         else:
-            for i, screen in enumerate(screens):
+            for i in range(len(screens)):
                 if (
-                    screen[i].resolution[-2] != observations[i].shape[-1]
-                    or screen[i].resolution[-1] != observations[i].shape[-2]
+                    screens[i].resolution[-2] != observations[i].shape[-1]
+                    or screens[i].resolution[-1] != observations[i].shape[-2]
                 ):
                     raise ValueError(
-                        f"Screen {i} resolution must match observation {i} shape. "
+                        f"Screen {i} resolution {screens[i].resolution} must match "
+                        f"observation {i} shape {observations[i].shape[-2:]}.\n"
                         "Note that the screen resolution is given in (x,y) order, "
                         "while the observation shape is given in (y,x) order."
                     )
