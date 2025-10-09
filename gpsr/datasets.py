@@ -11,33 +11,38 @@ from cheetah.accelerator import Screen
 
 class ObservableDataset(Dataset):
     """
-    Define a PyTorch dataset to be passed to a TorchDataloader object for training.
+    Define a PyTorch dataset to be passed to a TorchDataloader object for
+    training.
 
     Parameters
     ----------
     parameters : Tensor
-        Tensor of beamline parameters that correspond to data observations. Should
-        have a shape of (B x N), B is a batch dimension and N is equal to the number of
-        different parameters changed in the beamline. If parameters control which observation is being used,
-        the shape should be (B x M x N) where M is the number of different observations. See Notes for an example.
+        Tensor of beamline parameters that correspond to data observations.
+        Should have a shape of (B x N), B is a batch dimension and N is equal
+        to the number of different parameters changed in the beamline. If
+        parameters control which observation is being used, the shape should
+        be (B x M x N) where M is the number of different observations. See
+        Notes for an example.
     observations : Tuple[Tensor, ...]
-        Tuple of tensors contaning observed data. Tuple length should be M,
-        or the number of different observations. Tensor shapes should be (B x D)
-        where B is a batch dimension shape that corresponds to the `parameter`
-        tensor, and D is an arbitrary shape corresponding to the dimensionality of
-        the observable. The images must follow the matrix convention,
-        where axis -2 is Y and axis -1 is X.
+        Tuple of tensors containing observed data. Tuple length should be M,
+        or the number of different observations. Tensor shapes should be
+        (B x D) where B is a batch dimension shape that corresponds to the
+        `parameter` tensor, and D is an arbitrary shape corresponding to the
+        dimensionality of the observable. The images must follow the matrix
+        convention, where axis -2 is Y and axis -1 is X.
     screens: Tuple[Screen, ...]
-        Tuple of cheetah screen objects that corresponds to the observed images.
-        len(screens) must be equal len(observations), and for each i,
-        screens[i].resolution[-2] == observations[i].shape[-1] and screens[i].resolution[-1] == observations[i].shape[-2].
-        Note that the screen resolution is given in (x,y) order, while the observation shape is given in (y,x) order.
+        Tuple of cheetah screen objects that corresponds to the observed
+        images. len(screens) must be equal to len(observations), and for each
+        i, screens[i].resolution[-2] == observations[i].shape[-1] and
+        screens[i].resolution[-1] == observations[i].shape[-2]. Note that the
+        screen resolution is given in (x,y) order, while the observation shape
+        is given in (y,x) order.
 
     Notes
     -----
-
-    Example: 4D phase space reconstruction with a quadrupole scan on one screen
-    using 5 quadrupole strengths. See below for the correct shapes of each input.
+    Example: 4D phase space reconstruction with a quadrupole scan on one
+    screen using 5 quadrupole strengths. See below for the correct shapes of
+    each input.
 
     >>> import torch
     >>> parameters = torch.rand((5, 1)) # B = (5), N = 1
@@ -46,12 +51,12 @@ class ObservableDataset(Dataset):
     >>> )
     >>> dataset = ObservableDataset(parameters, observations)
 
-
-    Example: 6D phase space reconstruction with 2 screens of various pixel sizes.
-    Beamline parameters include the 2 dipole strengths (corresponding to each screen),
-    2 transverse deflecting cavity strengths, and 5 quadrupole strenghs. See below for
-    the correct shapes of each input. Note: that because the TCAV and quadrupole parameters
-    do not change the measurement diagnostic, they are flattened into a single dimension.
+    Example: 6D phase space reconstruction with 2 screens of various pixel
+    sizes. Beamline parameters include the 2 dipole strengths (corresponding
+    to each screen), 2 transverse deflecting cavity strengths, and 5
+    quadrupole strengths. See below for the correct shapes of each input.
+    Note: that because the TCAV and quadrupole parameters do not change the
+    measurement diagnostic, they are flattened into a single dimension.
 
     >>> import torch
     >>> parameters = torch.rand((10, 2, 3)) # B = 10, M = 2, N = 3
@@ -60,7 +65,6 @@ class ObservableDataset(Dataset):
     >>>     torch.rand((10, 150, 150))
     >>> )
     >>> dataset = ObservableDataset(parameters, observations, n_observation_dims=1)
-
     """
 
     def __init__(
@@ -93,7 +97,8 @@ class ObservableDataset(Dataset):
             for ele in self.observations:
                 if not parameters.shape[0] == ele.shape[0]:
                     raise ValueError(
-                        "Batch dimension of parameters must match batch dimension of observations"
+                        "Batch dimension of parameters must match batch "
+                        "dimension of observations"
                     )
 
         else:
@@ -109,7 +114,9 @@ class ObservableDataset(Dataset):
                     or screen[i].resolution[-1] != observations[i].shape[-2]
                 ):
                     raise ValueError(
-                        f"Screen {i} resolution must match observation {i} shape. Note that the screen resolution is given in (x,y) order, while the observation shape is given in (y,x) order."
+                        f"Screen {i} resolution must match observation {i} shape. "
+                        "Note that the screen resolution is given in (x,y) order, "
+                        "while the observation shape is given in (y,x) order."
                     )
 
     def __len__(self):
@@ -134,27 +141,28 @@ DEFAULT_COLORMAP = "Greys"
 
 
 class QuadScanDataset(ObservableDataset):
+    """
+    Light wrapper dataset class for 4D phase space reconstructions with
+    quadrupole. Checks for correct sizes of parameters and observations
+    and provides a plotting utility.
+
+    Parameters
+    ----------
+    parameters : Tensor
+        Tensor of beamline parameters that correspond to data observations.
+        Should have a shape of (K x 1) where K is the number of quadrupole
+        strengths.
+    observations : Tuple[Tensor]
+        Tuple containing tensor of observed images, where the tensor shape
+        should be (K x bins x bins). The images must follow the matrix
+        convention, where axis -2 is Y and axis -1 is X.
+    screens: Tuple[Screen]
+        Cheetah screen object that corresponds to the observed images.
+    """
+
     def __init__(
         self, parameters: Tensor, observations: Tuple[Tensor], screens: Tuple[Screen]
     ):
-        """
-        Light wrapper dataset class for 4D phase space reconstructions with
-        quadrupole. Checks for correct sizes of parameters and observations
-        and provides a plotting utility.
-
-        Parameters
-        ----------
-        parameters : Tensor
-            Tensor of beamline parameters that correspond to data observations.
-            Should have a shape of (K x 1) where K is the number of quadrupole strengths.
-        observations : Tuple[Tensor]
-            Tuple contaning tensor of observed images, where the tensor shape
-            should be (K x bins x bins). The images must follow the matrix convention,
-            where axis -2 is Y and axis -1 is X.
-        screens: Turpe[Screen]
-            Cheetah screen object that corresponds to the observed images.
-        """
-
         super().__init__(parameters, observations, screens)
 
     def plot_data(
@@ -230,43 +238,40 @@ class QuadScanDataset(ObservableDataset):
 
 
 class SixDReconstructionDataset(ObservableDataset):
+    """
+    Light wrapper dataset class for 6D phase space reconstructions with
+    quadrupole, dipole, and TDC. Checks for correct sizes of parameters
+    and observations.
+
+    Parameters
+    ----------
+    six_d_parameters : Tensor
+        Tensor of beamline parameters that correspond to data observations.
+        Shape should be (K x N x 2 x 3) where K is the number of quadrupole
+        strengths, N the number of TDC voltages, and 2 is the number of
+        dipole strengths. The last dimension should be ordered as
+        (quadrupole focusing strengths, TDC voltages, dipole strengths).
+
+    six_d_observations : Tuple[Tensor, Tensor]
+        Tuple of tensors containing observed images, where the tensor shapes
+        should be (K x N x n_bins x n_bins). Here, K is the number of
+        quadrupole strengths, and N is the number of TDC voltages. The first
+        entry should be dipole-off images, and the second entry should be
+        dipole-on images. The images must follow the matrix convention,
+        where axis -2 is Y and axis -1 is X.
+
+    screens: Tuple[Screen, Screen]
+        Tuple of cheetah screen objects that correspond to the observed
+        images. First element corresponds to dipole-off screen, second
+        element corresponds to dipole-on screen.
+    """
+
     def __init__(
         self,
         six_d_parameters: Tensor,
         six_d_observations: Tuple[Tensor, Tensor],
         screens: Tuple[Screen, Screen],
     ):
-        """
-        Light wrapper dataset class for 6D phase space reconstructions with
-        quadrupole, dipole, and TDC. Checks for correct sizes of parameters
-        and observations.
-
-        Parameters
-        ----------
-        six_d_parameters : Tensor
-            Tensor of beamline parameters that correspond to data observations.
-            Shape should be (K x N x 2 x 3) where K is the number of quadrupole
-            strengths, N the number of TDC voltages, and 2 is the number of
-            dipole strengths. The last dimension should be ordered as
-            (quadrupole focusing strengths, TDC voltages, dipole strengths).
-
-        six_d_observations : Tuple[Tensor, Tensor]
-            Tuple of tensors containing observed images, where the tensor shapes
-            should be (K x N x n_bins x n_bins). Here, K is the number of
-            quadrupole strengths, and N is the number of TDC voltages. The first
-            entry should be dipole-off images, and the second entry should be
-            dipole-on images. The images must follow the matrix convention,
-            where axis -2 is Y and axis -1 is X.
-
-        screens: Tuple[Screen, Screen]
-            Tuple of cheetah screen objects that corresponds to the observed images.
-
-        Notes
-        -----
-
-        Only squared images are supported for now.
-        """
-
         # keep unflattened parameters and observations for visualization
         self.six_d_parameters = six_d_parameters
         self.six_d_observations = six_d_observations
