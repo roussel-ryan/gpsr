@@ -20,13 +20,18 @@ class ObservableDataset(Dataset):
         have a shape of (B x N), B is a batch dimension and N is equal to the number of
         different parameters changed in the beamline. If parameters control which observation is being used,
         the shape should be (B x M x N) where M is the number of different observations. See Notes for an example.
-    observations : Tuple[Tensor]
+    observations : Tuple[Tensor, ...]
         Tuple of tensors contaning observed data. Tuple length should be M,
         or the number of different observations. Tensor shapes should be (B x D)
         where B is a batch dimension shape that corresponds to the `parameter`
         tensor, and D is an arbitrary shape corresponding to the dimensionality of
         the observable. The images must follow the matrix convention,
         where axis -2 is Y and axis -1 is X.
+    screens: Tuple[Screen, ...]
+        Tuple of cheetah screen objects that corresponds to the observed images.
+        len(screens) must be equal len(observations), and for each i,
+        screens[i].resolution[-2] == observations[i].shape[-1] and screens[i].resolution[-1] == observations[i].shape[-2].
+        Note that the screen resolution is given in (x,y) order, while the observation shape is given in (y,x) order.
 
     Notes
     -----
@@ -62,12 +67,17 @@ class ObservableDataset(Dataset):
         self,
         parameters: Tensor,
         observations: Tuple[Tensor, ...],
+        screens: Tuple[Screen, ...],
     ):
         self.parameters = parameters
         self.observations = observations
+        self.screens = screens
 
         if not isinstance(observations, tuple):
             raise ValueError("observations must be passed as a tuple of tensors")
+
+        if not isinstance(screens, tuple):
+            raise ValueError("screens must be passed as a tuple of tensors")
 
         # validate the input shapes
         if len(parameters.shape) == 2 or len(parameters.shape) == 3:
@@ -88,6 +98,19 @@ class ObservableDataset(Dataset):
 
         else:
             raise ValueError("parameters must be a 2D or 3D tensor")
+
+        # validate screens correspond to observations
+        if len(screens) != len(observations):
+            raise ValueError("Number of screens must match number of observations")
+        else:
+            for i, screen in enumerate(screens):
+                if (
+                    screen[i].resolution[-2] != observations[i].shape[-1]
+                    or screen[i].resolution[-1] != observations[i].shape[-2]
+                ):
+                    raise ValueError(
+                        f"Screen {i} resolution must match observation {i} shape. Note that the screen resolution is given in (x,y) order, while the observation shape is given in (y,x) order."
+                    )
 
     def __len__(self):
         return self.parameters.shape[0]
@@ -111,7 +134,9 @@ DEFAULT_COLORMAP = "Greys"
 
 
 class QuadScanDataset(ObservableDataset):
-    def __init__(self, parameters: Tensor, observations: Tuple[Tensor], screen: Screen):
+    def __init__(
+        self, parameters: Tensor, observations: Tuple[Tensor], screens: Tuple[Screen]
+    ):
         """
         Light wrapper dataset class for 4D phase space reconstructions with
         quadrupole. Checks for correct sizes of parameters and observations
@@ -124,16 +149,13 @@ class QuadScanDataset(ObservableDataset):
             Should have a shape of (K x 1) where K is the number of quadrupole strengths.
         observations : Tuple[Tensor]
             Tuple contaning tensor of observed images, where the tensor shape
-            should be (K x bins x bins). First entry should be dipole off images.
-            The images must follow the matrix convention, where axis -2 is Y and
-            axis -1 is X.
-        screen: Screen
+            should be (K x bins x bins). The images must follow the matrix convention,
+            where axis -2 is Y and axis -1 is X.
+        screens: Turpe[Screen]
             Cheetah screen object that corresponds to the observed images.
-
         """
 
-        super().__init__(parameters, observations)
-        self.screen = screen
+        super().__init__(parameters, observations, screens)
 
     def plot_data(
         self,
@@ -162,15 +184,16 @@ class QuadScanDataset(ObservableDataset):
                 fig = ax[tuple(np.zeros(len(ax.shape), dtype=int))].get_figure()
             else:
                 fig = ax.get_figure()
-
-        px_bin_centers = self.screen.pixel_bin_centers
-        px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
+        screen = self.screens[0]
         images = self.observations[0]
+
+        px_bin_centers = screen.pixel_bin_centers
+        px_bin_centers = px_bin_centers[0] * 1e3, px_bin_centers[1] * 1e3
 
         for i in range(n_k):
             ax[i].pcolormesh(
                 *px_bin_centers,
-                images[i][:-1, :-1].T / images[i].max(),
+                images[i] / images[i].max(),
                 rasterized=True,
                 vmax=1.0,
                 vmin=0,
@@ -183,7 +206,7 @@ class QuadScanDataset(ObservableDataset):
 
                 ax[i].contour(
                     *px_bin_centers,
-                    overlay_image.T / overlay_image.max(),
+                    overlay_image / overlay_image.max(),
                     **overlay_kwargs,
                 )
 
@@ -254,8 +277,7 @@ class SixDReconstructionDataset(ObservableDataset):
             [ele.clone().flatten(end_dim=-3) for ele in self.six_d_observations]
         )
 
-        super().__init__(parameters, observations)
-        self.screens = screens
+        super().__init__(parameters, observations, screens)
 
     def plot_data(
         self,
