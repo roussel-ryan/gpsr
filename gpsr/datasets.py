@@ -494,13 +494,13 @@ def split_dataset(
         train_dataset = QuadScanDataset(
             parameters=dataset.parameters[train_k_ids],
             observations=tuple([dataset.observations[0][train_k_ids]]),
-            screen=dataset.screen,
+            screens=dataset.screens,
         )
 
         test_dataset = QuadScanDataset(
             parameters=dataset.parameters[test_k_ids_copy],
             observations=tuple([dataset.observations[0][test_k_ids_copy]]),
-            screen=dataset.screen,
+            screens=dataset.screens,
         )
 
     else:
