@@ -254,17 +254,17 @@ class NSFDist(GenModel):
 
     def __init__(
         self,
-        transforms: int = 3,
-        hidden_layers: int = 3,
-        hidden_units: int = 64,
+        width: int = 64,
+        depth: int = 3,
+        layers: int = 3,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
 
         self._flow = zuko.flows.NSF(
             features=self.ndim,
-            transforms=transforms,
-            hidden_features=(hidden_layers * [hidden_units]),
+            transforms=layers,
+            hidden_features=(depth * [width]),
         )
         # Reverse for faster sampling
         self._flow = zuko.flows.Flow(self._flow.transform.inv, self._flow.base)
