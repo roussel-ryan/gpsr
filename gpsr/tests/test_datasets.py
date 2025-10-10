@@ -14,26 +14,43 @@ class TestDatasets:
         # Valid initialization
         parameters = torch.rand((3, 2, 5))  # B = 3, M = 2, N = 5
         observations = tuple((torch.rand((3, 200, 200)), torch.rand((3, 150, 150))))
-        dataset = ObservableDataset(parameters, observations)
+        screen1 = Mock(Screen)
+        screen2 = Mock(Screen)
+        screen1.resolution = (observations[0].shape[-1], observations[0].shape[-2])
+        screen2.resolution = (observations[1].shape[-1], observations[1].shape[-2])
+        screens = (screen1, screen2)
+        dataset = ObservableDataset(parameters, observations, screens)
 
         assert dataset.parameters.shape == parameters.shape
         assert len(dataset.observations) == len(observations)
 
         # Invalid observations
         with pytest.raises(ValueError):
-            ObservableDataset(parameters, torch.rand((3, 200, 200)))  # Not a tuple
+            ObservableDataset(
+                parameters, torch.rand((3, 200, 200)), screens
+            )  # Not a tuple
 
     def test_observable_dataset_len(self):
         parameters = torch.rand((3, 2, 5))  # B = 3,, M = 2, N = 5
         observations = (torch.rand((3, 200, 200)), torch.rand((3, 150, 150)))
-        dataset = ObservableDataset(parameters, observations)
+        screen1 = Mock(Screen)
+        screen2 = Mock(Screen)
+        screen1.resolution = (observations[0].shape[-1], observations[0].shape[-2])
+        screen2.resolution = (observations[1].shape[-1], observations[1].shape[-2])
+        screens = (screen1, screen2)
+        dataset = ObservableDataset(parameters, observations, screens)
 
         assert len(dataset) == 3
 
     def test_observable_dataset_getitem(self):
         parameters = torch.rand((3, 2, 5))  # B = 3,, M = 2, N = 5
         observations = (torch.rand((3, 200, 200)), torch.rand((3, 150, 150)))
-        dataset = ObservableDataset(parameters, observations)
+        screen1 = Mock(Screen)
+        screen2 = Mock(Screen)
+        screen1.resolution = (observations[0].shape[-1], observations[0].shape[-2])
+        screen2.resolution = (observations[1].shape[-1], observations[1].shape[-2])
+        screens = (screen1, screen2)
+        dataset = ObservableDataset(parameters, observations, screens)
 
         sample = dataset[1]
         assert isinstance(sample, tuple)
@@ -47,7 +64,10 @@ class TestDatasets:
         observations = tuple(
             [torch.rand((5, 100, 100))]
         )  # K = 5, bins x bins = 100 x 100
-        dataset = QuadScanDataset(parameters, observations, screen=Mock(Screen))
+        screen1 = Mock(Screen)
+        screen1.resolution = (observations[0].shape[-1], observations[0].shape[-2])
+        screens = (screen1,)
+        dataset = QuadScanDataset(parameters, observations, screens)
 
         assert dataset.parameters.shape == (5, 3)
         assert dataset.observations[0].shape == (5, 100, 100)
@@ -58,8 +78,12 @@ class TestDatasets:
             torch.rand((5, 2, 100, 100)),
             torch.rand((5, 2, 150, 150)),
         )
-        bins = (torch.linspace(-1, 1, 100), torch.linspace(-1, 1, 150))
-        dataset = SixDReconstructionDataset(parameters, observations, bins)
+        screen1 = Mock(Screen)
+        screen2 = Mock(Screen)
+        screen1.resolution = (observations[0].shape[-1], observations[0].shape[-2])
+        screen2.resolution = (observations[1].shape[-1], observations[1].shape[-2])
+        screens = (screen1, screen2)
+        dataset = SixDReconstructionDataset(parameters, observations, screens)
 
         assert dataset.parameters.shape == (10, 2, 3)
         assert len(dataset.observations) == 2
@@ -67,4 +91,4 @@ class TestDatasets:
 
         # Invalid initialization
         with pytest.raises(ValueError):
-            SixDReconstructionDataset(torch.rand((3, 3, 5, 3)), observations, bins)
+            SixDReconstructionDataset(torch.rand((3, 3, 5, 3)), observations, screens)
