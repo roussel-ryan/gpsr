@@ -170,7 +170,7 @@ class QuadScanDataset(ObservableDataset):
         for i in range(n_k):
             ax[i].pcolormesh(
                 *px_bin_centers,
-                images[i][:-1, :-1].T / images[i].max(),
+                images[i] / images[i].max(),
                 rasterized=True,
                 vmax=1.0,
                 vmin=0,
@@ -183,7 +183,7 @@ class QuadScanDataset(ObservableDataset):
 
                 ax[i].contour(
                     *px_bin_centers,
-                    overlay_image.T / overlay_image.max(),
+                    overlay_image / overlay_image.max(),
                     **overlay_kwargs,
                 )
 
