@@ -126,18 +126,16 @@ class GenModel(torch.nn.Module, ABC):
         if cov_matrix is None:
             cov_matrix = torch.eye(self.ndim)
 
-        cov_matrix = torch.clone(cov_matrix)
-        if cov_matrix is None:
-            cov_matrix = torch.eye(self.ndim)
-        self.register_buffer("cov_matrix", cov_matrix)
-
         unnorm_matrix = torch.linalg.cholesky(cov_matrix)
         unnorm_matrix_log_det = torch.log(torch.abs(torch.linalg.det(unnorm_matrix)))
         norm_matrix = torch.linalg.inv(unnorm_matrix)
+        norm_matrix_log_det = torch.log(torch.abs(torch.linalg.det(norm_matrix)))
 
+        self.register_buffer("cov_matrix", cov_matrix)
+        self.register_buffer("norm_matrix", norm_matrix)
+        self.register_buffer("norm_matrix_log_det", norm_matrix_log_det)
         self.register_buffer("unnorm_matrix", unnorm_matrix)
         self.register_buffer("unnorm_matrix_log_det", unnorm_matrix_log_det)
-        self.register_buffer("norm_matrix", norm_matrix)
 
     @abstractmethod
     def _sample(self, n: int) -> torch.Tensor:
@@ -164,7 +162,7 @@ class GenModel(torch.nn.Module, ABC):
         """Evaluate log probabilities {log(p(x_i))}."""
         z = torch.matmul(x, self.norm_matrix.T)
         log_prob = self._log_prob(z)
-        log_prob = log_prob - self.unnorm_matrix_log_det
+        log_prob = log_prob - self.norm_matrix_log_det
         return log_prob
 
     def sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
@@ -305,8 +303,8 @@ class EntropyBeamGenerator(BeamGenerator):
 
         gen_model: Generative model
         prior: Prior distribution over the phase space coordiantes. Must implement
-               `prior.log_prob(x: torch.Tensor) -> torch.Tensor`, where `x` is
-               a batch of particle coordinates.
+            `prior.log_prob(x: torch.Tensor) -> torch.Tensor`, where `x` is a batch
+            of particle coordinates.
         n_particles: Number of macro-particles in the beam
         energy: Reference particle energy [eV].
         mass: Reference particle mass [eV/c^2]. Defaults to electron mass.
