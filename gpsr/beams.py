@@ -129,11 +129,9 @@ class GenModel(torch.nn.Module, ABC):
         unnorm_matrix = torch.linalg.cholesky(cov_matrix)
         unnorm_matrix_log_det = torch.log(torch.abs(torch.linalg.det(unnorm_matrix)))
         norm_matrix = torch.linalg.inv(unnorm_matrix)
-        norm_matrix_log_det = torch.log(torch.abs(torch.linalg.det(norm_matrix)))
 
         self.register_buffer("cov_matrix", cov_matrix)
         self.register_buffer("norm_matrix", norm_matrix)
-        self.register_buffer("norm_matrix_log_det", norm_matrix_log_det)
         self.register_buffer("unnorm_matrix", unnorm_matrix)
         self.register_buffer("unnorm_matrix_log_det", unnorm_matrix_log_det)
 
@@ -161,16 +159,16 @@ class GenModel(torch.nn.Module, ABC):
     def log_prob(self, x: torch.Tensor) -> torch.Tensor:
         """Evaluate log probabilities {log(p(x_i))}."""
         z = torch.matmul(x, self.norm_matrix.T)
-        log_prob = self._log_prob(z)
-        log_prob = log_prob - self.norm_matrix_log_det
-        return log_prob
+        log_p_z = self._log_prob(z)
+        log_p_x = log_p_z - self.unnorm_matrix_log_det
+        return log_p_x
 
     def sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Generate samples {x_i} and log probabilities {log(p(x_i))}."""
-        z, log_prob = self._sample_and_log_prob(n)
+        z, log_p_z = self._sample_and_log_prob(n)
         x = torch.matmul(z, self.unnorm_matrix.T)
-        log_prob = log_prob - self.unnorm_matrix_log_det
-        return (x, log_prob)
+        log_p_x = log_p_z - self.unnorm_matrix_log_det
+        return (x, log_p_x)
 
     def entropy(self, n: int, prior: Any = None) -> torch.Tensor:
         """Estimate the entropy of the distribution.
