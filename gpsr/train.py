@@ -118,7 +118,7 @@ def train_gpsr(
         train_dataloader,
     )
 
-    return model
+    return gpsr_model
 
 
 class EntropyLitGPSR(L.LightningModule, ABC):
