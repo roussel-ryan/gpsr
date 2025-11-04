@@ -8,7 +8,6 @@ from torch.nn import Module
 from torch.distributions import MultivariateNormal, Distribution
 
 from cheetah.particles import ParticleBeam
-from cheetah.utils.bmadx import bmad_to_cheetah_coords
 
 
 class BeamGenerator(torch.nn.Module, ABC):
@@ -55,6 +54,7 @@ class NNParticleBeamGenerator(BeamGenerator):
         energy: float,
         base_dist: Distribution = None,
         transformer: NNTransform = None,
+        output_scale: float = 1e-2,
         n_dim: int = 6,
     ):
         super(NNParticleBeamGenerator, self).__init__()
@@ -62,7 +62,7 @@ class NNParticleBeamGenerator(BeamGenerator):
             torch.zeros(n_dim), torch.eye(n_dim)
         )
         self.transformer = transformer or NNTransform(
-            2, 20, output_scale=1e-2, phase_space_dim=n_dim
+            2, 20, output_scale=output_scale, phase_space_dim=n_dim
         )
         self.register_buffer("beam_energy", torch.tensor(energy))
         self.register_buffer("particle_charges", torch.tensor(1.0))
@@ -80,14 +80,16 @@ class NNParticleBeamGenerator(BeamGenerator):
 
         # create near zero coordinates into which we deposit the transformed beam
         # Note: these need to be near zero to maintain finite emittances
-        bmad_coords = torch.randn(len(transformed_beam), 6).to(transformed_beam) * 1e-7
-        bmad_coords[:, : transformed_beam.shape[1]] = transformed_beam
+        coords = torch.randn(len(transformed_beam), 6).to(transformed_beam) * 1e-7
+        coords[:, : transformed_beam.shape[1]] = transformed_beam
 
-        transformed_beam = bmad_to_cheetah_coords(
-            bmad_coords, self.beam_energy, torch.tensor(0.511e6)
+        coords = torch.cat(
+            (coords, torch.ones_like(coords[:, 0].unsqueeze(dim=-1))), dim=-1
         )
+
         return ParticleBeam(
-            *transformed_beam,
+            particles=coords,
+            energy=self.beam_energy,
             particle_charges=self.particle_charges,
             survival_probabilities=self.survival_probabilities,
         )
@@ -249,10 +251,14 @@ class EntropyBeamGenerator(BeamGenerator):
 
         entropy = -torch.mean(log_p - log_q)
 
-        particles, ref_energy = bmad_to_cheetah_coords(x, self.energy, self.mass)
-        particles[:, 4] *= -1.0  # [TO DO] why is sign wrong?
+        coords = torch.randn(len(x), 6).to(x) * 1e-7
+        coords[:, : x.shape[1]] = x
+        coords = torch.cat(
+            (coords, torch.ones_like(coords[:, 0].unsqueeze(dim=-1))), dim=-1
+        )
+
         beam = ParticleBeam(
-            particles, energy=ref_energy, particle_charges=self.particle_charges
+            particles=coords, energy=self.energy, particle_charges=self.particle_charges
         )
         return (beam, entropy)
 
