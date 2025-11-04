@@ -253,8 +253,14 @@ class EntropyBeamGenerator(BeamGenerator):
 
         x[:, 4] *= -1.0  # [TO DO] why is sign wrong?
 
+        coords = torch.randn(len(x), 6).to(x) * 1e-7
+        coords[:, : x.shape[1]] = x
+        coords = torch.cat(
+            (coords, torch.ones_like(coords[:, 0].unsqueeze(dim=-1))), dim=-1
+        )
+
         beam = ParticleBeam(
-            particles=x, energy=self.energy, particle_charges=self.particle_charges
+            particles=coords, energy=self.energy, particle_charges=self.particle_charges
         )
         return (beam, entropy)
 
