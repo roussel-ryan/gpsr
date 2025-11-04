@@ -251,8 +251,6 @@ class EntropyBeamGenerator(BeamGenerator):
 
         entropy = -torch.mean(log_p - log_q)
 
-        x[:, 4] *= -1.0  # [TO DO] why is sign wrong?
-
         coords = torch.randn(len(x), 6).to(x) * 1e-7
         coords[:, : x.shape[1]] = x
         coords = torch.cat(
