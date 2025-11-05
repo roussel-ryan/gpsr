@@ -14,7 +14,9 @@ from cheetah.particles import ParticleBeam
 
 def train_ensemble(
     gpsr_lattice,
-    train_dataloader,
+    p0c,
+    train_dset,
+    n_particles=10000,
     n_models=5,
     n_epochs=100,
     lr=1e-3,
@@ -22,33 +24,26 @@ def train_ensemble(
     checkpoint_period_epochs=100,
     **kwargs,
 ):
-    models = []
-
+    gpsr_model = GPSR(NNParticleBeamGenerator(n_particles, p0c), gpsr_lattice)
+    train_dataloader = torch.utils.data.DataLoader(train_dset, batch_size=len(train_dset))
     for i in range(n_models):
         print(f"Training model {i + 1}/{n_models}...")
 
         # define logger
         logger = CSVLogger("logs", name=log_name + f"/model_{i}")
 
-        p0c = 43.36e6  # reference momentum in eV/c
-
         model = train_gpsr(
-            GPSR(
-                NNParticleBeamGenerator(
-                    10000, p0c, transformer=NNTransform(2, 20, output_scale=1e-2)
-                ),
-                gpsr_lattice,
-            ),
-            train_dataloader,
+            model=gpsr_model,
+            train_dataloader=train_dataloader,
             n_epochs=n_epochs,
             lr=lr,
             logger=logger,
             checkpoint_period_epochs=checkpoint_period_epochs,
             **kwargs,
         )
-        models.append(model)
-
-    return models
+        reconstructed_beam = model.gpsr_model.beam_generator()
+        torch.save(reconstructed_beam, f"{log_name}_beam_{i}.pt")
+        print(f'Saved reconstructed beam to {log_name}_beam_{i}.pt')
 
 
 def compute_mean_and_confidence_interval(
