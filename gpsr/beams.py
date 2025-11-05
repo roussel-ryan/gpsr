@@ -1,6 +1,7 @@
 import math
 from abc import abstractmethod, ABC
 from typing import Any
+from typing import Callable
 
 import torch
 from torch import Size, Tensor
@@ -8,6 +9,13 @@ from torch.nn import Module
 from torch.distributions import MultivariateNormal, Distribution
 
 from cheetah.particles import ParticleBeam
+
+import zuko
+
+
+def compute_batched_jacobian(x: torch.Tensor, function: Callable) -> torch.Tensor:
+    # https://docs.pytorch.org/functorch/stable/generated/functorch.jacrev.html
+    return torch.func.vmap(torch.func.jacrev(function))(x)
 
 
 class BeamGenerator(torch.nn.Module, ABC):
@@ -117,18 +125,17 @@ class GenModel(torch.nn.Module, ABC):
 
         self.ndim = ndim
 
-        cov_matrix = torch.clone(cov_matrix)
         if cov_matrix is None:
             cov_matrix = torch.eye(self.ndim)
-        self.register_buffer("cov_matrix", cov_matrix)
 
         unnorm_matrix = torch.linalg.cholesky(cov_matrix)
         unnorm_matrix_log_det = torch.log(torch.abs(torch.linalg.det(unnorm_matrix)))
         norm_matrix = torch.linalg.inv(unnorm_matrix)
 
+        self.register_buffer("cov_matrix", cov_matrix)
+        self.register_buffer("norm_matrix", norm_matrix)
         self.register_buffer("unnorm_matrix", unnorm_matrix)
         self.register_buffer("unnorm_matrix_log_det", unnorm_matrix_log_det)
-        self.register_buffer("norm_matrix", norm_matrix)
 
     @abstractmethod
     def _sample(self, n: int) -> torch.Tensor:
@@ -154,39 +161,108 @@ class GenModel(torch.nn.Module, ABC):
     def log_prob(self, x: torch.Tensor) -> torch.Tensor:
         """Evaluate log probabilities {log(p(x_i))}."""
         z = torch.matmul(x, self.norm_matrix.T)
-        log_prob = self._log_prob(z)
-        log_prob = log_prob - self.unnorm_matrix_log_det
-        return log_prob
+        log_p_z = self._log_prob(z)
+        log_p_x = log_p_z - self.unnorm_matrix_log_det
+        return log_p_x
 
     def sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
         """Generate samples {x_i} and log probabilities {log(p(x_i))}."""
-        z, log_prob = self._sample_and_log_prob(n)
+        z, log_p_z = self._sample_and_log_prob(n)
         x = torch.matmul(z, self.unnorm_matrix.T)
-        log_prob = log_prob - self.unnorm_matrix_log_det
-        return (x, log_prob)
+        log_p_x = log_p_z - self.unnorm_matrix_log_det
+        return (x, log_p_x)
+
+    def entropy(self, n: int, prior: Any = None) -> torch.Tensor:
+        """Estimate the entropy of the distribution.
+
+        Args:
+            n: Number of samples.
+            prior: Prior distribution q(x). Must have method
+                `prior.log_prob(x: torch.Tensor) -> torch.Tensor`.
+
+        Returns:
+            Entropy estimate. If `prior` is None, return the absolute entropy:
+
+            H[p(x)] = -\int p(x) \log(p(x)) dx. \in [-\infty, 0],
+
+        which is maximum at p(x) = uniform (H = 0). Otherwise, return the relative
+        entropy (KL divergence):
+
+            H[p(x), q(x)] = -\int p(x) \log(p(x)) dx \in [0, \infty],
+
+        which is maximum at p(x) = q(x).
+        """
+        x, log_p = self.sample_and_log_prob(n)
+
+        if prior is None:
+            return -torch.mean(log_p)
+        else:
+            log_q = prior.log_prob(x)
+            return -torch.mean(log_p - log_q)
 
 
-class NSF(GenModel):
+class NNDist(GenModel):
+    """Generative model using non-invertible NN transform."""
+
+    def __init__(self, width: int = 20, depth: int = 2, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.transform = NNTransform(
+            n_hidden=depth, width=width, phase_space_dim=self.ndim, output_scale=1.0
+        )
+        self.base_dist = torch.distributions.MultivariateNormal(
+            loc=torch.zeros(self.ndim),
+            covariance_matrix=torch.eye(self.ndim),
+        )
+
+    def _sample(self, n: int) -> torch.Tensor:
+        z = self.base_dist.rsample((n,))
+        return self.transform(z)
+
+    def _log_prob(self, z: torch.Tensor) -> torch.Tensor:
+        # Transform is not invertible.
+        raise NotImplementedError
+
+    def _sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
+        z = self.base_dist.rsample((n,))
+        x = self.transform(z)
+        jac_matrix = compute_batched_jacobian(z, self.transform)
+        ladj = torch.log(torch.abs(torch.linalg.det(jac_matrix)))
+        log_p = self.base_dist.log_prob(z) - ladj
+        return (x, log_p)
+
+    def to(self, device):
+        self.transform = self.transform.to(device)
+        self.base_dist = torch.distributions.MultivariateNormal(
+            loc=torch.zeros(self.ndim).to(device),
+            covariance_matrix=torch.eye(self.ndim).to(device),
+        )
+        self.unnorm_matrix = self.unnorm_matrix.to(device)
+        self.unnorm_matrix_log_det = self.unnorm_matrix_log_det.to(device)
+        self.norm_matrix = self.norm_matrix.to(device)
+        return self
+
+
+class NSFDist(GenModel):
     """Implements a normalizing flow using rational-quadratic splines.
+
+    Note that the RQS transformation is only defined in the range [-5, 5].
 
     This class uses the Zuko library: https://github.com/probabilists/zuko/blob/master/zuko/flows/autoregressive.py
     """
 
     def __init__(
         self,
-        transforms: int = 3,
-        hidden_layers: int = 3,
-        hidden_units: int = 64,
+        width: int = 64,
+        depth: int = 3,
+        layers: int = 3,
         **kwargs,
     ) -> None:
         super().__init__(**kwargs)
 
-        import zuko
-
         self._flow = zuko.flows.NSF(
             features=self.ndim,
-            transforms=transforms,
-            hidden_features=(hidden_layers * [hidden_units]),
+            transforms=layers,
+            hidden_features=(depth * [width]),
         )
         # Reverse for faster sampling
         self._flow = zuko.flows.Flow(self._flow.transform.inv, self._flow.base)
@@ -202,6 +278,13 @@ class NSF(GenModel):
 
     def sample_base(self, n: int) -> torch.Tensor:
         return self._flow.base().sample((n,))
+
+    def to(self, device):
+        self.flow = self.flow.to(device)
+        self.norm_matrix = self.norm_matrix.to(device)
+        self.unnorm_matrix = self.unnorm_matrix.to(device)
+        self.unnorm_matrix_log_det = self.unnorm_matrix_log_det.to(device)
+        return self
 
 
 class EntropyBeamGenerator(BeamGenerator):
@@ -220,8 +303,8 @@ class EntropyBeamGenerator(BeamGenerator):
 
         gen_model: Generative model
         prior: Prior distribution over the phase space coordiantes. Must implement
-               `prior.log_prob(x: torch.Tensor) -> torch.Tensor`, where `x` is
-               a batch of particle coordinates.
+            `prior.log_prob(x: torch.Tensor) -> torch.Tensor`, where `x` is a batch
+            of particle coordinates.
         n_particles: Number of macro-particles in the beam
         energy: Reference particle energy [eV].
         mass: Reference particle mass [eV/c^2]. Defaults to electron mass.
