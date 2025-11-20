@@ -412,7 +412,7 @@ def process_images(
     image_centroids: Optional[np.ndarray] = None,
     crop_ranges: Optional[np.ndarray] = None,
     visualize: bool = False,
-) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+) -> dict:
     """
     Process a batch of images for use in GPSR.
 
