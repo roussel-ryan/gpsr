@@ -1,6 +1,7 @@
 import torch
 from pprint import pprint
 import yaml
+import pandas as pd
 
 import lightning as L
 from lightning.pytorch.loggers import CSVLogger
@@ -259,3 +260,8 @@ class GPSRRun:
         sorted_filenames = sorted(checkpoint_filenames, key=extract_epoch)
 
         return sorted_filenames
+
+    def load_metrics(self , version_no):
+
+        return pd.read_csv(f'{self.log_name}/version_{version_no}/metrics.csv')
+
