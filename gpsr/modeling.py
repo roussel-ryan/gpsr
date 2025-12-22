@@ -18,6 +18,8 @@ from cheetah.particles import Beam
 from cheetah.accelerator import Element
 from gpsr.beams import BeamGenerator
 
+import time
+
 
 class GPSRLattice(torch.nn.Module, ABC):
     @abstractmethod
@@ -223,9 +225,14 @@ class GenericGPSRLattice(GPSRLattice):
         super().__init__()
 
         for element in variable_elements:
-            if not hasattr(element[0], element[1]):
+            element, attr = element
+
+            if isinstance(element, list):
+                element = element[0]
+
+            if not hasattr(element, attr):
                 raise AttributeError(
-                    f"Variable element {element[0].name} does not have parameter '{element[1]}'."
+                    f"Variable element {element.name} does not have parameter '{attr}'."
                 )
 
         for element in observable_elements:
@@ -253,10 +260,14 @@ class GenericGPSRLattice(GPSRLattice):
         merged_segment = self.segment.transfer_maps_merged(beam)
 
         # Apply the merged segment transformations to the beam
+        #start = time.time()
         merged_segment(beam)
+        #print(time.time() - start)
 
         # Collect observations from the observable elements
         observations = tuple([element.reading for element in self.observable_elements])
+
+        # FOR constrained phase spaces: compute the phase spaces and add them as observations
 
         return observations
 
@@ -268,4 +279,9 @@ class GenericGPSRLattice(GPSRLattice):
             settings: A tensor containing the new parameter values for the variable elements.
         """
         for i, element in enumerate(self.variable_elements, 0):
-            setattr(element[0], element[1], settings[..., i])
+            element, attr = element
+            if isinstance(element, list):
+                for ele in element:
+                    setattr(ele, attr, settings[..., i])
+            else:
+                setattr(element, attr, settings[..., i])
