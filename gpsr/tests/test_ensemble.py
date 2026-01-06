@@ -837,8 +837,6 @@ class TestEnsembleIntegration:
         # This is a simplified test since actual training requires more setup
         # We'll test the model copying and reinitialization behavior
 
-        dataloader = torch.utils.data.DataLoader(simple_dataset, batch_size=2)
-
         # Create two copies and reinitialize
         model1 = copy.deepcopy(simple_gpsr_model)
         model2 = copy.deepcopy(simple_gpsr_model)

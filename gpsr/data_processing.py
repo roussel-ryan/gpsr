@@ -6,7 +6,7 @@ from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
 from skimage.transform import resize
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional
 import matplotlib.pyplot as plt
 
 
