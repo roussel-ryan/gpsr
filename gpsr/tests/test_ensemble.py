@@ -719,7 +719,7 @@ class TestEnsembleIntegration:
             "MockScreen",
             (),
             {
-                "method": "charge_deposition",
+                "method": "kde",
                 "bins": (20, 20),
                 "x_range": (-1, 1),
                 "y_range": (-1, 1),
