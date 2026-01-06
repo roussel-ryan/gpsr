@@ -56,7 +56,6 @@ def _train_single_model_thread(
 
         # Set GPU device if specified
         if gpu_id is not None:
-            device = f"cuda:{gpu_id}"
             torch.cuda.set_device(gpu_id)
             # Add accelerator and devices to kwargs for Lightning
             kwargs.update({"accelerator": "gpu", "devices": [gpu_id]})
