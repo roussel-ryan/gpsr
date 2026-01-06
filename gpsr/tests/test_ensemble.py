@@ -1,21 +1,22 @@
+import copy
+from unittest.mock import Mock, patch
+
+import matplotlib.pyplot as plt
+import numpy as np
 import pytest
 import torch
-import numpy as np
-import copy
-from unittest.mock import Mock, patch, MagicMock
+from cheetah.particles import ParticleBeam
+
 from gpsr.ensemble import (
+    _train_single_model_thread,
+    compute_distribution_statistics,
+    compute_mean_and_confidence_interval,
+    plot_2d_distribution,
     reinitialize_weights,
     train_ensemble,
     train_ensemble_distributed,
-    compute_mean_and_confidence_interval,
-    compute_distribution_statistics,
-    plot_2d_distribution,
-    _train_single_model_thread,
 )
 from gpsr.modeling import GPSR
-from gpsr.beams import NNParticleBeamGenerator
-from cheetah.particles import ParticleBeam
-import matplotlib.pyplot as plt
 
 
 @pytest.fixture
@@ -731,8 +732,8 @@ class TestEnsembleIntegration:
     @pytest.fixture
     def simple_gpsr_model(self):
         """Create a simple GPSR model for testing"""
-        from gpsr.modeling import GPSR
         from gpsr.beams import NNParticleBeamGenerator
+        from gpsr.modeling import GPSR
 
         p0c = 43.36e6
         beam_gen = NNParticleBeamGenerator(100, p0c, n_dim=4)
