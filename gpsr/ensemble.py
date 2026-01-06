@@ -384,6 +384,9 @@ def compute_mean_and_confidence_interval(
         A tuple containing the mean histogram and the normalized confidence width.
 
     """
+    if lower_quantile >= upper_quantile:
+        raise ValueError("lower_quantile must be less than upper_quantile")
+
     mean_histogram = torch.mean(histograms, axis=0)
     lower_bound = torch.quantile(histograms, lower_quantile, axis=0)
     upper_bound = torch.quantile(histograms, upper_quantile, axis=0)
@@ -424,9 +427,13 @@ def compute_distribution_statistics(
     Returns
     -------
     tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
-        A tuple containing the x and y centers of the histogram, the mean, and the confidence interval.
+        A tuple containing the x and y centers of the histogram, the mean, and the confidence interval width.
 
     """
+    # check to make sure beams is not empty
+    if len(beams) == 0:
+        raise ValueError("beams list is empty")
+
     # get maximum and minimum values for the x and y dimensions if not provided
     if bin_ranges is None:
         x_min = min([getattr(beam, x_dimension).min().detach() for beam in beams])
@@ -480,6 +487,8 @@ def plot_2d_distribution(
 ) -> plt.Axes:
     if ax is None:
         fig, ax = plt.subplots(1, 2, sharex=True, sharey=True)
+    else:
+        fig = ax[0].figure
 
     x_centers, y_centers, mean_histogram, normalized_confidence_width = (
         compute_distribution_statistics(
