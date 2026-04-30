@@ -124,11 +124,13 @@ class QuadScanDataset(ObservableDataset):
             Should have a shape of (K x 1) where K is the number of quadrupole strengths.
         observations : Tuple[Tensor]
             Tuple contaning tensor of observed images, where the tensor shape
-            should be (K x bins x bins). First entry should be dipole off images.
-            The images must follow the matrix convention, where axis -2 is Y and
-            axis -1 is X.
+            should be (K x bins x bins).The images must follow the matrix convention,
+            where axis -2 is Y and axis -1 is X.
         screen: Screen
             Cheetah screen object that corresponds to the observed images.
+            Note: screen resolution is in (x,y) order and image shape is in (y,x) order,
+            so screen.resolution[0] == observations[0].shape[-1] and
+            screen.resolution[1] == observations[0].shape[-2] must be true.
 
         """
 
@@ -170,7 +172,7 @@ class QuadScanDataset(ObservableDataset):
         for i in range(n_k):
             ax[i].pcolormesh(
                 *px_bin_centers,
-                images[i][:-1, :-1].T / images[i].max(),
+                images[i] / images[i].max(),
                 rasterized=True,
                 vmax=1.0,
                 vmin=0,
@@ -183,7 +185,7 @@ class QuadScanDataset(ObservableDataset):
 
                 ax[i].contour(
                     *px_bin_centers,
-                    overlay_image.T / overlay_image.max(),
+                    overlay_image / overlay_image.max(),
                     **overlay_kwargs,
                 )
 
