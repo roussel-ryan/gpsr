@@ -40,13 +40,15 @@ class NNTransform(torch.nn.Module):
         """
         super(NNTransform, self).__init__()
 
-        layer_sequence = [torch.nn.Linear(phase_space_dim, width), activation]
-
+        layer_sequence = []
+        layer_sequence.append(torch.nn.Linear(phase_space_dim, width))
+        layer_sequence.append(activation)
         for i in range(n_hidden):
             layer_sequence.append(torch.nn.Linear(width, width))
             layer_sequence.append(torch.nn.Dropout(dropout))
+            layer_sequence.append(torch.nn.LayerNorm(width))
             layer_sequence.append(activation)
-
+        layer_sequence[-1] = torch.nn.Tanh()
         layer_sequence.append(torch.nn.Linear(width, phase_space_dim))
 
         self.stack = torch.nn.Sequential(*layer_sequence)
@@ -179,16 +181,8 @@ class GenModel(torch.nn.Module, ABC):
                 `prior.log_prob(x: torch.Tensor) -> torch.Tensor`.
 
         Returns:
-            Entropy estimate. If `prior` is None, return the absolute entropy:
-
-            H[p(x)] = -\int p(x) \log(p(x)) dx. \in [-\infty, 0],
-
-        which is maximum at p(x) = uniform (H = 0). Otherwise, return the relative
-        entropy (KL divergence):
-
-            H[p(x), q(x)] = -\int p(x) \log(p(x)) dx \in [0, \infty],
-
-        which is maximum at p(x) = q(x).
+            Entropy estimate. If `prior` is None, return the absolute entropy.
+            Otherwise return relative entropy.
         """
         x, log_p = self.sample_and_log_prob(n)
 
@@ -202,11 +196,22 @@ class GenModel(torch.nn.Module, ABC):
 class NNDist(GenModel):
     """Generative model using non-invertible NN transform."""
 
-    def __init__(self, width: int = 20, depth: int = 2, **kwargs) -> None:
+    def __init__(
+        self, width: int = 20, depth: int = 2, activation: Module = None, **kwargs
+    ) -> None:
         super().__init__(**kwargs)
+
+        if activation is None:
+            activation = torch.nn.Tanh()
+
         self.transform = NNTransform(
-            n_hidden=depth, width=width, phase_space_dim=self.ndim, output_scale=1.0
+            n_hidden=depth,
+            width=width,
+            phase_space_dim=self.ndim,
+            activation=activation,
+            output_scale=1.0,
         )
+
         self.base_dist = torch.distributions.MultivariateNormal(
             loc=torch.zeros(self.ndim),
             covariance_matrix=torch.eye(self.ndim),
@@ -257,25 +262,25 @@ class NSFDist(GenModel):
     ) -> None:
         super().__init__(**kwargs)
 
-        self._flow = zuko.flows.NSF(
+        self.flow = zuko.flows.NSF(
             features=self.ndim,
             transforms=layers,
             hidden_features=(depth * [width]),
         )
         # Reverse for faster sampling
-        self._flow = zuko.flows.Flow(self._flow.transform.inv, self._flow.base)
+        self.flow = zuko.flows.Flow(self.flow.transform.inv, self.flow.base)
 
     def _sample(self, n: int) -> torch.Tensor:
-        return self._flow().rsample((n,))
+        return self.flow().rsample((n,))
 
     def _log_prob(self, z: torch.Tensor) -> torch.Tensor:
-        return self._flow().log_prob(z)
+        return self.flow().log_prob(z)
 
     def _sample_and_log_prob(self, n: int) -> tuple[torch.Tensor, torch.Tensor]:
-        return self._flow().rsample_and_log_prob((n,))
+        return self.flow().rsample_and_log_prob((n,))
 
     def sample_base(self, n: int) -> torch.Tensor:
-        return self._flow.base().sample((n,))
+        return self.flow.base().sample((n,))
 
     def to(self, device):
         self.flow = self.flow.to(device)
