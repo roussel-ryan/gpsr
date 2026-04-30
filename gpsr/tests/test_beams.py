@@ -4,6 +4,7 @@ from torch.distributions import MultivariateNormal
 from cheetah.particles import ParticleBeam
 from gpsr.beams import NNTransform, NNParticleBeamGenerator
 from gpsr.beams import compute_batched_jacobian
+from gpsr.beams import NSFDist
 
 
 class TestBeams:
@@ -65,6 +66,17 @@ class TestBeams:
         for i, jacobian in enumerate(jacobians):
             jacobian_exp = torch.func.jacrev(transformer)(x[i, :])
             assert torch.all(torch.isclose(jacobian, jacobian_exp))
+
+    @pytest.mark.parametrize("dim", [2, 4, 6])
+    def test_nsf_jacobian(self, dim):
+        dist = NSFDist(ndim=dim)
+        flow = dist.flow()
+        z = flow.base.sample((10,))
+        x = flow.transform.inv(z)
+        jac = compute_batched_jacobian(z, flow.transform.inv)
+        ladj = torch.log(torch.abs(torch.linalg.det(jac)))
+        log_p = flow.base.log_prob(z) - ladj
+        assert torch.all(torch.isclose(log_p, flow.log_prob(x)))
 
     @pytest.mark.parametrize("dim", [2, 4, 6])
     def test_nn_particle_beam_generator_initialization(self, dim):
