@@ -6,7 +6,7 @@ from skimage.filters import threshold_triangle
 from scipy.ndimage import median_filter
 from skimage.transform import resize
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional
 import matplotlib.pyplot as plt
 
 
@@ -412,7 +412,7 @@ def process_images(
     image_centroids: Optional[np.ndarray] = None,
     crop_ranges: Optional[np.ndarray] = None,
     visualize: bool = False,
-) -> Tuple[np.ndarray, Tuple[np.ndarray, np.ndarray]]:
+) -> dict:
     """
     Process a batch of images for use in GPSR.
 

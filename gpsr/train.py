@@ -37,14 +37,17 @@ class LitGPSR(L.LightningModule, ABC):
                     f"prediction {i} shape {pred[i].shape} does not match target shape {y[i].shape}"
                 )
 
-        # normalize images
-        y_normalized = [normalize_images(y_ele) for y_ele in y]
-        pred_normalized = [normalize_images(pred_ele) for pred_ele in pred]
-
         # add up the loss functions from each prediction
         loss = 0.0
-        for y_ele, pred_ele in zip(y_normalized, pred_normalized):
-            loss += torch.sum(self.loss_func(y_ele, pred_ele))
+        for y_ele, pred_ele in zip(y, pred):
+            # normalize images
+            y_ele_norm = normalize_images(y_ele)
+            pred_ele_norm = normalize_images(pred_ele)
+            # add loss
+            loss += self.loss_func(y_ele_norm, pred_ele_norm)
+
+        # normalize loss by number of outputs
+        loss /= len(y)
 
         # log the loss function at the end of each epoch
         self.log("loss", loss, on_epoch=True)
@@ -57,7 +60,7 @@ class LitGPSR(L.LightningModule, ABC):
 
 
 def train_gpsr(
-    model,
+    gpsr_model: GPSR,
     train_dataloader,
     n_epochs: int = 100,
     lr: float = 1e-3,
@@ -72,7 +75,7 @@ def train_gpsr(
 
     Arguments
     ---------
-    model: GPSRModel
+    gpsr_model: GPSR
         GPSR model to be trained.
     train_dataloader: DataLoader
         DataLoader for the training data.
@@ -88,8 +91,8 @@ def train_gpsr(
 
     Returns
     -------
-    model: GPSRModel
-        Trained GPSR model.
+    lit_gpsr_model: LitGPSR
+        Trained LitGPSR model.
 
     """
 
@@ -112,13 +115,13 @@ def train_gpsr(
         **kwargs,
     )
 
-    gpsr_model = LitGPSR(model, lr, loss_func=loss_func)
+    lit_gpsr_model = LitGPSR(gpsr_model, lr, loss_func=loss_func)
     trainer.fit(
-        gpsr_model,
+        lit_gpsr_model,
         train_dataloader,
     )
 
-    return model
+    return lit_gpsr_model
 
 
 class EntropyLitGPSR(L.LightningModule, ABC):
