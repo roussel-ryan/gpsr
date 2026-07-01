@@ -21,7 +21,7 @@ def normalize_images(images):
     """
 
     sums = images.sum(dim=(-1, -2), keepdim=True)
-    return images / sums.clamp_min(torch.finfo(images.dtype).eps)
+    return images / sums.clamp_min(torch.finfo(images.dtype).tiny)
 
 
 def kl_div(target, pred):
