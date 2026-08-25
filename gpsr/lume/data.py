@@ -59,7 +59,11 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
     >>> dataset = GPSRLUMEDataset(
     ...     beamline_settings={"QUAD:IN10:525:BCTRL": quad_tensor},
     ...     observations={"PROF:IN10:571:Image:ArrayData": image_tensor},
-    ...     observations_metadata={"PROF:IN10:571:Image:ArrayData": {"type": "screen", "pixel_size": res}},
+    ...     observations_metadata={
+    ...         "PROF:IN10:571:Image:ArrayData": {
+    ...             "type": "screen", "shape": (231, 212), "pixel_size": res
+    ...         }
+    ...     },
     ...     beamline_constants={"QUAD:IN10:511:BCTRL": torch.tensor(5.064)},
     ... )
     >>> batch = dataset[0:3]  # returns a TensorDict slice

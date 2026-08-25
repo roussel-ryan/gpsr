@@ -155,19 +155,19 @@ class GPSRLUMEModel(torch.nn.Module):
         Parameters
         ----------
         observations_metadata : dict
-            Dictionary mapping element names to their metadata configuration,
-            where metadata should contain 'type'.
-            If 'type' is 'screen', metadata should also contain 'screen_pv_name',
-            'shape', and 'pixel_size' keys.
+            Dictionary mapping observation PV names to their metadata
+            configuration, where metadata should contain 'type'.
+            If 'type' is 'screen', metadata should also contain 'shape' and
+            'pixel_size' keys.
 
         Note
         ----
         Only observation type 'screen' is supported as of now.
         """
-        for metadata in observations_metadata.values():
+        for observation_pv_name, metadata in observations_metadata.items():
             if metadata["type"] == "screen":
                 self._setup_screen(
-                    screen_pv_name=metadata["screen_pv_name"],
+                    observation_pv_name=observation_pv_name,
                     resolution=metadata["shape"],
                     pixel_size=metadata["pixel_size"],
                 )
@@ -178,7 +178,7 @@ class GPSRLUMEModel(torch.nn.Module):
 
     def _setup_screen(
         self,
-        screen_pv_name: str,
+        observation_pv_name: str,
         resolution: tuple[int, int],
         pixel_size: Tensor,
     ):
@@ -189,18 +189,33 @@ class GPSRLUMEModel(torch.nn.Module):
 
         Parameters
         ----------
-        screen_pv_name : str
-            The PV name of the screen element to configure.
+        observation_pv_name : str
+            The image PV name, i.e. this observation's key in
+            ``observations_metadata``. Looked up in the LUME model's
+            ``supported_variables`` to reach the Cheetah element behind it.
         resolution : tuple[int, int]
             The resolution (width, height) of the screen detector.
         pixel_size : Tensor
             The physical pixel size of the detector.
         """
+        # The observation's own key is the PV to look up -- no facility-specific PV
+        # naming convention is assumed here. :meth:`forward` already fetches these
+        # keys straight from the LUME model, so a key that is not a supported
+        # variable could not be read back anyway.
+        try:
+            image_variable = self.lume_cheetah_model.supported_variables[
+                observation_pv_name
+            ]
+        except KeyError:
+            raise KeyError(
+                f"Observation {observation_pv_name!r} is not a variable of this LUME "
+                f"model, so there is no screen behind it to configure. The keys of "
+                f"'observations_metadata' must be PVs the model supports; it "
+                f"supports {sorted(self.lume_cheetah_model.supported_variables)}."
+            ) from None
         # The image PV's action variable carries the name of the Cheetah element it
         # reads, so the PV -> element lookup needs no facility-specific mapping
         # object: `element_name` is declared on lume_cheetah's generic action base.
-        var_name = f"{screen_pv_name}:Image:ArrayData"
-        image_variable = self.lume_cheetah_model.supported_variables[var_name]
         screen_lattice_name = image_variable.element_name
 
         screen_element = getattr(
