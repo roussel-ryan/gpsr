@@ -13,5 +13,5 @@ dependencies:
     - torch
     - lightning
     - tensorboard
-    - cheetah-accelerator>=0.7.2
+    - cheetah-accelerator>=0.8.0
     - zuko==1.4.0

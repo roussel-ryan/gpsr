@@ -19,7 +19,7 @@ classifiers = [
 dependencies = [
   "lightning>=2,<=2.6.1",
   "matplotlib>=3.3.0",
-  "cheetah-accelerator>=0.7.2",
+  "cheetah-accelerator>=0.8.0",
   "tensorboard",
   "scipy",
   "scikit-image",
@@ -30,7 +30,7 @@ dynamic = [ "version" ]
 keywords = []
 name = "gpsr"
 readme = {file = "README.md", content-type = "text/markdown"}
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 
 [project.optional-dependencies]
 dev = [
