@@ -69,7 +69,10 @@ class GPSRQuadScanLattice(GPSRLattice):
         return tuple([self.screen.reading])
 
     def set_lattice_parameters(self, x: torch.Tensor):
-        self.segment.elements[0].k1.data = x[:, 0]
+        # assign the attribute rather than writing through `.data`: cheetah caches
+        # transfer maps and only drops the cache when a defining feature is set, so an
+        # in-place write leaves the element tracking with its previous value
+        self.segment.elements[0].k1 = x[:, 0]
 
 
 class GPSR6DLattice(GPSRLattice):
@@ -124,7 +127,7 @@ class GPSR6DLattice(GPSRLattice):
             angle=torch.tensor(theta_on).float(),
             dipole_e1=torch.tensor(0.0).float(),
             dipole_e2=torch.tensor(theta_on).float(),
-            tracking_method="bmadx",
+            tracking_method="linear",
         )
 
         d3 = Drift(name="DIPOLE_TO_SCREEN", length=torch.tensor(l_d3).float())
@@ -175,21 +178,24 @@ class GPSR6DLattice(GPSRLattice):
             quadrupole strengths, TDC voltages, and dipole angles respectively
 
         """
-        # set quad/TDC parameters
-        self.segment.SCAN_QUAD.k1.data = x[..., 0]
-        self.segment.SCAN_TDC.voltage.data = x[..., 1]
+        # set quad/TDC parameters -- assigned as attributes rather than through `.data`,
+        # since cheetah caches each element's transfer map and only drops the cache when
+        # a defining feature is set; an in-place write keeps the stale map, so the beam
+        # would be tracked with the previously set values
+        self.segment.SCAN_QUAD.k1 = x[..., 0]
+        self.segment.SCAN_TDC.voltage = x[..., 1]
 
         # set dipole parameters
         G = x[..., 2]
         bend_angle = torch.arcsin(self.l_bend * G)
         arc_length = bend_angle / G
-        self.segment.SCAN_DIPOLE.angle.data = bend_angle
-        self.segment.SCAN_DIPOLE.length.data = arc_length
-        self.segment.SCAN_DIPOLE.dipole_e2.data = bend_angle
+        self.segment.SCAN_DIPOLE.angle = bend_angle
+        self.segment.SCAN_DIPOLE.length = arc_length
+        self.segment.SCAN_DIPOLE.dipole_e2 = bend_angle
 
         # set parameters of drift between dipole and screen
-        self.segment.DIPOLE_TO_SCREEN.length.data = (
-            self.l3 - self.l_bend / 2 / torch.cos(bend_angle)
+        self.segment.DIPOLE_TO_SCREEN.length = self.l3 - self.l_bend / 2 / torch.cos(
+            bend_angle
         )
 
 
