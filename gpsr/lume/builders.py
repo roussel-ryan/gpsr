@@ -98,8 +98,8 @@ import cheetah
 from lume_cheetah.model import LUMECheetahModel
 
 from gpsr.beams import BeamGenerator, NNParticleBeamGenerator
-from gpsr.gpsr_lume._imports import import_from_path, to_import_path
-from gpsr.gpsr_lume.model import GPSRLUMEModel
+from gpsr.lume._imports import import_from_path, to_import_path
+from gpsr.lume.model import GPSRLUMEModel
 
 # Reserved key inside an accelerator spec's `config`: the Cheetah lattice, as a JSON
 # string. `serialize_gpsr_lume_model` rewrites it from the live segment so that element
@@ -113,7 +113,7 @@ LATTICE_CONFIG_KEY = "lattice"
 # a historical fact about those files, NOT a default for new specs: nothing else in the
 # package reads it, and `model_spec_from_files` requires the caller to name a builder.
 # It is the package's only facility-specific reference, and it is a *string* -- resolved
-# at build time, never imported, so `import gpsr.gpsr_lume` needs no facility package.
+# at build time, never imported, so `import gpsr.lume` needs no facility package.
 _LEGACY_ACCELERATOR_BUILDER = "virtual_accelerator.cheetah.factory.build_cheetah_model"
 
 
@@ -234,7 +234,7 @@ def _unbatched_segment(
             ):
                 # Not the reference's shape with scan-step dims prepended, so the two
                 # are not the same quantity batched -- leave it alone rather than
-                # guess. Nothing in gpsr.gpsr_lume produces this.
+                # guess. Nothing in gpsr.lume produces this.
                 continue
             # Leading dims beyond the reference's are scan-step dims; flatten them
             # so a uniform batch can be recognized whatever its nesting.
@@ -474,7 +474,7 @@ def serialize_gpsr_lume_model(model: GPSRLUMEModel) -> dict:
     config = dict(accelerator_spec.get("config") or {})
     # Re-serialize from the live segment rather than reusing the recorded lattice, so
     # that element parameters adjusted after the build are captured. This is the one
-    # config key gpsr.gpsr_lume interprets; the rest is opaque builder kwargs. The recorded
+    # config key gpsr.lume interprets; the rest is opaque builder kwargs. The recorded
     # lattice is still needed, as the reference that tells a parameter's intrinsic
     # shape from a batch of scan settings left behind by the last forward pass.
     recorded_lattice_json = config.get(LATTICE_CONFIG_KEY)
@@ -514,7 +514,7 @@ def _upgraded_spec(spec: dict) -> dict:
     if "lattice_json" not in spec:
         raise KeyError(
             "Spec has neither an 'accelerator' entry nor a legacy 'lattice_json'; got "
-            f"keys {sorted(spec)}. See gpsr.gpsr_lume.builders for the spec shape."
+            f"keys {sorted(spec)}. See gpsr.lume.builders for the spec shape."
         )
 
     generator = dict(spec["generator"])

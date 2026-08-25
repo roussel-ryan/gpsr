@@ -6,10 +6,10 @@ single-source/multi-source grid:
 
 - :func:`predict_images` — single beam (sampled from the model's generator),
   returns ``(n_samples, W, H)`` per PV. Feed to
-  :func:`gpsr.gpsr_lume.plotting.plot_images`.
+  :func:`gpsr.lume.plotting.plot_images`.
 - :func:`predict_ensemble_images` — vectorized ensemble beam, returns
   ``(n_draws, n_samples, W, H)`` per PV. Feed to
-  :func:`gpsr.gpsr_lume.plotting.plot_ensemble_images`.
+  :func:`gpsr.lume.plotting.plot_ensemble_images`.
 - :func:`predict_multi_source_images` — single beam shared across sources,
   returns ``{source_name: {pv: (n_samples, W, H)}}``.
 - :func:`predict_multi_source_ensemble_images` — ensemble beam shared across
@@ -30,7 +30,7 @@ import torch
 
 from cheetah.particles import ParticleBeam
 
-from gpsr.gpsr_lume.training import normalize_images_floored
+from gpsr.lume.training import normalize_images_floored
 
 
 def _add_scan_broadcast_axis(beam: ParticleBeam) -> ParticleBeam:
@@ -115,7 +115,7 @@ def predict_images(
     setup, tracking -- lives in :meth:`GPSRLUMEModel.forward`.
 
     Note that the normalization is
-    :func:`gpsr.gpsr_lume.training.normalize_images_floored`, not plain
+    :func:`gpsr.lume.training.normalize_images_floored`, not plain
     ``normalize_images``: a predicted beam that missed the sensor stays dark here
     instead of having its numerical dust rescaled into a plausible-looking blob.
     That matters most on this path -- a silently rescaled miss looks like a
@@ -129,7 +129,7 @@ def predict_images(
     this function's per-source arguments, so one source can be predicted by
     splatting it: ``predict_images(model, **datamodule.to_sources_spec()[name])``.
 
-    The output fills the ``observations`` slot of :func:`gpsr.gpsr_lume.plotting.plot_images`::
+    The output fills the ``observations`` slot of :func:`gpsr.lume.plotting.plot_images`::
 
         preds = predict_images(model, settings, metadata)
         plot_images(settings, preds, metadata)             # predicted images alone
@@ -165,7 +165,7 @@ def predict_images(
         must not overlap ``beamline_settings``.
     normalize : bool, default=True
         If True, each predicted image is normalized so its pixel intensities sum
-        to 1 (via :func:`gpsr.gpsr_lume.training.normalize_images_floored`) -- the same
+        to 1 (via :func:`gpsr.lume.training.normalize_images_floored`) -- the same
         normalization :meth:`LitGPSRLUME._shared_step` applies before scoring the
         loss. Images whose beam missed the sensor are left dark rather than
         rescaled.
@@ -239,7 +239,7 @@ def predict_ensemble_images(
         overlap ``beamline_settings``.
     normalize : bool, default=True
         If True, each predicted image is normalized to unit pixel sum via
-        :func:`gpsr.gpsr_lume.training.normalize_images_floored`. Slicing the draw dim
+        :func:`gpsr.lume.training.normalize_images_floored`. Slicing the draw dim
         for chunking is exact because each image is normalized independently.
     chunk_size : int | None, default=None
         If given, the draw dim is tracked in slices of at most ``chunk_size`` draws

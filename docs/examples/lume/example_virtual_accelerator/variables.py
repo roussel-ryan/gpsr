@@ -17,7 +17,7 @@ pydantic model, so its fields dump to JSON for free -- and rebuilding resolves
 that path with ``importlib``. A class defined in a notebook cell dumps as
 ``__main__.QuadrupoleBCTRLVariable``, which resolves inside the same kernel and
 fails everywhere else, so a model built that way cannot be reloaded. The same
-reasoning applies to the accelerator *builder* path in a ``gpsr.gpsr_lume`` spec.
+reasoning applies to the accelerator *builder* path in a ``gpsr.lume`` spec.
 
 The conversions
 ---------------

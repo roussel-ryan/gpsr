@@ -4,7 +4,7 @@ Ensemble (multi-beam) utilities: build an ensemble beam and compute statistics.
 - **Construction** -- :func:`list_to_beam` stacks a list of single Cheetah
   ``ParticleBeam`` s along a leading draw axis into one vectorized ensemble beam
   (``particles`` of shape ``(n_draws, n_particles, 7)``), ready to feed to
-  :func:`gpsr.gpsr_lume.predicting.predict_images` (which tracks it as an ensemble).
+  :func:`gpsr.lume.predicting.predict_images` (which tracks it as an ensemble).
 - **Statistics** -- vectorized 1D/2D histograms, Gaussian filters, and
   ``compute_statistics_*`` / :func:`compute_mean_and_bounds`, which reduce an
   ensemble of histograms (leading dim indexes the draws) to a mean plus a two-sided
@@ -12,10 +12,10 @@ Ensemble (multi-beam) utilities: build an ensemble beam and compute statistics.
   ``ensemble_utils.py``.
 
 The statistics back the ensemble corner plots and confidence-band screen images in
-:mod:`gpsr.gpsr_lume.plotting` (``plot_ensemble_distribution``,
+:mod:`gpsr.lume.plotting` (``plot_ensemble_distribution``,
 ``plot_beam_distribution``, ``plot_ensemble_images``), which imports them from
 here. Prediction (tracking a beam to observations) lives in
-:mod:`gpsr.gpsr_lume.predicting`.
+:mod:`gpsr.lume.predicting`.
 """
 
 from __future__ import annotations
@@ -41,7 +41,7 @@ def list_to_beam(beam_list: list[ParticleBeam]) -> ParticleBeam:
     ensemble beam with ``particles`` of shape ``(n_draws, n_particles, 7)``, reusing
     the first beam's ``energy``. Only ``particles`` is stacked -- the per-particle
     buffers (``particle_charges`` / ``survival_probabilities``) are left at their
-    defaults, which broadcast fine; :func:`gpsr.gpsr_lume.predicting.predict_images`
+    defaults, which broadcast fine; :func:`gpsr.lume.predicting.predict_images`
     inserts the size-1 scan-step axis at track time.
 
     Parameters

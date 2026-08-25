@@ -1,7 +1,7 @@
 """Screen-image plotting for GPSRLUME.
 
-One of the two halves of :mod:`gpsr.gpsr_lume.plotting` (the other,
-:mod:`gpsr.gpsr_lume.plotting.distributions`, draws phase-space corner plots). All
+One of the two halves of :mod:`gpsr.lume.plotting` (the other,
+:mod:`gpsr.lume.plotting.distributions`, draws phase-space corner plots). All
 plotting is driven by plain dicts / tensors, not by the dataset/datamodule
 classes.
 
@@ -14,12 +14,12 @@ lines (each image normalized to its own peak, so the two sets stay comparable
 regardless of their absolute scales).
 :func:`plot_ensemble_images` is the ensemble analogue: it takes an
 already-predicted ensemble (from
-:func:`gpsr.gpsr_lume.predicting.predict_ensemble_images`) and draws the mean image,
+:func:`gpsr.lume.predicting.predict_ensemble_images`) and draws the mean image,
 optionally with lower/mean/upper confidence-band contours (``band=True``,
 default).
 :func:`plot_multi_source_images` and :func:`plot_multi_source_ensemble_images`
 fan the two single-source plotters over a sources spec, one figure per source.
-The ensemble statistics they rely on live in :mod:`gpsr.gpsr_lume.ensemble`.
+The ensemble statistics they rely on live in :mod:`gpsr.lume.ensemble`.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from torch import Tensor
 if TYPE_CHECKING:
     from tensordict import TensorDict
 
-from gpsr.gpsr_lume.ensemble import UncertaintyType, compute_mean_and_bounds
+from gpsr.lume.ensemble import UncertaintyType, compute_mean_and_bounds
 
 
 # ---------------------------------------------------------------------------
@@ -436,7 +436,7 @@ def plot_images(
     The three positional arguments mirror the pieces a scan is made of -- the
     same triple held by :meth:`GPSRLUMEDataset.to_dict` (so a dataset can be
     splatted in as ``plot_images(**dataset.to_dict())``) and the inputs/output of
-    :func:`gpsr.gpsr_lume.predicting.predict_images`. Measured and predicted images
+    :func:`gpsr.lume.predicting.predict_images`. Measured and predicted images
     fill the same ``images`` slot (role-neutral by design -- the plotter does
     not distinguish measurements from predictions), so a measured-vs-predicted
     comparison reads directly:
@@ -681,20 +681,20 @@ def plot_ensemble_images(
 
     The ensemble analogue of :func:`plot_images`: a pure plotting function that
     takes an already-predicted ensemble (produce it with
-    :func:`gpsr.gpsr_lume.predicting.predict_ensemble_images`) rather than a model +
+    :func:`gpsr.lume.predicting.predict_ensemble_images`) rather than a model +
     beam. Its first three positional arguments mirror ``plot_images`` --
     ``beamline_settings``, ``ensemble_images`` (the reference set), and
     ``observations_metadata`` -- and an optional ``overlay_images`` (e.g. the
     measured images) reads the same way, so the two comparison calls line up::
 
-        from gpsr.gpsr_lume.predicting import predict_ensemble_images
+        from gpsr.lume.predicting import predict_ensemble_images
         preds = predict_ensemble_images(model, settings, metadata, beam=ensemble_beam)
         plot_ensemble_images(settings, preds, metadata,
                              overlay_images=dataset.data["observations"])
 
     Each per-PV ensemble prediction is a draw-indexed stack
     ``(n_draws, n_samples, W, H)``. It is reduced over the draw dim with
-    :func:`gpsr.gpsr_lume.ensemble.compute_mean_and_bounds`, then one column per scan
+    :func:`gpsr.lume.ensemble.compute_mean_and_bounds`, then one column per scan
     step is drawn: the mean image filled (``pcolormesh``), and -- when
     ``band=True`` (default) -- the lower, mean, and upper histograms each
     overlaid as a dashed contour (three dashed rings per level bracketing the
@@ -715,7 +715,7 @@ def plot_ensemble_images(
     ensemble_images : dict[str, Tensor]
         Ensemble predicted images keyed by observation PV, each of shape
         ``(n_draws, n_samples, W, H)`` -- the output of
-        :func:`gpsr.gpsr_lume.predicting.predict_ensemble_images`.
+        :func:`gpsr.lume.predicting.predict_ensemble_images`.
     observations_metadata : dict[str, dict]
         Per-observation metadata; the selected key must have ``type == "screen"``
         and a ``pixel_size``.
@@ -745,7 +745,7 @@ def plot_ensemble_images(
         / ``contour_smoothing`` / ``contour_cmap`` / ``contour_kwargs`` styling
         knobs.
     uncertainty_type : "percentile" | "std_error"
-        Passed to :func:`gpsr.gpsr_lume.ensemble.compute_mean_and_bounds`.
+        Passed to :func:`gpsr.lume.ensemble.compute_mean_and_bounds`.
     confidence_level : float
         Confidence level for the band.
     contour_levels : tuple[float, ...]
@@ -899,8 +899,8 @@ def plot_multi_source_images(
     contours). Its inputs mirror the multi-source predictors and the datamodule
     projections that feed them, so a predict-then-plot pass reads directly::
 
-        from gpsr.gpsr_lume.predicting import predict_multi_source_images
-        from gpsr.gpsr_lume.plotting import plot_multi_source_images
+        from gpsr.lume.predicting import predict_multi_source_images
+        from gpsr.lume.plotting import plot_multi_source_images
 
         spec = dm.to_sources_spec()
         preds = predict_multi_source_images(model, spec, beam=beam)
@@ -924,7 +924,7 @@ def plot_multi_source_images(
     images : dict[str, dict[str, Tensor]]
         Per source, images keyed by observation PV, each of shape
         ``(n_samples, W, H)`` -- the output of
-        :func:`gpsr.gpsr_lume.predicting.predict_multi_source_images`.
+        :func:`gpsr.lume.predicting.predict_multi_source_images`.
     sources_spec : dict[str, dict]
         Per-source spec keyed by source name; each value supplies
         ``beamline_settings`` and ``observations_metadata`` (see
@@ -975,8 +975,8 @@ def plot_multi_source_ensemble_images(
     multi-source predictors and the datamodule projections that feed them, so a
     predict-then-plot pass reads directly::
 
-        from gpsr.gpsr_lume.predicting import predict_multi_source_ensemble_images
-        from gpsr.gpsr_lume.plotting import plot_multi_source_ensemble_images
+        from gpsr.lume.predicting import predict_multi_source_ensemble_images
+        from gpsr.lume.plotting import plot_multi_source_ensemble_images
 
         spec = dm.to_sources_spec()
         preds = predict_multi_source_ensemble_images(model, spec, beam)
@@ -999,7 +999,7 @@ def plot_multi_source_ensemble_images(
     ensemble_images : dict[str, dict[str, Tensor]]
         Per source, ensemble predicted images keyed by observation PV, each of
         shape ``(n_draws, n_samples, W, H)`` -- the output of
-        :func:`gpsr.gpsr_lume.predicting.predict_multi_source_ensemble_images`.
+        :func:`gpsr.lume.predicting.predict_multi_source_ensemble_images`.
     sources_spec : dict[str, dict]
         Per-source spec keyed by source name; each value supplies
         ``beamline_settings`` and ``observations_metadata`` (see

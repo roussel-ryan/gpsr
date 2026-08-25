@@ -1,6 +1,6 @@
 """Assembly of the example virtual accelerator: lattice + variables -> model.
 
-This is the **facility seam**. ``gpsr.gpsr_lume`` never imports a facility package; it
+This is the **facility seam**. ``gpsr.lume`` never imports a facility package; it
 reaches the assembly function through a dotted import-path string in a model spec::
 
     spec["accelerator"] = {
@@ -16,7 +16,7 @@ importable.
 Two rules the contract imposes, both easy to get wrong:
 
 - ``energy`` is **not** in ``config``. The reference momentum lives once, on the
-  beam generator, and ``gpsr.gpsr_lume.builders.build_gpsr_lume_model`` threads it into
+  beam generator, and ``gpsr.lume.builders.build_gpsr_lume_model`` threads it into
   this function. The accelerator needs it because converting a magnet's control
   value to a Cheetah geometric strength goes through magnetic rigidity.
 - ``config["lattice"]`` is **reserved**. ``serialize_gpsr_lume_model`` overwrites

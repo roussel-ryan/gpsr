@@ -158,11 +158,11 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
 
         The dict has three keys -- ``beamline_settings``, ``images`` and
         ``observations_metadata``. Its keys match the first three (keyword)
-        arguments of :func:`gpsr.gpsr_lume.plotting.plot_images` (the dataset's
+        arguments of :func:`gpsr.lume.plotting.plot_images` (the dataset's
         stored ``observations`` land under the plotter's role-neutral
         ``images`` slot), so it can be splatted straight in::
 
-            from gpsr.gpsr_lume.plotting import plot_images
+            from gpsr.lume.plotting import plot_images
             plot_images(**dataset.to_dict())
         """
         return {
@@ -325,7 +325,7 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         """Return this module's per-source data as a ``sources`` spec.
 
         Projects each source into the observation-free mapping the multi-source
-        predictors consume (see ``gpsr.gpsr_lume.predicting``): ``beamline_settings``
+        predictors consume (see ``gpsr.lume.predicting``): ``beamline_settings``
         come from each dataset, while ``observations_metadata`` and
         ``beamline_constants`` come from :attr:`source_info`. The measured
         ``observations`` are deliberately dropped -- prediction never needs them,
@@ -335,7 +335,7 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         A per-source projection sibling to :meth:`GPSRLUMEDataset.to_dict`; the
         returned dict splats straight into the multi-source predictors::
 
-            from gpsr.gpsr_lume.predicting import predict_multi_source_ensemble_images
+            from gpsr.lume.predicting import predict_multi_source_ensemble_images
             preds = predict_multi_source_ensemble_images(model, dm.to_sources_spec(), beam)
 
         Returns
@@ -366,7 +366,7 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         of a measured-vs-predicted plot. Splats into the multi-source plotters as
         the measured overlay::
 
-            from gpsr.gpsr_lume.plotting import plot_multi_source_ensemble_images
+            from gpsr.lume.plotting import plot_multi_source_ensemble_images
             preds = predict_multi_source_ensemble_images(model, dm.to_sources_spec(), beam)
             plot_multi_source_ensemble_images(
                 preds, dm.to_sources_spec(), overlay_images=dm.to_observations()
@@ -459,7 +459,7 @@ def _load_envelope(path, expected_format: str, current_version: int, what: str) 
     ------
     ValueError
         If ``path`` does not hold an envelope of ``expected_format``, or holds a
-        newer layout version than this ``gpsr.gpsr_lume`` understands.
+        newer layout version than this ``gpsr.lume`` understands.
     """
     try:
         raw = torch.load(path, weights_only=True)
@@ -470,8 +470,8 @@ def _load_envelope(path, expected_format: str, current_version: int, what: str) 
         # datamodule, or a checkpoint. Say so, rather than leaving the caller with
         # torch's advice to set `weights_only=False`, which would not help.
         raise ValueError(
-            f"'{path}' is not a gpsr.gpsr_lume {what} file: it contains pickled "
-            f"objects, while gpsr.gpsr_lume writes only tensors, strings and numbers. "
+            f"'{path}' is not a gpsr.lume {what} file: it contains pickled "
+            f"objects, while gpsr.lume writes only tensors, strings and numbers. "
             f"It is most likely a torch.save of some other object."
         ) from err
 
@@ -484,7 +484,7 @@ def _load_envelope(path, expected_format: str, current_version: int, what: str) 
             raise ValueError(
                 f"'{path}' holds a '{found_format}' envelope, not "
                 f"'{expected_format}'. Read it with "
-                f"gpsr.gpsr_lume.data.{_FORMAT_READERS[found_format]} instead."
+                f"gpsr.lume.data.{_FORMAT_READERS[found_format]} instead."
             )
         found = (
             f"a dict with keys {sorted(raw)[:6]}"
@@ -492,9 +492,9 @@ def _load_envelope(path, expected_format: str, current_version: int, what: str) 
             else f"a {type(raw).__name__}"
         )
         raise ValueError(
-            f"'{path}' is not a gpsr.gpsr_lume {what} file (expected a "
+            f"'{path}' is not a gpsr.lume {what} file (expected a "
             f"'{expected_format}' envelope, found {found}). Files written by "
-            f"gpsr.gpsr_lume carry one; a bare scan dict or a torch.save of some other "
+            f"gpsr.lume carry one; a bare scan dict or a torch.save of some other "
             f"object does not."
         )
 
@@ -502,7 +502,7 @@ def _load_envelope(path, expected_format: str, current_version: int, what: str) 
     if not isinstance(version, int) or version > current_version:
         raise ValueError(
             f"'{path}' has {what} layout version {version!r}, but this "
-            f"gpsr.gpsr_lume understands up to {current_version}. It was written by "
+            f"gpsr.lume understands up to {current_version}. It was written by "
             f"a newer version; upgrade gpsr to read it."
         )
     return raw
@@ -571,7 +571,7 @@ def load_dataset(path) -> GPSRLUMEDataset:
     ------
     ValueError
         If ``path`` does not hold a dataset file, or holds a newer layout version
-        than this ``gpsr.gpsr_lume`` understands. A whole-datamodule file is reported as
+        than this ``gpsr.lume`` understands. A whole-datamodule file is reported as
         such, pointing at :func:`load_datamodule`.
     """
     raw = _load_envelope(path, DATASET_FORMAT, DATASET_VERSION, "dataset")
@@ -583,7 +583,7 @@ def save_datamodule(datamodule: GPSRLUMEDataModule, path) -> None:
 
     Writes the *data*, not the object: a dict of plain tensors, strings and
     numbers under a format/version envelope. Deliberately not a pickle of the
-    datamodule -- that would embed ``gpsr.gpsr_lume.data.GPSRLUMEDataModule`` as a
+    datamodule -- that would embed ``gpsr.lume.data.GPSRLUMEDataModule`` as a
     module path, so the file would only load where that import resolves
     identically, would rot on any class rename, and would force
     ``weights_only=False`` on whoever read it. What lands here instead loads with
@@ -645,7 +645,7 @@ def load_datamodule(path, **datamodule_kwargs) -> GPSRLUMEDataModule:
     ------
     ValueError
         If ``path`` does not hold a datamodule file, or holds a newer layout
-        version than this ``gpsr.gpsr_lume`` understands. A single-scan file is reported
+        version than this ``gpsr.lume`` understands. A single-scan file is reported
         as such, pointing at :func:`load_dataset`.
     """
     raw = _load_envelope(path, DATAMODULE_FORMAT, DATAMODULE_VERSION, "datamodule")

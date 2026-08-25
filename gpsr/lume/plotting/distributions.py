@@ -1,7 +1,7 @@
 """Phase-space (corner) distribution plotting for GPSRLUME.
 
-One of the two halves of :mod:`gpsr.gpsr_lume.plotting` (the other,
-:mod:`gpsr.gpsr_lume.plotting.images`, draws screen images). Ported from Cheetah's
+One of the two halves of :mod:`gpsr.lume.plotting` (the other,
+:mod:`gpsr.lume.plotting.images`, draws screen images). Ported from Cheetah's
 ``particle_beam.py`` as free functions.
 
 :func:`plot_ensemble_distribution` and :func:`plot_beam_distribution` draw
@@ -9,7 +9,7 @@ triangle / corner plots of a Cheetah ``ParticleBeam`` -- 1D histograms on the
 diagonal, 2D projections in the lower triangle -- for an ensemble (mean +
 confidence bands) or a single beam (plain histograms, single contours),
 respectively. The ensemble statistics they rely on live in
-:mod:`gpsr.gpsr_lume.ensemble`.
+:mod:`gpsr.lume.ensemble`.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ from scipy.ndimage import gaussian_filter
 
 from cheetah.utils import format_axis_with_prefixed_unit
 
-from gpsr.gpsr_lume.ensemble import (
+from gpsr.lume.ensemble import (
     UncertaintyType,
     compute_statistics_1d,
     compute_statistics_2d,
@@ -49,7 +49,7 @@ SCALED_DIMENSIONS = ("px", "py", "p")
 # ---------------------------------------------------------------------------
 # Phase-space (corner) distribution plots (ported from Cheetah's
 # particle_beam.py, as free functions). Ensemble statistics come from
-# gpsr.gpsr_lume.ensemble.
+# gpsr.lume.ensemble.
 # ---------------------------------------------------------------------------
 def _scale_axis_ticks_1e3(axis) -> str:
     """Multiply an axis's tick display by 1e3; return the label's inner math text.
@@ -184,7 +184,7 @@ def plot_1d_distribution(
     smoothing : float
         Sigma of a Gaussian kernel applied to the histogram.
     uncertainty_type : "percentile" | "std_error"
-        Passed to :func:`gpsr.gpsr_lume.ensemble.compute_statistics_1d`.
+        Passed to :func:`gpsr.lume.ensemble.compute_statistics_1d`.
     confidence_level : float
         Confidence level for the band.
     plot_kwargs : dict | None
@@ -286,7 +286,7 @@ def plot_2d_distribution(
     contour_smoothing : float
         Sigma applied to contour data (after ``histogram_smoothing``).
     uncertainty_type : "percentile" | "std_error"
-        Passed to :func:`gpsr.gpsr_lume.ensemble.compute_statistics_2d`.
+        Passed to :func:`gpsr.lume.ensemble.compute_statistics_2d`.
     confidence_level : float
         Confidence level for the bands.
     image_cmap : str
@@ -533,8 +533,8 @@ def plot_ensemble_distribution(
         range across spatial dims and another across unitless dims; a single
         ``(min, max)`` applies to all; a list gives one pair per dimension.
     uncertainty_type : "percentile" | "std_error"
-        Passed to :func:`gpsr.gpsr_lume.ensemble.compute_statistics_1d` /
-        :func:`gpsr.gpsr_lume.ensemble.compute_statistics_2d`.
+        Passed to :func:`gpsr.lume.ensemble.compute_statistics_1d` /
+        :func:`gpsr.lume.ensemble.compute_statistics_2d`.
     confidence_level : float
         Confidence level for the bands.
     image_cmap : str

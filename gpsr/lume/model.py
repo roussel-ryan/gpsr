@@ -29,9 +29,9 @@ class GPSRLUMEModel(torch.nn.Module):
     accelerator_spec : dict, optional
         ``{"builder": <import path>, "config": {...}}`` -- the recipe that produced
         ``lume_cheetah_model``, recorded as build provenance so
-        :func:`gpsr.gpsr_lume.builders.serialize_gpsr_lume_model` can round-trip it into a
+        :func:`gpsr.lume.builders.serialize_gpsr_lume_model` can round-trip it into a
         self-contained checkpoint. Set by
-        :func:`gpsr.gpsr_lume.builders.build_gpsr_lume_model`; ``None`` for a
+        :func:`gpsr.lume.builders.build_gpsr_lume_model`; ``None`` for a
         hand-assembled accelerator, which then cannot be serialized. A
         ``LUMECheetahModel`` is a flat collection of per-PV action variables with no
         facility-wide mapping object to invert, so the recipe cannot be recovered

@@ -39,10 +39,10 @@ dev = [
   "jupyter",
   "pre-commit"
 ]
-# The gpsr.gpsr_lume subpackage only. Kept out of the core dependencies so that
+# The gpsr.lume subpackage only. Kept out of the core dependencies so that
 # `import gpsr` never requires a virtual-accelerator stack. Note lume-cheetah
 # requires Python >=3.11, so this extra does not resolve on 3.10.
-gpsr-lume = [
+lume = [
   "lume-cheetah>=0.1.0",
   "tensordict",
 ]
@@ -68,7 +68,7 @@ where = ["."]
 # matches only the top-level package: a subpackage needs its own entry or it is
 # silently left out of the wheel while editable installs keep working. Spelled out
 # rather than "gpsr*" so that shipping a new package stays a deliberate act.
-include = [ "gpsr", "gpsr.gpsr_lume*", ]
+include = [ "gpsr", "gpsr.lume*", ]
 namespaces = false
 
 [project.license]

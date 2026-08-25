@@ -6,17 +6,17 @@ import torch
 
 from gpsr.losses import normalize_images
 
-from gpsr.gpsr_lume._imports import import_from_path, to_import_path
-from gpsr.gpsr_lume.builders import (
+from gpsr.lume._imports import import_from_path, to_import_path
+from gpsr.lume.builders import (
     build_gpsr_lume_model,
     serialize_gpsr_lume_model,
 )
-from gpsr.gpsr_lume.model import GPSRLUMEModel
+from gpsr.lume.model import GPSRLUMEModel
 
 # Default reconstruction loss, stored as an import path so it stays JSON-pure in
 # the checkpoint hyperparameters (a bare function object would be pickled).
 # DEFAULT_LOSS = "gpsr.losses.mae_loss"
-DEFAULT_LOSS = "gpsr.gpsr_lume.training.kl_div_loss"
+DEFAULT_LOSS = "gpsr.lume.training.kl_div_loss"
 
 # Sum of a screen image PV when the whole beam lands on the sensor. Cheetah's
 # `Screen.reading` is normalised to unit total over the pixels, so it sums to
@@ -43,7 +43,7 @@ class LitGPSRLUME(L.LightningModule):
     ``GPSRLUMEModel``, so the harness stays decoupled from how it was constructed
     and never names a concrete ``BeamGenerator`` subclass (it is
     generator-agnostic). Use :meth:`from_spec` for the common "build from a spec"
-    path (pair it with :func:`gpsr.gpsr_lume.builders.model_spec_from_files` to build a
+    path (pair it with :func:`gpsr.lume.builders.model_spec_from_files` to build a
     spec from lattice / name-map JSON files).
 
     Checkpointing
@@ -104,12 +104,12 @@ class LitGPSRLUME(L.LightningModule):
 
         The one convenience constructor: builds a fresh (untrained)
         ``GPSRLUMEModel`` from the spec via
-        :func:`gpsr.gpsr_lume.builders.build_gpsr_lume_model`, rather than injecting a
+        :func:`gpsr.lume.builders.build_gpsr_lume_model`, rather than injecting a
         pre-calibrated one. The spec is the single representation used everywhere --
         fresh build, checkpoint embed, and self-contained reload all speak it.
 
         Build a spec from lattice / name-map JSON files with
-        :func:`gpsr.gpsr_lume.builders.model_spec_from_files`::
+        :func:`gpsr.lume.builders.model_spec_from_files`::
 
             spec = model_spec_from_files(lattice_path, name_map_path, energy,
                                          accelerator_builder=BUILDER_IMPORT_PATH,
@@ -120,7 +120,7 @@ class LitGPSRLUME(L.LightningModule):
         Parameters
         ----------
         spec : dict
-            Canonical spec (see :mod:`gpsr.gpsr_lume.builders`).
+            Canonical spec (see :mod:`gpsr.lume.builders`).
         **kwargs
             Remaining ``LitGPSRLUME`` arguments (``lr``, ``loss_func``).
         """
@@ -339,7 +339,7 @@ def kl_div_loss(target: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
     and averaged over the batch -- a drop-in ``loss_func`` for ``_shared_step``
     (returns a scalar, unlike ``gpsr.losses.kl_div`` which is per-pixel and takes
     an absolute value). Swap it in via the import path
-    ``"gpsr.gpsr_lume.training.kl_div_loss"``.
+    ``"gpsr.lume.training.kl_div_loss"``.
 
     KL is defined between probability distributions, so ``target`` and ``pred``
     are expected pre-normalized to unit intensity (``normalize_images`` in
