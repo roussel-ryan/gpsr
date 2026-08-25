@@ -445,11 +445,10 @@ def serialize_gpsr_lume_model(model: GPSRLUMEModel) -> dict:
       recording -- it is the state the fit actually saw.
     - **Screen configuration derived from the data**, applied on every forward pass
       by ``GPSRLUMEModel._setup_screen`` from the datamodule's
-      ``observations_metadata``: ``resolution``, ``pixel_size``, ``kde_bandwidth``,
-      ``is_active``. Recorded, but not authoritative -- the next forward pass
-      overwrites it from whatever metadata that datamodule carries. Likewise
-      ``method``, which follows train/eval state (``kde`` vs ``histogram``) and so
-      reflects nothing but the mode the model happened to be in when saved.
+      ``observations_metadata``: ``resolution``, ``pixel_size``, ``is_active``, and
+      ``method`` (always ``cloud-in-cell``). Recorded, but not authoritative -- the
+      next forward pass overwrites it from whatever metadata that datamodule
+      carries.
     - **Per-scan-step settings from the last forward pass**, which are *not*
       recorded: they are collapsed first by :func:`_unbatched_segment`, since a
       batch of scan settings is transient state rather than a property of the

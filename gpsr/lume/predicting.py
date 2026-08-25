@@ -107,12 +107,13 @@ def predict_images(
     """Inference wrapper: call the model correctly for prediction.
 
     Packages the non-obvious inference gotchas so callers don't repeat them:
-    ``model.eval()`` (flips screens to ``histogram`` via
-    :meth:`GPSRLUMEModel.train`), ``@torch.no_grad`` (not ``inference_mode``,
-    which breaks Cheetah's transfer-map cache during ``track``), and unit-sum
-    normalization matching :meth:`LitGPSRLUME._shared_step` so predictions are
-    directly comparable to training loss. The physics -- beam sampling, screen
-    setup, tracking -- lives in :meth:`GPSRLUMEModel.forward`.
+    ``@torch.no_grad`` (not ``inference_mode``, which breaks Cheetah's
+    transfer-map cache during ``track``), and unit-sum normalization matching
+    :meth:`LitGPSRLUME._shared_step` so predictions are directly comparable to
+    training loss. The physics -- beam sampling, screen setup, tracking -- lives
+    in :meth:`GPSRLUMEModel.forward`, and renders the same ``cloud-in-cell``
+    image the fit took gradients through, so a prediction is comparable to the
+    training objective rather than to a differently imaged version of it.
 
     Note that the normalization is
     :func:`gpsr.lume.training.normalize_images_floored`, not plain
@@ -147,7 +148,7 @@ def predict_images(
     Parameters
     ----------
     model : LitGPSRLUME
-        A (typically trained / checkpoint-restored) model. Set to ``eval`` here.
+        A (typically trained / checkpoint-restored) model.
     beamline_settings : dict[str, Tensor]
         Scan parameters keyed by PV name; each tensor's leading dim is n_samples.
     observations_metadata : dict[str, dict]
@@ -176,7 +177,6 @@ def predict_images(
         Predicted images keyed by observation PV. Shape ``(n_samples, W, H)``.
         Normalized to unit sum per image unless ``normalize=False``.
     """
-    model.eval()
     # `or {}` would call bool() on a TensorDict, which raises; test None explicitly.
     beamline_constants = beamline_constants if beamline_constants is not None else {}
     predictions = model.gpsr_lume_model(
@@ -224,7 +224,7 @@ def predict_ensemble_images(
     Parameters
     ----------
     model : LitGPSRLUME
-        A (typically trained / checkpoint-restored) model. Set to ``eval`` here.
+        A (typically trained / checkpoint-restored) model.
     beamline_settings : dict[str, Tensor]
         Scan parameters keyed by PV name; each tensor's leading dim is n_samples.
     observations_metadata : dict[str, dict]
@@ -338,7 +338,7 @@ def predict_multi_source_images(
     Parameters
     ----------
     model : LitGPSRLUME
-        A (typically trained / checkpoint-restored) model. Set to ``eval`` here.
+        A (typically trained / checkpoint-restored) model.
     sources_spec : dict[str, dict]
         Per-source spec keyed by source name; each value is unpacked by
         :func:`_unpack_source` into ``beamline_settings``,
@@ -358,7 +358,6 @@ def predict_multi_source_images(
         Per source: predicted images keyed by observation PV, shape
         ``(n_samples, W, H)``.
     """
-    model.eval()
     if beam is None:
         beam = model.gpsr_lume_model.beam_generator()  # one sample, shared below
     predictions = {}
@@ -395,7 +394,7 @@ def predict_multi_source_ensemble_images(
     Parameters
     ----------
     model : LitGPSRLUME
-        A (typically trained / checkpoint-restored) model. Set to ``eval`` here.
+        A (typically trained / checkpoint-restored) model.
     sources_spec : dict[str, dict]
         Per-source spec keyed by source name (see :func:`_unpack_source` and
         :meth:`GPSRLUMEDataModule.to_sources_spec`).
@@ -414,7 +413,6 @@ def predict_multi_source_ensemble_images(
         Per source: predicted images keyed by observation PV, shape
         ``(n_draws, n_samples, W, H)``.
     """
-    model.eval()
     predictions = {}
     for source_name, source in sources_spec.items():
         settings, metadata, constants = _unpack_source(source_name, source)

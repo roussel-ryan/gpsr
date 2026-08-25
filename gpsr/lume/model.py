@@ -2,7 +2,6 @@ import torch
 from torch import Tensor
 from tensordict import TensorDict
 
-from cheetah.accelerator import Screen
 from cheetah.particles import ParticleBeam
 from gpsr.beams import BeamGenerator
 
@@ -72,21 +71,6 @@ class GPSRLUMEModel(torch.nn.Module):
         # Plain dict, deliberately not a buffer/parameter: it is JSON-pure build
         # provenance for the checkpoint spec, not model state.
         self.accelerator_spec = accelerator_spec
-
-    def train(self, mode: bool = True):
-        """Set training mode and flip screen imaging accordingly.
-
-        Screens use ``kde`` (differentiable) while training and ``histogram``
-        (faster, non-differentiable) during eval. This ties the imaging method
-        to the standard ``nn.Module`` train/eval lifecycle so callers don't need
-        an explicit eval flag on prediction paths.
-        """
-        super().train(mode)
-        method = "kde" if mode else "histogram"
-        for element in self.lume_cheetah_model.simulator.segment.elements:
-            if isinstance(element, Screen):
-                element.method = method
-        return self
 
     def forward(
         self,
@@ -178,9 +162,7 @@ class GPSRLUMEModel(torch.nn.Module):
 
         Note
         ----
-        Only observation type 'screen' is supported as of now. The screen
-        imaging method (``kde`` vs ``histogram``) follows the model's
-        train/eval state -- see :meth:`train`.
+        Only observation type 'screen' is supported as of now.
         """
         for metadata in observations_metadata.values():
             if metadata["type"] == "screen":
@@ -230,7 +212,11 @@ class GPSRLUMEModel(torch.nn.Module):
             screen_element.pixel_size.device
         )  # match the segment's device
         screen_element.pixel_size = pixel_size
-        screen_element.kde_bandwidth = pixel_size.min() / 2
+        # One imaging method, always: `cloud-in-cell` is differentiable, so the same
+        # image the fit takes gradients through is the one prediction reports. Set here
+        # rather than trusted from the lattice, since a `histogram` screen would make
+        # the model silently untrainable.
+        screen_element.method = "cloud-in-cell"
 
         # set resolution in LumeModel PV. `supported_variables` returns a fresh dict
         # each call but the Variable objects themselves are shared, so mutating the
