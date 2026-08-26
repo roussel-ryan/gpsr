@@ -4,7 +4,7 @@ from typing import Callable
 import lightning as L
 import torch
 
-from gpsr.losses import normalize_images
+from gpsr.losses import center_images_on_centroid, normalize_images
 
 from gpsr.lume._imports import import_from_path, to_import_path
 from gpsr.lume.builders import (
@@ -12,27 +12,6 @@ from gpsr.lume.builders import (
     serialize_gpsr_lume_model,
 )
 from gpsr.lume.model import GPSRLUMEModel
-
-# Default reconstruction loss, stored as an import path so it stays JSON-pure in
-# the checkpoint hyperparameters (a bare function object would be pickled).
-# DEFAULT_LOSS = "gpsr.losses.mae_loss"
-DEFAULT_LOSS = "gpsr.lume.training.kl_div_loss"
-
-# Sum of a screen image PV when the whole beam lands on the sensor. Cheetah's
-# `Screen.reading` is normalised to unit total over the pixels, so it sums to
-# exactly the fraction of beam charge that reached the sensor; the virtual
-# accelerator's `ScreenImageVariable` then scales that reading by 65535 to give
-# camera-like counts. An image PV therefore sums to
-# ``IMAGE_FULL_SCALE * on-screen charge fraction``. Override
-# ``LitGPSRLUME(image_full_scale=...)`` if that PV scaling ever changes.
-IMAGE_FULL_SCALE = 65535.0
-
-# On-screen charge fraction below which a predicted image is treated as "the beam
-# missed the sensor" rather than as a dim image -- see
-# :func:`normalize_images_floored`. Predictions are bimodal in practice (either
-# ~1.0 of the charge lands or ~1e-17 does), so anything in (1e-6, 0.5) separates
-# the two; 1% is a wide margin that leaves genuinely clipped beams untouched.
-DEFAULT_ONSCREEN_FLOOR = 1e-2
 
 
 class LitGPSRLUME(L.LightningModule):
@@ -45,6 +24,15 @@ class LitGPSRLUME(L.LightningModule):
     generator-agnostic). Use :meth:`from_spec` for the common "build from a spec"
     path (pair it with :func:`gpsr.lume.builders.model_spec_from_files` to build a
     spec from lattice / name-map JSON files).
+
+    The reconstruction loss is a *training* argument with no library default:
+    ``loss_func`` takes a callable or its dotted import path, and the harness has
+    no opinion on which one you fit with. It stays ``None`` for a model built only
+    to predict (the predictors in :mod:`gpsr.lume.predicting` never score
+    anything); ``training_step`` / ``test_step`` raise if it was never supplied.
+    :func:`gpsr.losses.kl_div_loss` is the usual choice::
+
+        lit = LitGPSRLUME(model, lr=1e-3, loss_func=kl_div_loss)
 
     Checkpointing
     -------------
@@ -73,23 +61,19 @@ class LitGPSRLUME(L.LightningModule):
         self,
         gpsr_lume_model: GPSRLUMEModel,
         lr: float = 1e-3,
-        loss_func: Callable | str = DEFAULT_LOSS,
-        image_full_scale: float = IMAGE_FULL_SCALE,
-        onscreen_floor: float = DEFAULT_ONSCREEN_FLOOR,
+        loss_func: Callable | str | None = None,
     ):
         super().__init__()
         # Store loss_func as an import-path string *before* save_hyperparameters so
         # the checkpoint's hparams stay JSON-pure (a bare function would be pickled,
         # forcing weights_only=False at load). Accepts a callable or a path string.
-        loss_func = to_import_path(loss_func)
+        loss_func = to_import_path(loss_func) if loss_func is not None else None
         # gpsr_lume_model is an injected nn.Module, not a hyperparameter: it cannot
         # be captured by save_hyperparameters and is re-supplied at load.
         self.save_hyperparameters(ignore=["gpsr_lume_model"], logger=False)
         self.gpsr_lume_model = gpsr_lume_model
         self.lr = lr
-        self.loss_func = import_from_path(loss_func)
-        self.image_full_scale = image_full_scale
-        self.onscreen_floor = onscreen_floor
+        self.loss_func = import_from_path(loss_func) if loss_func is not None else None
         # source_info is data metadata, not a hyperparameter; `setup` pulls it from
         # the datamodule so it stays out of the checkpoint.
         self.source_info = None
@@ -250,172 +234,43 @@ class LitGPSRLUME(L.LightningModule):
         -------
         torch.Tensor
             Scalar loss averaged across all observable PVs and all sources.
+
+        Raises
+        ------
+        ValueError
+            If no ``loss_func`` was supplied at construction -- the harness has no
+            default reconstruction loss.
         """
+        if self.loss_func is None:
+            raise ValueError(
+                "No 'loss_func' was supplied, so there is nothing to score this "
+                "batch with. Pass one at construction, e.g. "
+                "LitGPSRLUME(model, loss_func=gpsr.losses.kl_div_loss); it is only "
+                "optional for a model built to predict rather than to fit."
+            )
+
         predictions_by_source = self.gpsr_lume_model.predict_multi_source(
             batch, self.source_info
         )
 
         total_loss = 0.0
-        onscreen = []
         for source_name, predictions in predictions_by_source.items():
             targets = dict(batch[source_name]["observations"])
 
             loss = 0.0
             for pv in targets:
-                # The target is a real camera frame: its own sum *is* the measurement,
-                # so plain self-normalization is right. The prediction is not -- see
-                # normalize_images_floored.
-                normalized_target = normalize_images(targets[pv])
-                centered_target = center_images(normalized_target)
-                normalized_prediction = normalize_images_floored(
-                    predictions[pv], self.image_full_scale, self.onscreen_floor
+                # Both sides are normalized to unit intensity and centered on their
+                # own centroid, so the loss scores distribution shape rather than
+                # brightness or position.
+                centered_target = center_images_on_centroid(
+                    normalize_images(targets[pv])
                 )
-                centered_prediction = center_images(normalized_prediction)
-                # loss += self.loss_func(normalized_target, normalized_prediction)
+                centered_prediction = center_images_on_centroid(
+                    normalize_images(predictions[pv])
+                )
                 loss += self.loss_func(centered_target, centered_prediction)
-                onscreen.append(
-                    predictions[pv].detach().flatten(start_dim=-2).sum(-1).mean()
-                    / self.image_full_scale
-                )
 
             loss /= len(targets)
             total_loss += loss
 
-        total_loss /= len(predictions_by_source)
-        # Logged because a fit can look healthy while quietly parking scan steps off
-        # the sensor; this is the metric that makes that visible.
-        self.log("onscreen_fraction", torch.stack(onscreen).mean(), on_epoch=True)
-        return total_loss
-
-
-def normalize_images_floored(
-    images: torch.Tensor,
-    full_scale: float = IMAGE_FULL_SCALE,
-    floor_fraction: float = DEFAULT_ONSCREEN_FLOOR,
-) -> torch.Tensor:
-    """Normalize *predicted* images without rescaling a beam that missed the sensor.
-
-    ``gpsr.losses.normalize_images`` divides an image by its own sum. That is the
-    right thing for a measured frame, but not for a prediction: when a predicted
-    beam lands entirely off the sensor the image holds only ~1e-17 of the charge
-    (numerically, the far tail of the imaging KDE), and dividing that by its own
-    sum rescales the numerical dust into a smooth unit-mass blob. Under KL that
-    blob scores *better* than an honest fit, so the objective ends up paying the
-    generator to steer scan steps off the sensor -- and every time one drifts back
-    on, the concealed error surfaces as a discrete jump in the loss.
-
-    Flooring the denominator removes the reward without touching the healthy case.
-    A screen image PV sums to ``full_scale`` times the fraction of beam charge that
-    reached the sensor, so:
-
-    - on-screen fraction above ``floor_fraction`` -- the divisor is the image's own
-      sum, exactly as before;
-    - below it -- the divisor stops shrinking, the image stays dark, and the loss
-      charges for the missing intensity that the data says should be there.
-
-    Parameters
-    ----------
-    images : torch.Tensor
-        Predicted images shaped ``(..., W, H)``, in image-PV units.
-    full_scale : float, default=:data:`IMAGE_FULL_SCALE`
-        Sum of an image PV when the entire beam lands on the sensor.
-    floor_fraction : float, default=:data:`DEFAULT_ONSCREEN_FLOOR`
-        On-screen charge fraction below which the beam counts as having missed.
-
-    Returns
-    -------
-    torch.Tensor
-        Images of the same shape. Sums to 1 for an on-sensor beam, and to the
-        on-screen fraction divided by ``floor_fraction`` for a beam that missed.
-    """
-    sums = images.sum(dim=(-1, -2), keepdim=True)
-    return images / sums.clamp_min(floor_fraction * full_scale)
-
-
-def kl_div_loss(target: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
-    """Kullback-Leibler divergence ``KL(target || pred)`` as a scalar loss.
-
-    True signed KL, ``sum_i t_i (log t_i - log p_i)``, summed over the image axes
-    and averaged over the batch -- a drop-in ``loss_func`` for ``_shared_step``
-    (returns a scalar, unlike ``gpsr.losses.kl_div`` which is per-pixel and takes
-    an absolute value). Swap it in via the import path
-    ``"gpsr.lume.training.kl_div_loss"``.
-
-    KL is defined between probability distributions, so ``target`` and ``pred``
-    are expected pre-normalized to unit intensity (``normalize_images`` in
-    ``_shared_step`` does this) -- no further rescaling is needed. The
-    target-weighting (each term scales with ``t_i``) is what makes a small
-    secondary peak carry weight proportional to its share of the beam's mass while
-    the near-zero background contributes ~0 to both loss and gradient. KL is
-    asymmetric: it penalizes *missing* target mass but is lenient about predicted
-    mass where the target is zero.
-
-    Parameters
-    ----------
-    target, pred : torch.Tensor
-        Image tensors of matching shape ``(..., W, H)``, each normalized so the
-        last two axes sum to 1.
-
-    Returns
-    -------
-    torch.Tensor
-        Scalar KL divergence, summed over pixels and averaged over the batch.
-    """
-    eps = 1e-10
-    # target * (log target - log pred), with target as the numerator so background
-    # pixels (target ~ 0) vanish rather than blowing up the log ratio. Sum over the
-    # image axes gives true KL; mean over the batch keeps the scale resolution- and
-    # batch-independent (comparable to an MAE, so lr need not be retuned).
-    per_pixel = target * ((target + eps).log() - (pred + eps).log())
-    return per_pixel.sum(dim=(-1, -2)).mean()
-
-
-def center_images(images: torch.Tensor) -> torch.Tensor:
-    """Shift each image so its intensity centroid sits at the geometric center.
-
-    Differentiable w.r.t. the pixel intensities: the shift is a per-image integer
-    (a cyclic ``roll``, which is just a permutation of pixels, so gradients flow
-    straight through). The shift *amount* is rounded from the centroid and carries
-    no gradient itself; for a sub-pixel, shift-differentiable centering use a
-    Fourier phase shift or ``grid_sample`` instead.
-
-    Wrapping is cyclic (``roll``): intensity pushed off one edge reappears on the
-    opposite edge. That is harmless when the beam is compact and away from the
-    borders, which is the usual case after centering.
-
-    Parameters
-    ----------
-    images : torch.Tensor
-        Image tensor shaped ``(..., W, H)`` (last axis y/rows, second-to-last
-        x/columns -- matching ``gpsr`` conventions). Any number of leading batch dims.
-
-    Returns
-    -------
-    torch.Tensor
-        Images of the same shape, each centered on its own centroid.
-    """
-    *batch_shape, width, height = images.shape
-    flat = images.reshape(-1, width, height)
-    n = flat.shape[0]
-
-    # Centroid (in pixel coordinates) of each image, weighted by intensity.
-    coord_x = torch.arange(width, device=images.device, dtype=images.dtype)
-    coord_y = torch.arange(height, device=images.device, dtype=images.dtype)
-    x_proj = flat.sum(dim=-1)  # (n, W)
-    y_proj = flat.sum(dim=-2)  # (n, H)
-    x_centroid = (x_proj * coord_x).sum(-1) / x_proj.sum(-1).clamp_min(1e-8)
-    y_centroid = (y_proj * coord_y).sum(-1) / y_proj.sum(-1).clamp_min(1e-8)
-
-    # Integer shift that moves each centroid to the geometric center. Detached
-    # from the graph: the shift is a discrete index, not a differentiable value.
-    shift_x = torch.round((width - 1) / 2 - x_centroid).long()  # (n,)
-    shift_y = torch.round((height - 1) / 2 - y_centroid).long()  # (n,)
-
-    # Per-image cyclic roll via gather (torch.roll applies one shift to the whole
-    # tensor; gather lets each image roll by its own amount). rolled[i] = src[i - s].
-    idx_x = (torch.arange(width, device=images.device) - shift_x[:, None]) % width
-    flat = flat.gather(1, idx_x[:, :, None].expand(n, width, height))
-    idx_y = (torch.arange(height, device=images.device) - shift_y[:, None]) % height
-    flat = flat.gather(2, idx_y[:, None, :].expand(n, width, height))
-
-    return flat.reshape(*batch_shape, width, height)
+        return total_loss / len(predictions_by_source)

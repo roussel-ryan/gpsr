@@ -30,7 +30,7 @@ import torch
 
 from cheetah.particles import ParticleBeam
 
-from gpsr.lume.training import normalize_images_floored
+from gpsr.losses import normalize_images
 
 
 def _add_scan_broadcast_axis(beam: ParticleBeam) -> ParticleBeam:
@@ -115,12 +115,11 @@ def predict_images(
     image the fit took gradients through, so a prediction is comparable to the
     training objective rather than to a differently imaged version of it.
 
-    Note that the normalization is
-    :func:`gpsr.lume.training.normalize_images_floored`, not plain
-    ``normalize_images``: a predicted beam that missed the sensor stays dark here
-    instead of having its numerical dust rescaled into a plausible-looking blob.
-    That matters most on this path -- a silently rescaled miss looks like a
-    perfectly reasonable image in an analysis plot.
+    The normalization is :func:`gpsr.losses.normalize_images` -- each image
+    divided by its own sum. Note what that hides: a predicted beam that landed
+    entirely off the sensor holds only numerical dust, and normalizing rescales it
+    into a plausible-looking blob. Read ``normalize=False`` sums if you need to
+    tell a dim image from a miss.
 
     Decoupled from any datamodule: the settings can be a measured scan's *or*
     arbitrary values the model never trained on (e.g. quad strengths between
@@ -166,10 +165,8 @@ def predict_images(
         must not overlap ``beamline_settings``.
     normalize : bool, default=True
         If True, each predicted image is normalized so its pixel intensities sum
-        to 1 (via :func:`gpsr.lume.training.normalize_images_floored`) -- the same
-        normalization :meth:`LitGPSRLUME._shared_step` applies before scoring the
-        loss. Images whose beam missed the sensor are left dark rather than
-        rescaled.
+        to 1 (via :func:`gpsr.losses.normalize_images`) -- the same normalization
+        :meth:`LitGPSRLUME._shared_step` applies before scoring the loss.
 
     Returns
     -------
@@ -185,9 +182,7 @@ def predict_images(
         beam=beam,
     )
     if normalize:
-        predictions = {
-            pv: normalize_images_floored(image) for pv, image in predictions.items()
-        }
+        predictions = {pv: normalize_images(image) for pv, image in predictions.items()}
     return predictions
 
 
@@ -239,7 +234,7 @@ def predict_ensemble_images(
         overlap ``beamline_settings``.
     normalize : bool, default=True
         If True, each predicted image is normalized to unit pixel sum via
-        :func:`gpsr.lume.training.normalize_images_floored`. Slicing the draw dim
+        :func:`gpsr.losses.normalize_images`. Slicing the draw dim
         for chunking is exact because each image is normalized independently.
     chunk_size : int | None, default=None
         If given, the draw dim is tracked in slices of at most ``chunk_size`` draws
