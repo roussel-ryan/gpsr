@@ -10,6 +10,13 @@ def normalize_images(images):
     Normalizes images tensor so that the
     image pixel intensities add up to 1
 
+    An empty image has no sum to normalize by, so it is divided by 1 instead and
+    stays empty. Clamping the divisor at ``finfo.tiny`` would do the same to the
+    *values*, but its gradient is 1/tiny ~ 8.5e37 -- a single multiply from
+    overflowing float32, which turns a predicted beam that missed the sensor into
+    NaN weights. A divisor of 1 keeps that gradient at 1. Images with any
+    intensity at all are unaffected, bit for bit.
+
     Parameters
     ----------
     images: torch.Tensor
@@ -21,7 +28,7 @@ def normalize_images(images):
     """
 
     sums = images.sum(dim=(-1, -2), keepdim=True)
-    return images / sums.clamp_min(torch.finfo(images.dtype).tiny)
+    return images / torch.where(sums > 0, sums, torch.ones_like(sums))
 
 
 def kl_div(target, pred):
