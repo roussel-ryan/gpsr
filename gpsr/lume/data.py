@@ -236,6 +236,22 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         ``source_info`` from this datamodule in its ``setup`` hook (rather than
         through its constructor), so any datamodule paired with ``LitGPSRLUME``
         for ``fit`` *or* ``test`` must expose this attribute.
+
+        It looks like a duplicate of what the datasets already carry, and it is --
+        but by reference, not by copy, and :func:`save_datamodule` writes nothing
+        extra for it. It exists because neither entry can reach the model *through
+        the batch*: both are per-*source* rather than per-sample, and
+        ``observations_metadata`` holds plain Python objects, so
+        :meth:`GPSRLUMEDataset.__getitem__` cannot index them and
+        :meth:`_collate_fn` cannot stack them -- yet ``_shared_step`` needs the
+        metadata to configure the screens it predicts with. Hence a side channel,
+        read once in ``setup``. Exposing it as its own attribute (rather than
+        letting the model reach into :attr:`datasets`) is also what keeps
+        ``LitGPSRLUME`` from naming :class:`GPSRLUMEDataset` at all, so any
+        datamodule that offers this mapping can stand in.
+
+        Derived on access from :attr:`datasets`, so replacing or adding a source
+        after construction is reflected rather than silently stale.
     """
 
     def __init__(
@@ -251,8 +267,23 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         self.num_workers = num_workers
         self.pin_memory = pin_memory
 
-        # Per-source metadata registry, looked up by `LitGPSRLUME` in `setup`.
-        self.source_info = {
+    @property
+    def source_info(self) -> dict[str, dict]:
+        """Per-source metadata registry, looked up by ``LitGPSRLUME`` in ``setup``.
+
+        A side channel, not a copy: the two entries are held by reference to each
+        dataset's own attributes, and neither is per-sample, so neither can ride in
+        the batch (see the class docstring for why that forces this attribute to
+        exist at all).
+
+        Derived on access rather than snapshotted in ``__init__`` so it cannot fall
+        out of step with :attr:`datasets` -- assigning a new source into
+        ``datasets`` used to leave this registry short of it, and ``_shared_step``
+        would then ``KeyError`` on the source its own dataloader had just yielded.
+        Read once per fit, so rebuilding the mapping costs nothing; it holds no
+        state of its own, hence read-only.
+        """
+        return {
             source_name: {
                 "observations_metadata": dataset.observations_metadata,
                 "beamline_constants": dataset.beamline_constants,
@@ -329,9 +360,9 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         """Return this module's per-source data as a ``sources`` spec.
 
         Projects each source into the observation-free mapping the multi-source
-        predictors consume (see ``gpsr.lume.predicting``): ``beamline_settings``
-        come from each dataset, while ``observations_metadata`` and
-        ``beamline_constants`` come from :attr:`source_info`. The measured
+        predictors consume (see ``gpsr.lume.predicting``). All three pieces are read
+        off each dataset, which owns them; :attr:`source_info` is the same two
+        objects by reference, so it is not consulted here. The measured
         ``observations`` are deliberately dropped -- prediction never needs them,
         and they are the heavy part of a dataset -- so predictions can be made at
         arbitrary settings the model never trained on.
@@ -351,12 +382,8 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         return {
             source_name: {
                 "beamline_settings": dataset.data["beamline_settings"],
-                "observations_metadata": self.source_info[source_name][
-                    "observations_metadata"
-                ],
-                "beamline_constants": self.source_info[source_name][
-                    "beamline_constants"
-                ],
+                "observations_metadata": dataset.observations_metadata,
+                "beamline_constants": dataset.beamline_constants,
             }
             for source_name, dataset in self.datasets.items()
         }
