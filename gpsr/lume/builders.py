@@ -272,7 +272,7 @@ def build_generator(generator: dict) -> BeamGenerator:
     return generator_cls.from_config(generator.get("config") or {})
 
 
-def build_accelerator(accelerator: dict, energy: float) -> LUMECheetahModel:
+def build_accelerator_from_spec(accelerator: dict, energy: float) -> LUMECheetahModel:
     """Construct a ``LUMECheetahModel`` from a spec's ``accelerator`` dict.
 
     Resolves ``accelerator["builder"]`` -- a dotted import-path string, or a live
@@ -280,6 +280,12 @@ def build_accelerator(accelerator: dict, energy: float) -> LUMECheetahModel:
     indirection is what keeps the package facility-agnostic: the builder that knows
     how to turn a lattice into per-PV action variables is *named*, never imported
     here (see this module's docstring for the contract).
+
+    Named ``..._from_spec`` because it does not itself build anything: it reads the
+    spec, resolves the address, and delegates. The function it delegates *to* is the
+    real builder, and lives at the facility (e.g. the example's
+    ``example_virtual_accelerator.factory.build_accelerator``) -- keeping the two
+    names distinct is what makes a traceback across this seam readable.
 
     Parameters
     ----------
@@ -306,7 +312,8 @@ def build_gpsr_lume_model(spec: dict) -> GPSRLUMEModel:
     The single model builder: resolves the spec's two addressed constructors. The
     beam generator is built *first* (see :func:`build_generator`) because it owns the
     reference energy, which is then threaded into the accelerator builder (see
-    :func:`build_accelerator`) so both halves share one value by construction.
+    :func:`build_accelerator_from_spec`) so both halves share one value by
+    construction.
     Inverse of :func:`serialize_gpsr_lume_model` (see this module's docstring on the
     normalization their first round-trip applies).
 
@@ -331,7 +338,7 @@ def build_gpsr_lume_model(spec: dict) -> GPSRLUMEModel:
     accelerator = spec["accelerator"]
 
     beam_generator = build_generator(spec["generator"])
-    lume_cheetah_model = build_accelerator(
+    lume_cheetah_model = build_accelerator_from_spec(
         accelerator, energy=float(beam_generator.energy)
     )
 
