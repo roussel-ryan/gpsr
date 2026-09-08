@@ -4,7 +4,7 @@ from typing import Callable
 import lightning as L
 import torch
 
-from gpsr.losses import center_images_on_centroid, normalize_images
+from gpsr.losses import normalize_images
 
 from gpsr.lume._imports import import_from_path, to_import_path
 from gpsr.lume.builders import (
@@ -259,16 +259,16 @@ class LitGPSRLUME(L.LightningModule):
 
             loss = 0.0
             for pv in targets:
-                # Both sides are normalized to unit intensity and centered on their
-                # own centroid, so the loss scores distribution shape rather than
-                # brightness or position.
-                centered_target = center_images_on_centroid(
-                    normalize_images(targets[pv])
+                # Both sides are normalized to unit intensity, so the loss scores
+                # distribution shape rather than brightness. Position is *not*
+                # normalized away: the images are compared where they landed, so a
+                # predicted beam offset from the measured one is penalized. (An
+                # earlier version centered both sides on their own centroid via
+                # `gpsr.losses.center_images_on_centroid`, which made the loss blind
+                # to that offset; the helper is still there if you want it back.)
+                loss += self.loss_func(
+                    normalize_images(targets[pv]), normalize_images(predictions[pv])
                 )
-                centered_prediction = center_images_on_centroid(
-                    normalize_images(predictions[pv])
-                )
-                loss += self.loss_func(centered_target, centered_prediction)
 
             loss /= len(targets)
             total_loss += loss
