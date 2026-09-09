@@ -296,6 +296,7 @@ def _plot_screen_grid(
     draw_overlays=None,
     pcolormesh_kwargs=None,
     title: bool = True,
+    title_prefix: str | None = None,
     figsize: tuple[float, float] | None = None,
 ) -> plt.Figure:
     """Common layout for a per-scan-step grid of filled screen images.
@@ -309,7 +310,8 @@ def _plot_screen_grid(
     :func:`plot_ensemble_images` uses it for the ``band=True`` ensemble band
     and/or the measured ground-truth reference. Pass ``label_values={}`` to
     suppress the per-column titles, or ``title=False`` to suppress the
-    figure suptitle.
+    figure suptitle. ``title_prefix`` is prepended to the suptitle to say which
+    set of images this grid is (the source name, when fanned over sources).
     """
     n_samples = len(fill_images)
     if n_cols is None:
@@ -351,7 +353,9 @@ def _plot_screen_grid(
 
     _label_edge_axes(axes)
     if title:
-        fig.suptitle(observation_key)
+        fig.suptitle(
+            f"{title_prefix} - {observation_key}" if title_prefix else observation_key
+        )
     fig.tight_layout()
     return fig
 
@@ -374,6 +378,11 @@ def _fan_over_sources(
     :func:`plot_multi_source_images` and
     :func:`plot_multi_source_ensemble_images`; ``images_field`` is used only in
     the missing-source error message.
+
+    Each figure's suptitle is prefixed with its source name, since the
+    ``observation_key`` alone is usually identical across sources (the same
+    screen, scanned under different conditions) and would leave the figures
+    indistinguishable.
     """
     figures: dict[str, plt.Figure | None] = {}
     for source_name, source_images in images.items():
@@ -397,7 +406,10 @@ def _fan_over_sources(
             source_images,
             source["observations_metadata"],
             overlay_images=overlay,
-            **plot_kwargs,
+            # Merged (rather than setdefault'd into plot_kwargs) so the prefix is
+            # recomputed per source and an explicit caller-supplied title_prefix
+            # still wins without colliding as a duplicate keyword.
+            **{"title_prefix": source_name, **plot_kwargs},
         )
     return figures
 
@@ -425,6 +437,7 @@ def plot_images(
     x_range: tuple[float, float] | None = None,
     y_range: tuple[float, float] | None = None,
     title: bool = True,
+    title_prefix: str | None = None,
     label_settings: bool = True,
     figsize: tuple[float, float] | None = None,
     pcolormesh_kwargs: dict | None = None,
@@ -532,6 +545,11 @@ def plot_images(
     title : bool
         If True (default), draw the ``observation_key`` as the figure suptitle;
         if False, no suptitle is drawn.
+    title_prefix : str | None
+        Prepended to the suptitle as ``"{title_prefix} - {observation_key}"``, to
+        say which set of images this figure is when several otherwise share one
+        ``observation_key``. :func:`plot_multi_source_images` passes the source
+        name. Ignored when ``title=False``.
     label_settings : bool
         If True (default), draw each image / column's beamline-settings values
         as a per-panel title (subject to ``labels`` and ``beamline_settings``);
@@ -645,6 +663,7 @@ def plot_images(
         draw_overlays=draw_overlays,
         pcolormesh_kwargs=pcolormesh_kwargs,
         title=title,
+        title_prefix=title_prefix,
         figsize=figsize,
     )
 
@@ -671,6 +690,7 @@ def plot_ensemble_images(
     x_range: tuple[float, float] | None = None,
     y_range: tuple[float, float] | None = None,
     title: bool = True,
+    title_prefix: str | None = None,
     label_settings: bool = True,
     figsize: tuple[float, float] | None = None,
     pcolormesh_kwargs: dict | None = None,
@@ -769,6 +789,11 @@ def plot_ensemble_images(
     title : bool
         If True (default), draw the ``observation_key`` as the figure suptitle;
         if False, no suptitle is drawn.
+    title_prefix : str | None
+        Prepended to the suptitle as ``"{title_prefix} - {observation_key}"``, to
+        say which set of images this figure is when several otherwise share one
+        ``observation_key``. :func:`plot_multi_source_ensemble_images` passes the
+        source name. Ignored when ``title=False``.
     label_settings : bool
         If True (default), draw each column's beamline-settings values as a
         per-panel title (subject to ``labels`` and ``beamline_settings``); if
@@ -880,6 +905,7 @@ def plot_ensemble_images(
         draw_overlays=draw_overlays,
         pcolormesh_kwargs=pcolormesh_kwargs,
         title=title,
+        title_prefix=title_prefix,
         figsize=figsize,
     )
 
@@ -919,6 +945,12 @@ def plot_multi_source_images(
     keyed by source name; ``overlay_images`` must cover every source in
     ``images``.
 
+    Each figure's suptitle is its source name followed by the observation key
+    (``"S1_tdc_off - S1:Image:ArrayData"``), since sources typically observe the
+    same screen and the key alone would not say which figure is which. Pass an
+    explicit ``title_prefix`` to override it for every source, or ``title=False``
+    to drop the suptitles altogether.
+
     Parameters
     ----------
     images : dict[str, dict[str, Tensor]]
@@ -940,8 +972,9 @@ def plot_multi_source_images(
         ``n_cols``, ``normalize_each``, ``contours``, ``contour_levels``,
         ``contour_smoothing``, ``white_background``, ``image_cmap``,
         ``contour_cmap``, ``image_alpha``, ``x_range``, ``y_range``,
-        ``title``, ``label_settings``, ``figsize``, ``pcolormesh_kwargs``,
-        ``contour_kwargs``, ``overlay_contour_kwargs``).
+        ``title``, ``title_prefix``, ``label_settings``, ``figsize``,
+        ``pcolormesh_kwargs``, ``contour_kwargs``, ``overlay_contour_kwargs``).
+        ``title_prefix`` defaults to each source's own name.
 
     Returns
     -------
@@ -994,6 +1027,12 @@ def plot_multi_source_ensemble_images(
     by source name; ``overlay_images`` must cover every source in
     ``ensemble_images``.
 
+    Each figure's suptitle is its source name followed by the observation key
+    (``"S1_tdc_off - S1:Image:ArrayData"``), since sources typically observe the
+    same screen and the key alone would not say which figure is which. Pass an
+    explicit ``title_prefix`` to override it for every source, or ``title=False``
+    to drop the suptitles altogether.
+
     Parameters
     ----------
     ensemble_images : dict[str, dict[str, Tensor]]
@@ -1016,8 +1055,9 @@ def plot_multi_source_ensemble_images(
         ``uncertainty_type``, ``confidence_level``, ``contour_levels``,
         ``contour_smoothing``, ``white_background``, ``image_cmap``,
         ``contour_cmap``, ``image_alpha``, ``x_range``, ``y_range``,
-        ``title``, ``label_settings``, ``figsize``, ``pcolormesh_kwargs``,
-        ``contour_kwargs``, ``overlay_contour_kwargs``).
+        ``title``, ``title_prefix``, ``label_settings``, ``figsize``,
+        ``pcolormesh_kwargs``, ``contour_kwargs``, ``overlay_contour_kwargs``).
+        ``title_prefix`` defaults to each source's own name.
 
     Returns
     -------
