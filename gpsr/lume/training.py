@@ -80,6 +80,8 @@ class LitGPSRLUME(L.LightningModule):
 
         # The frozen virtual accelerator's state is stripped at save and re-supplied
         # by injection at load, so allow its keys to be missing from the state_dict.
+        # `on_load_checkpoint` backfills them, so this tolerance is a safety net for
+        # checkpoints written by other versions rather than the everyday path.
         self.strict_loading = False
 
     @classmethod
@@ -213,6 +215,30 @@ class LitGPSRLUME(L.LightningModule):
                 f"load_from_checkpoint(ckpt, gpsr_lume_model=...).",
                 stacklevel=2,
             )
+
+    def on_load_checkpoint(self, checkpoint: dict) -> None:
+        """Backfill the frozen virtual accelerator's stripped state before loading.
+
+        ``on_save_checkpoint`` dropped the ``lume_cheetah_model.*`` subtree, so a
+        checkpoint's ``state_dict`` is missing those keys by construction. The
+        accelerator on *this* instance was already rebuilt from the embedded spec
+        (:meth:`load_self_contained`) or injected by the caller, so its tensors
+        hold the values to keep -- copying them into the incoming ``state_dict``
+        makes the load complete and silences Lightning's "keys that are in the
+        model state dict but not in the checkpoint" warning, which would otherwise
+        list every element parameter on every load.
+
+        Only the frozen subtree is backfilled: a missing or unexpected
+        ``beam_generator.*`` key still surfaces, since that would mean a genuinely
+        mismatched generator.
+        """
+        checkpoint["state_dict"].update(
+            {
+                k: v
+                for k, v in self.state_dict().items()
+                if k.startswith(self._LUME_PREFIX)
+            }
+        )
 
     def _shared_step(self, batch):
         """Compute the multi-source reconstruction loss for one batch.
