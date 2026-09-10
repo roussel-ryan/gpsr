@@ -184,8 +184,9 @@ class EntropyLitGPSR(L.LightningModule, ABC):
         optimizer = torch.optim.Adam(self.gpsr_model.parameters(), lr=self.lr)
         return optimizer
 
+
 class EpochLossPrinter(Callback):
-    """Print the epoch loss every N epochs. """
+    """Print the epoch loss every N epochs."""
 
     def __init__(self, every_n_epochs: int = 100, metric: str = "loss"):
         self.every_n_epochs = every_n_epochs
@@ -198,4 +199,6 @@ class EpochLossPrinter(Callback):
 
         loss = trainer.callback_metrics.get(self.metric)
         loss = "N/A" if loss is None else f"{float(loss):.2e}"
-        print(f"epoch {trainer.current_epoch:>5}/{trainer.max_epochs} | {self.metric}={loss}")
+        print(
+            f"epoch {trainer.current_epoch:>5}/{trainer.max_epochs} | {self.metric}={loss}"
+        )
