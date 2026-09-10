@@ -19,3 +19,5 @@ dev
 *.yaml
 *_dev_*
 *.DS_Store
+.claude/
+AGENTS.md
