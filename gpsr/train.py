@@ -4,7 +4,7 @@ from typing import Callable
 
 import lightning as L
 import torch
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import Callback, ModelCheckpoint
 from lightning.pytorch.loggers import CSVLogger
 from torch import optim
 
@@ -183,3 +183,22 @@ class EntropyLitGPSR(L.LightningModule, ABC):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.gpsr_model.parameters(), lr=self.lr)
         return optimizer
+
+
+class EpochLossPrinter(Callback):
+    """Print the epoch loss every N epochs."""
+
+    def __init__(self, every_n_epochs: int = 100, metric: str = "loss"):
+        self.every_n_epochs = every_n_epochs
+        self.metric = metric
+
+    def on_train_epoch_end(self, trainer, pl_module):
+        is_last = trainer.current_epoch == trainer.max_epochs - 1
+        if trainer.current_epoch % self.every_n_epochs and not is_last:
+            return
+
+        loss = trainer.callback_metrics.get(self.metric)
+        loss = "N/A" if loss is None else f"{float(loss):.2e}"
+        print(
+            f"epoch {trainer.current_epoch:>5}/{trainer.max_epochs} | {self.metric}={loss}"
+        )
