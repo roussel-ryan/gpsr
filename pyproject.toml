@@ -39,9 +39,6 @@ dev = [
   "jupyter",
   "pre-commit"
 ]
-# The gpsr.lume subpackage only. Kept out of the core dependencies so that
-# `import gpsr` never requires a virtual-accelerator stack. Note lume-cheetah
-# requires Python >=3.11, so this extra does not resolve on 3.10.
 lume = [
   "lume-cheetah>=0.1.0",
   "tensordict",
