@@ -285,13 +285,6 @@ class LitGPSRLUME(L.LightningModule):
 
             loss = 0.0
             for pv in targets:
-                # Both sides are normalized to unit intensity, so the loss scores
-                # distribution shape rather than brightness. Position is *not*
-                # normalized away: the images are compared where they landed, so a
-                # predicted beam offset from the measured one is penalized. (An
-                # earlier version centered both sides on their own centroid via
-                # `gpsr.losses.center_images_on_centroid`, which made the loss blind
-                # to that offset; the helper is still there if you want it back.)
                 loss += self.loss_func(
                     normalize_images(targets[pv]), normalize_images(predictions[pv])
                 )
