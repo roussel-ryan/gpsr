@@ -17,7 +17,7 @@ classifiers = [
   "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "lightning>=2,<=2.6.1",
+  "lightning",
   "matplotlib>=3.3.0",
   "cheetah-accelerator>=0.8.0",
   "tensorboard",
