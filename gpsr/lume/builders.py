@@ -359,7 +359,6 @@ def model_spec_from_files(
     cheetah_lattice_path: str,
     name_map_path: str,
     energy: float,
-    *,
     accelerator_builder: str | Callable,
     generator: dict | None = None,
 ) -> dict:

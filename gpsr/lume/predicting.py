@@ -99,7 +99,6 @@ def predict_images(
     model,
     beamline_settings: dict,
     observations_metadata: dict,
-    *,
     beam: ParticleBeam | None = None,
     beamline_constants: dict | None = None,
     normalize: bool = True,
@@ -191,7 +190,6 @@ def predict_ensemble_images(
     model,
     beamline_settings: dict,
     observations_metadata: dict,
-    *,
     beam: ParticleBeam,
     beamline_constants: dict | None = None,
     normalize: bool = True,
@@ -316,7 +314,6 @@ def _unpack_source(source_name: str, source: dict) -> tuple[dict, dict, dict]:
 def predict_multi_source_images(
     model,
     sources_spec: dict[str, dict],
-    *,
     beam: ParticleBeam | None = None,
     normalize: bool = True,
 ) -> dict:
@@ -374,7 +371,6 @@ def predict_multi_source_ensemble_images(
     model,
     sources_spec: dict[str, dict],
     beam: ParticleBeam,
-    *,
     normalize: bool = True,
     chunk_size: int | None = None,
 ) -> dict:

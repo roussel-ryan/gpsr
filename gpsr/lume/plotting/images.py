@@ -90,7 +90,6 @@ def _draw_screen_image(
     x_edges: np.ndarray,
     y_edges: np.ndarray,
     cmap,
-    *,
     vmax: float | None = None,
     white_background: bool = False,
     alpha: float = 1.0,
@@ -247,7 +246,6 @@ def _draw_peak_normalized_contour(
     image: np.ndarray,
     x_centers: np.ndarray,
     y_centers: np.ndarray,
-    *,
     cmap: str,
     levels: list[float],
     linestyle: str,
@@ -284,7 +282,6 @@ def _plot_screen_grid(
     x_edges,
     y_edges,
     cmap,
-    *,
     observation_key,
     label_values,
     n_cols,
@@ -421,7 +418,6 @@ def plot_images(
     beamline_settings: dict[str, Tensor] | TensorDict | None,
     images: dict[str, Tensor] | TensorDict,
     observations_metadata: dict[str, dict],
-    *,
     overlay_images: dict[str, Tensor] | TensorDict | None = None,
     observation_key: str | None = None,
     labels: str | list[str] | None = None,
@@ -672,7 +668,6 @@ def plot_ensemble_images(
     beamline_settings: dict | None,
     ensemble_images: dict,
     observations_metadata: dict,
-    *,
     overlay_images: dict | None = None,
     observation_key: str | None = None,
     labels: str | list[str] | None = None,
@@ -913,7 +908,6 @@ def plot_ensemble_images(
 def plot_multi_source_images(
     images: dict[str, dict],
     sources_spec: dict[str, dict],
-    *,
     overlay_images: dict[str, dict] | None = None,
     **kwargs,
 ) -> dict[str, plt.Figure | None]:
@@ -995,7 +989,6 @@ def plot_multi_source_images(
 def plot_multi_source_ensemble_images(
     ensemble_images: dict[str, dict],
     sources_spec: dict[str, dict],
-    *,
     overlay_images: dict[str, dict] | None = None,
     **kwargs,
 ) -> dict[str, plt.Figure | None]:

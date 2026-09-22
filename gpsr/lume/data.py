@@ -75,7 +75,6 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
         observations: dict[str, Tensor],
         observations_metadata: dict[str, dict],
         n_samples: int | None = None,
-        *,
         beamline_constants: dict[str, Tensor] | None = None,
     ):
         if not isinstance(observations_metadata, dict):
