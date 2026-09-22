@@ -11,6 +11,7 @@ Class                        PV unit         Cheetah attribute
 ``ScreenImageVariable``      counts          ``reading`` [unit total over pixels]
 ===========================  ==============  ===================================
 """
+
 from typing import Union
 
 import torch
