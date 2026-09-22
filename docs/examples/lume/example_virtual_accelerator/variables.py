@@ -1,3 +1,16 @@
+"""Action variables for the example virtual accelerator.
+
+Each class is one unit conversion, and each is a place a real facility can differ:
+
+===========================  ==============  ===================================
+Class                        PV unit         Cheetah attribute
+===========================  ==============  ===================================
+``QuadrupoleBCTRLVariable``  kG              ``k1`` [1/m^2], via rigidity
+``CavityAREQVariable``       MV              ``voltage`` [V]
+``CavityPREQVariable``       degrees         ``phase`` [rad/2pi, i.e. turns]
+``ScreenImageVariable``      counts          ``reading`` [unit total over pixels]
+===========================  ==============  ===================================
+"""
 from typing import Union
 
 import torch

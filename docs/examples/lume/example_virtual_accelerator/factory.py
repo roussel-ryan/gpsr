@@ -1,3 +1,5 @@
+"""Assembly of the example virtual accelerator: lattice + variables -> model."""
+
 import os
 import tempfile
 
