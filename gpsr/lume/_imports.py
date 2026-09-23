@@ -1,11 +1,9 @@
 """Import-path (de)serialization for keeping checkpoints JSON-pure.
 
-A checkpoint should reference a class or function by its dotted import path
-(e.g. ``"gpsr.beams.NNParticleBeamGenerator"``) rather than by pickling the
-object itself -- a stored path is plain JSON, so the checkpoint loads with
-``torch.load(..., weights_only=True)``. These two helpers are the single source
-of truth for that round-trip, shared by ``builders`` (the beam-generator class)
-and ``training`` (the loss function).
+A checkpoint references a class or function by its dotted import path (e.g.
+``"gpsr.beams.NNParticleBeamGenerator"``) rather than pickling the object, so it
+loads with ``torch.load(..., weights_only=True)``. Used by ``builders`` for the
+beam-generator class and ``training`` for the loss function.
 """
 
 import importlib
@@ -25,7 +23,7 @@ def to_import_path(obj) -> str:
 def import_from_path(path: str):
     """Resolve a dotted import path back to the class or function it names.
 
-    Inverse of :func:`to_import_path`. The target module must be importable at
+    Inverse of ``to_import_path``. The target module must be importable at
     load time.
     """
     module_path, _, name = path.rpartition(".")

@@ -1,27 +1,15 @@
-"""
-Prediction: track a beam through the model to get predicted observations.
+"""Track a beam through the model to get predicted observations.
 
-The public entry points mirror the plotting API and form a single/ensemble x
-single-source/multi-source grid:
+Four entry points, over single/ensemble beams x single/multi-source:
 
-- :func:`predict_images` — single beam (sampled from the model's generator),
-  returns ``(n_samples, W, H)`` per PV. Feed to
-  :func:`gpsr.lume.plotting.plot_images`.
-- :func:`predict_ensemble_images` — vectorized ensemble beam, returns
-  ``(n_draws, n_samples, W, H)`` per PV. Feed to
-  :func:`gpsr.lume.plotting.plot_ensemble_images`.
-- :func:`predict_multi_source_images` — single beam shared across sources,
-  returns ``{source_name: {pv: (n_samples, W, H)}}``.
-- :func:`predict_multi_source_ensemble_images` — ensemble beam shared across
-  sources, returns ``{source_name: {pv: (n_draws, n_samples, W, H)}}``.
+- ``predict_images`` -> ``(n_samples, W, H)`` per PV
+- ``predict_ensemble_images`` -> ``(n_draws, n_samples, W, H)`` per PV
+- ``predict_multi_source_images`` -> ``{source: {pv: (n_samples, W, H)}}``
+- ``predict_multi_source_ensemble_images``
+  -> ``{source: {pv: (n_draws, n_samples, W, H)}}``
 
-The multi-source functions take a ``sources`` spec (see :func:`_unpack_source`);
-:meth:`GPSRLUMEDataModule.to_sources_spec` builds one from a datamodule without
-dragging in the (heavy, and here unused) measured observations.
-
-Only screen (image) observations are supported today; this module is the intended
-home for future per-observation-type prediction logic as more observation types
-(e.g. scalar diagnostics) are added.
+The multi-source pair takes a ``sources`` spec from
+``GPSRLUMEDataModule.to_sources_spec``. Only screen observations are supported.
 """
 
 from __future__ import annotations
@@ -36,22 +24,15 @@ from gpsr.losses import normalize_images
 def _add_scan_broadcast_axis(beam: ParticleBeam) -> ParticleBeam:
     """Return a copy of ``beam`` with a size-1 scan-step axis inserted.
 
-    An ensemble beam has particles of shape ``(n_draws, n_particles, 7)`` -- its
-    leading (draw) dim would collide with the settings' leading (scan-step) dim
-    during tracking. Cheetah broadcasts the beam's batch dims against each
-    element's parameter batch dims (e.g. quad ``k1``) aligned from the *right*, so
-    a bare ``(n_draws,)`` beam batch lands on the same axis as the settings'
-    ``(n_samples,)`` -> collision unless one is 1. Inserting a size-1 axis just
-    before the particle dim makes the beam batch ``(n_draws, 1)``, which broadcasts
-    against ``(n_samples,)`` to the outer product ``(n_draws, n_samples)`` -- so a
-    single ``track`` yields per-PV images of shape ``(n_draws, n_samples, W, H)``.
+    Cheetah aligns the beam's batch dims against each element's parameter batch
+    dims from the *right*, so a bare ``(n_draws,)`` beam batch would collide with
+    the settings' ``(n_samples,)``. Making the beam batch ``(n_draws, 1)`` instead
+    broadcasts to the outer product, so one ``track`` yields per-PV images of
+    shape ``(n_draws, n_samples, W, H)``.
 
-    Only the per-particle tensors that actually carry a draw dim get the axis: the
-    ``list_to_beam`` build path stacks only ``particles`` (leaving
+    Only buffers that carry a draw dim get the axis; ``list_to_beam`` leaves
     ``particle_charges`` / ``survival_probabilities`` at ``(n_particles,)``, which
-    already broadcast), while a beam whose buffers were also stacked to
-    ``(n_draws, n_particles)`` needs the axis on them too. The original beam is left
-    untouched; device/dtype/species are preserved by reusing the buffers.
+    already broadcast. The original beam is left untouched.
     """
 
     def _maybe_unsqueeze(buffer):
@@ -71,13 +52,9 @@ def _add_scan_broadcast_axis(beam: ParticleBeam) -> ParticleBeam:
 def _slice_beam_draws(beam: ParticleBeam, start: int, stop: int) -> ParticleBeam:
     """Return a copy of an ensemble ``beam`` restricted to draws ``[start:stop)``.
 
-    Slices along the leading draw dim of the per-particle tensors that carry it.
-    Mirrors :func:`_add_scan_broadcast_axis`: ``particles`` always carries the draw
-    dim; ``particle_charges`` / ``survival_probabilities`` may sit at
-    ``(n_particles,)`` (broadcast across draws -> passed through) or
-    ``(n_draws, n_particles)`` (sliced). ``energy`` / ``s`` / ``species`` do not
-    carry a draw dim in this codebase's ensemble beams and are reused as-is. The
-    original beam is left untouched; device/dtype/species are preserved.
+    ``particles`` always carries the draw dim; ``particle_charges`` /
+    ``survival_probabilities`` are sliced only if they do too. ``energy`` / ``s``
+    / ``species`` never do and are reused as-is.
     """
 
     def _maybe_slice(buffer):
@@ -103,45 +80,26 @@ def predict_images(
     beamline_constants: dict | None = None,
     normalize: bool = True,
 ) -> dict:
-    """Inference wrapper: call the model correctly for prediction.
+    """Predict screen images for a single beam sampled from the model.
 
-    Packages the non-obvious inference gotchas so callers don't repeat them:
-    ``@torch.no_grad`` (not ``inference_mode``, which breaks Cheetah's
-    transfer-map cache during ``track``), and unit-sum normalization matching
-    :meth:`LitGPSRLUME._shared_step` so predictions are directly comparable to
-    training loss. The physics -- beam sampling, screen setup, tracking -- lives
-    in :meth:`GPSRLUMEModel.forward`, and renders the same ``cloud-in-cell``
-    image the fit took gradients through, so a prediction is comparable to the
-    training objective rather than to a differently imaged version of it.
+    Uses ``torch.no_grad`` rather than ``inference_mode``, whose tensors break
+    Cheetah's transfer-map cache during ``track``. The physics lives in
+    ``GPSRLUMEModel.forward``.
 
-    The normalization is :func:`gpsr.losses.normalize_images` -- each image
-    divided by its own sum. Note what that hides: a predicted beam that landed
-    entirely off the sensor holds only numerical dust, and normalizing rescales it
-    into a plausible-looking blob. Read ``normalize=False`` sums if you need to
-    tell a dim image from a miss.
+    Normalization divides each image by its own sum, matching
+    ``LitGPSRLUME._shared_step`` so predictions are comparable to the training
+    loss. Beware what it hides: a beam that landed entirely off the sensor holds
+    only numerical dust, which normalizing rescales into a plausible-looking blob.
+    Read ``normalize=False`` sums to tell a dim image from a miss.
 
-    Decoupled from any datamodule: the settings can be a measured scan's *or*
-    arbitrary values the model never trained on (e.g. quad strengths between
-    scan points).
+    The settings need not come from a datamodule -- arbitrary values the model
+    never trained on work too (e.g. quad strengths between scan points).
 
-    A single entry of a ``sources`` spec (see :func:`_unpack_source`) is exactly
-    this function's per-source arguments, so one source can be predicted by
-    splatting it: ``predict_images(model, **datamodule.to_sources_spec()[name])``.
-
-    The output fills the ``observations`` slot of :func:`gpsr.lume.plotting.plot_images`::
+    The model and setting tensors must already share a device; this bypasses the
+    Trainer, so nothing moves them.
 
         preds = predict_images(model, settings, metadata)
-        plot_images(settings, preds, metadata)             # predicted images alone
-
-        # or overlay predicted (bottom) against measured (top):
-        plot_images(**dataset.to_dict(), overlay_images=preds)
-
-    For ensemble predictions (vectorized beam, leading draw dim) use
-    :func:`predict_ensemble_images` instead.
-
-    The model and setting tensors must already share a device (this bypasses the
-    Trainer, so nothing moves them) -- load eval on CPU; see the device note in
-    AGENTS.md.
+        plot_images(settings, preds, metadata)
 
     Parameters
     ----------
@@ -150,22 +108,16 @@ def predict_images(
     beamline_settings : dict[str, Tensor]
         Scan parameters keyed by PV name; each tensor's leading dim is n_samples.
     observations_metadata : dict[str, dict]
-        Per-observation metadata (``type``, ``shape``, ``pixel_size``, ...) whose
-        keys are the PVs to predict. Passed through to
-        :meth:`GPSRLUMEModel.forward`, which applies the screen configuration.
+        Per-observation metadata (``type``, ``shape``, ``pixel_size``, ...); its
+        keys are the PVs to predict.
     beam : ParticleBeam | None
-        Passed through to :meth:`GPSRLUMEModel.forward`. If ``None``, forward
-        samples one from ``model.gpsr_lume_model.beam_generator()``. Used by
-        :func:`predict_ensemble_images` to inject a pre-built ensemble beam;
-        end-users generally leave this ``None``.
+        If ``None``, one is sampled from the model's generator. Used by
+        ``predict_ensemble_images`` to inject a pre-built ensemble beam.
     beamline_constants : dict[str, Tensor] | None
-        Fixed parameters folded into the settings before tracking (mirrors
-        :meth:`GPSRLUMEModel.predict_multi_source`'s per-source constants). Keys
-        must not overlap ``beamline_settings``.
+        Fixed parameters folded into the settings before tracking. Keys must not
+        overlap ``beamline_settings``.
     normalize : bool, default=True
-        If True, each predicted image is normalized so its pixel intensities sum
-        to 1 (via :func:`gpsr.losses.normalize_images`) -- the same normalization
-        :meth:`LitGPSRLUME._shared_step` applies before scoring the loss.
+        Normalize each image to unit pixel sum.
 
     Returns
     -------
@@ -197,22 +149,11 @@ def predict_ensemble_images(
 ) -> dict:
     """Return predicted screen images for a vectorized ensemble of beams.
 
-    Injects a pre-built vectorized ``ParticleBeam`` (``particles`` of shape
-    ``(n_draws, n_particles, 7)``) and tracks it through the configured
-    accelerator. A size-1 scan-step axis is inserted internally (see
-    :func:`_add_scan_broadcast_axis`) so the draw dim and the settings' scan-step
-    dim form an outer product in a single ``track`` call. The output carries a
-    leading draw dim::
+    Tracks a pre-built ensemble beam, inserting a size-1 scan-step axis so the
+    draw and scan-step dims form an outer product in a single ``track`` call.
 
-        preds = predict_ensemble_images(model, settings, metadata, beam=beam, chunk_size=10)
+        preds = predict_ensemble_images(model, settings, metadata, beam=beam)
         plot_ensemble_images(settings, preds, metadata)
-
-    For single-beam prediction (sampling from the model's generator) use
-    :func:`predict_images` instead.
-
-    ``torch.no_grad`` (not ``inference_mode``) is used because inference tensors
-    break Cheetah's transfer-map caching during ``track``. The model, beam, and
-    setting tensors must already share a device.
 
     Parameters
     ----------
@@ -221,31 +162,25 @@ def predict_ensemble_images(
     beamline_settings : dict[str, Tensor]
         Scan parameters keyed by PV name; each tensor's leading dim is n_samples.
     observations_metadata : dict[str, dict]
-        Per-observation metadata (``type``, ``shape``, ``pixel_size``, ...) used to
-        configure the observable elements. Its keys are the PVs predicted.
+        Per-observation metadata; its keys are the PVs predicted.
     beam : ParticleBeam
-        Vectorized ensemble beam; ``particles`` must have shape
-        ``(n_draws, n_particles, 7)``. The size-1 scan-step broadcast axis is
-        inserted internally.
+        Ensemble beam; ``particles`` must have shape
+        ``(n_draws, n_particles, 7)``.
     beamline_constants : dict[str, Tensor] | None
         Fixed parameters folded into the settings before tracking. Keys must not
         overlap ``beamline_settings``.
     normalize : bool, default=True
-        If True, each predicted image is normalized to unit pixel sum via
-        :func:`gpsr.losses.normalize_images`. Slicing the draw dim
-        for chunking is exact because each image is normalized independently.
+        Normalize each image to unit pixel sum.
     chunk_size : int | None, default=None
-        If given, the draw dim is tracked in slices of at most ``chunk_size`` draws
-        and the per-chunk images are concatenated to the full
-        ``(n_draws, n_samples, W, H)`` result. This caps peak memory at the
-        ``chunk_size x n_samples`` outer product without changing the output.
+        Track the draw dim in slices of at most this many draws, capping peak
+        memory at the ``chunk_size x n_samples`` outer product. Chunking does not
+        change the output, since each image is normalized independently.
 
     Returns
     -------
     dict[str, Tensor]
-        Predicted images keyed by observation PV. Shape
-        ``(n_draws, n_samples, W, H)``. Normalized to unit sum per image unless
-        ``normalize=False``.
+        Predicted images keyed by observation PV, shape
+        ``(n_draws, n_samples, W, H)``.
     """
     beam = _add_scan_broadcast_axis(beam)
 
@@ -281,9 +216,8 @@ def predict_ensemble_images(
 def _unpack_source(source_name: str, source: dict) -> tuple[dict, dict, dict]:
     """Validate one entry of a ``sources`` spec and return its three pieces.
 
-    A ``sources`` spec is a mapping ``{source_name: source}`` where each
-    ``source`` is a dict with keys mirroring :func:`predict_images`'s per-source
-    arguments::
+    A spec is ``{source_name: source}``, where each ``source`` holds
+    ``predict_images``'s per-source arguments:
 
         {
             "beamline_settings": {pv: Tensor},        # required
@@ -291,11 +225,8 @@ def _unpack_source(source_name: str, source: dict) -> tuple[dict, dict, dict]:
             "beamline_constants": {pv: Tensor},       # optional, defaults to {}
         }
 
-    Returns ``(beamline_settings, observations_metadata, beamline_constants)``.
-    Kept deliberately observation-free: unlike a :class:`GPSRLUMEDataset`, a
-    source needs no measured images, so predictions can be made at arbitrary
-    settings the model never trained on (mirrors :func:`predict_images`'s
-    datamodule-decoupled design).
+    A source carries no measured images, so predictions can be made at arbitrary
+    settings the model never trained on.
     """
     missing = {"beamline_settings", "observations_metadata"} - source.keys()
     if missing:
@@ -319,30 +250,22 @@ def predict_multi_source_images(
 ) -> dict:
     """Predict single-beam screen images for every source against one shared beam.
 
-    The multi-source analogue of :func:`predict_images`. Samples a single beam
-    once (or accepts a pre-built one) and tracks *that same beam* through every
-    source, so the reconstruction is jointly consistent across sources -- the
-    same shared-beam semantics as :meth:`GPSRLUMEModel.predict_multi_source`.
-    This is why the loop cannot simply call :func:`predict_images` with
-    ``beam=None`` per source: each such call would sample an *independent* beam
-    and the sources would no longer share a distribution.
+    One beam is sampled once and tracked through every source, so the
+    reconstruction is jointly consistent across them. Calling ``predict_images``
+    per source with ``beam=None`` would instead sample an independent beam each
+    time, and the sources would no longer share a distribution.
 
     Parameters
     ----------
     model : LitGPSRLUME
         A (typically trained / checkpoint-restored) model.
     sources_spec : dict[str, dict]
-        Per-source spec keyed by source name; each value is unpacked by
-        :func:`_unpack_source` into ``beamline_settings``,
-        ``observations_metadata`` and optional ``beamline_constants``. Build one
-        from a datamodule with :meth:`GPSRLUMEDataModule.to_sources_spec`.
+        Per-source spec keyed by source name, as built by
+        ``GPSRLUMEDataModule.to_sources_spec``.
     beam : ParticleBeam | None
-        Beam shared across all sources. If ``None``, one is sampled from
-        ``model.gpsr_lume_model.beam_generator()`` and shared -- so every source
-        is evaluated against the same draw.
+        Beam shared across all sources. If ``None``, one is sampled and shared.
     normalize : bool, default=True
-        Per-image unit-sum normalization, applied per source (see
-        :func:`predict_images`).
+        Normalize each image to unit pixel sum.
 
     Returns
     -------
@@ -376,27 +299,23 @@ def predict_multi_source_ensemble_images(
 ) -> dict:
     """Predict ensemble screen images for every source against one shared beam.
 
-    The multi-source analogue of :func:`predict_ensemble_images`. The single
-    pre-built ensemble ``beam`` is shared across all sources (joint
-    reconstruction); each per-source call re-inserts the size-1 scan-step
-    broadcast axis on its own copy, so sharing the raw beam is safe and
-    ``chunk_size`` behaves exactly as in the single-source case.
+    Each per-source call inserts the scan-step broadcast axis on its own copy, so
+    the raw beam can be shared.
 
     Parameters
     ----------
     model : LitGPSRLUME
         A (typically trained / checkpoint-restored) model.
     sources_spec : dict[str, dict]
-        Per-source spec keyed by source name (see :func:`_unpack_source` and
-        :meth:`GPSRLUMEDataModule.to_sources_spec`).
+        Per-source spec keyed by source name, as built by
+        ``GPSRLUMEDataModule.to_sources_spec``.
     beam : ParticleBeam
-        Vectorized ensemble beam shared across sources; ``particles`` must have
-        shape ``(n_draws, n_particles, 7)``.
+        Ensemble beam shared across sources; ``particles`` must have shape
+        ``(n_draws, n_particles, 7)``.
     normalize : bool, default=True
-        Per-image unit-sum normalization (see :func:`predict_ensemble_images`).
+        Normalize each image to unit pixel sum.
     chunk_size : int | None, default=None
-        Draw-dim chunking, threaded through to :func:`predict_ensemble_images`
-        for each source to cap peak memory without changing the output.
+        Draw-dim chunking, forwarded to ``predict_ensemble_images``.
 
     Returns
     -------

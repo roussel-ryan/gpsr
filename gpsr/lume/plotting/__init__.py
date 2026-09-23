@@ -1,18 +1,8 @@
-"""Plotting for GPSRLUME: screen images and phase-space (corner) distributions.
+"""Plotting for GPSRLUME, driven by plain dicts and beams.
 
-All plotting lives here (not on the dataset/datamodule) and is driven by plain
-dicts / beams. The module is split into two independent halves, re-exported here
-so ``from gpsr.lume.plotting import plot_images`` (and the package-level
-``from gpsr.lume import plot_images``) keep working unchanged:
-
-- :mod:`gpsr.lume.plotting.images` -- screen-image plots (:func:`plot_images`,
-  :func:`plot_ensemble_images`, :func:`plot_multi_source_images`,
-  :func:`plot_multi_source_ensemble_images`).
-- :mod:`gpsr.lume.plotting.distributions` -- phase-space corner plots
-  (:func:`plot_beam_distribution`, :func:`plot_ensemble_distribution`, and the
-  per-panel :func:`plot_1d_distribution` / :func:`plot_2d_distribution`).
-
-The ensemble statistics both halves rely on live in :mod:`gpsr.lume.ensemble`.
+Two independent halves, both re-exported here:
+``gpsr.lume.plotting.images`` for screen images, and
+``gpsr.lume.plotting.distributions`` for phase-space corner plots.
 """
 
 from gpsr.lume.plotting.images import (

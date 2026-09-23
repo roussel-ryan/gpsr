@@ -1,25 +1,11 @@
-"""Screen-image plotting for GPSRLUME.
+"""Screen-image plotting for GPSRLUME, driven by plain dicts and tensors.
 
-One of the two halves of :mod:`gpsr.lume.plotting` (the other,
-:mod:`gpsr.lume.plotting.distributions`, draws phase-space corner plots). All
-plotting is driven by plain dicts / tensors, not by the dataset/datamodule
-classes.
-
-:func:`plot_images` draws one grid of screen images, optionally with a
-peak-normalized contour overlay: either a self-overlay of the same images
-(``contours=True``) or -- when a second image dict is passed via
-``overlay_images`` -- a comparison (e.g. measured vs. predicted) drawn as a
-single row of the reference images with the compared set overlaid as contour
-lines (each image normalized to its own peak, so the two sets stay comparable
-regardless of their absolute scales).
-:func:`plot_ensemble_images` is the ensemble analogue: it takes an
-already-predicted ensemble (from
-:func:`gpsr.lume.predicting.predict_ensemble_images`) and draws the mean image,
-optionally with lower/mean/upper confidence-band contours (``band=True``,
-default).
-:func:`plot_multi_source_images` and :func:`plot_multi_source_ensemble_images`
-fan the two single-source plotters over a sources spec, one figure per source.
-The ensemble statistics they rely on live in :mod:`gpsr.lume.ensemble`.
+``plot_images`` draws one grid of screen images, optionally overlaid with
+peak-normalized contours -- of the same images (``contours=True``) or of a second
+set passed as ``overlay_images``, for a measured-vs-predicted comparison.
+``plot_ensemble_images`` draws the mean of an ensemble, optionally with
+lower/mean/upper confidence-band contours. The two ``plot_multi_source_*``
+wrappers fan those over a sources spec, one figure per source.
 """
 
 from __future__ import annotations
@@ -101,7 +87,7 @@ def _draw_screen_image(
     colormap's white "bad" color) instead of the colormap's low end. ``alpha``
     sets the fill opacity. Shares the pcolormesh / aspect styling used across all
     GPSRLUME image plots. Axis labels are set once per figure by
-    :func:`_label_edge_axes`, not here.
+    ``_label_edge_axes``, not here.
     Note: image is in [x,y] ordering, so it is transposed for pcolormesh (which expects [y,x]).
     """
     if white_background:
@@ -185,7 +171,7 @@ def _resolve_label_values(
 ) -> dict[str, np.ndarray]:
     """One-shot ``{key: per-sample values}`` for column titles.
 
-    Combines :func:`_resolve_label_keys` and :func:`_label_values` -- the
+    Combines ``_resolve_label_keys`` and ``_label_values`` -- the
     two-step call both public image plotters otherwise repeat verbatim.
     """
     return _label_values(
@@ -298,17 +284,11 @@ def _plot_screen_grid(
 ) -> plt.Figure:
     """Common layout for a per-scan-step grid of filled screen images.
 
-    Draws one filled ``pcolormesh`` cell per sample from ``fill_images`` plus
-    optional per-cell contour overlays via the ``draw_overlays(ax, col)``
-    callback. Handles grid geometry, per-column titles, edge labels, axis-range
-    clamps, and figure suptitle. What the callback draws is caller-specific:
-    :func:`plot_images` uses it for the ``contours=True`` self-overlay and/or
-    the ``overlay_images`` comparison pair, and
-    :func:`plot_ensemble_images` uses it for the ``band=True`` ensemble band
-    and/or the measured ground-truth reference. Pass ``label_values={}`` to
-    suppress the per-column titles, or ``title=False`` to suppress the
-    figure suptitle. ``title_prefix`` is prepended to the suptitle to say which
-    set of images this grid is (the source name, when fanned over sources).
+    Draws one filled ``pcolormesh`` cell per sample, plus whatever the
+    ``draw_overlays(ax, col)`` callback adds per cell -- contours for
+    ``plot_images``, the confidence band for ``plot_ensemble_images``. Pass
+    ``label_values={}`` to suppress per-column titles, ``title=False`` for no
+    suptitle.
     """
     n_samples = len(fill_images)
     if n_cols is None:
@@ -367,19 +347,9 @@ def _fan_over_sources(
 ) -> dict[str, plt.Figure | None]:
     """Fan a per-source images dict out to a single-source plotting function.
 
-    Iterates ``images`` (per source), pulls each source's spec from
-    ``sources_spec`` (raising ``KeyError`` if missing), grabs the matching
-    per-source ``overlay_images`` entry when given, and delegates to
-    ``plot_fn(beamline_settings, source_images, observations_metadata,
-    overlay_images=..., **plot_kwargs)``. Shared by
-    :func:`plot_multi_source_images` and
-    :func:`plot_multi_source_ensemble_images`; ``images_field`` is used only in
-    the missing-source error message.
-
-    Each figure's suptitle is prefixed with its source name, since the
-    ``observation_key`` alone is usually identical across sources (the same
-    screen, scanned under different conditions) and would leave the figures
-    indistinguishable.
+    ``images_field`` is used only in the missing-source error message. Each
+    figure's suptitle is prefixed with its source name, since ``observation_key``
+    is usually the same screen across sources.
     """
     figures: dict[str, plt.Figure | None] = {}
     for source_name, source_images in images.items():
@@ -442,32 +412,22 @@ def plot_images(
 ):
     """Plot the images of a 'screen' observation, optionally with contour overlays.
 
-    The three positional arguments mirror the pieces a scan is made of -- the
-    same triple held by :meth:`GPSRLUMEDataset.to_dict` (so a dataset can be
-    splatted in as ``plot_images(**dataset.to_dict())``) and the inputs/output of
-    :func:`gpsr.lume.predicting.predict_images`. Measured and predicted images
-    fill the same ``images`` slot (role-neutral by design -- the plotter does
-    not distinguish measurements from predictions), so a measured-vs-predicted
-    comparison reads directly:
-    ``plot_images(**dataset.to_dict(), overlay_images=preds)``.
+    The three positional arguments are the triple ``GPSRLUMEDataset.to_dict``
+    holds, so a dataset splats straight in and a measured-vs-predicted comparison
+    reads ``plot_images(**dataset.to_dict(), overlay_images=preds)``. Measured and
+    predicted images fill the same ``images`` slot.
 
-    Three drawing modes, all keyed off the fill (``pcolormesh``) of the
-    ``images`` set:
+    Three drawing modes, all over a ``pcolormesh`` fill of the ``images`` set:
 
-    - Default (``overlay_images=None``, ``contours=False``): single grid of the
-      ``images`` set, fill only.
-    - ``contours=True`` (no overlay): same single grid, with each image also
-      drawn as peak-normalized dashed contours on top of its fill.
-    - ``overlay_images`` provided: one row per scan step with the ``images``
-      set filled and ``overlay_images`` overlaid as contour lines on the same
-      axes (after ``gpsr.datasets.QuadScanDataset.plot_data``); each image is
-      normalized to its own peak, so ``normalize_each`` is not needed and is
-      ignored. If ``contours=True`` here too, the reference set is *also* drawn
-      as dashed contours alongside the solid overlay contours.
+    - Default: fill only.
+    - ``contours=True``: each image also drawn as peak-normalized dashed contours.
+    - ``overlay_images`` given: one row per scan step, with the overlay as contour
+      lines on the same axes. Each image is normalized to its own peak, so
+      ``normalize_each`` is ignored.
 
     Linestyle encodes the source dict: dashed = the first-arg ``images`` set
     (reference / reconstruction), solid = the ``overlay_images`` ground-truth
-    set. Same convention used by :func:`plot_ensemble_images`.
+    set. Same convention used by ``plot_ensemble_images``.
 
     Axes are in physical units (mm) using the observation's ``pixel_size``
     metadata and centered on (0, 0). Non-screen observations are skipped.
@@ -507,20 +467,14 @@ def plot_images(
         common vmax is used across all images. Ignored by the overlay comparison,
         which always per-image normalizes.
     contours : bool
-        If True, overlay the ``images`` set as peak-normalized dashed contours
-        on top of the ``pcolormesh`` fill (still dashed when paired with
-        ``overlay_images``, which is then drawn as solid contours -- the
-        linestyle-encodes-source convention). Defaults to False.
-        Uses the ``contour_levels`` / ``contour_smoothing`` / ``contour_cmap``
-        / ``contour_kwargs`` styling knobs.
+        Overlay the ``images`` set as peak-normalized dashed contours on top of the
+        fill. Defaults to False.
     contour_levels : tuple[float, ...]
-        Contour levels for any contour overlay (``contours=True`` and/or the
-        overlay comparison set), as fractions of each image's peak. Defaults
-        to (0.1, 0.5, 0.9).
+        Contour levels as fractions of each image's peak. Defaults to
+        (0.1, 0.5, 0.9).
     contour_smoothing : float | None
-        If given, images are Gaussian-smoothed
-        (``scipy.ndimage.gaussian_filter``) by this sigma before contouring, to
-        tame noisy contours. Applies to every contour path. Defaults to 1.0.
+        Gaussian-smooth by this sigma before contouring, to tame noisy contours.
+        Defaults to 1.0.
     white_background : bool
         If True, masked (zero) pixels are drawn white instead of the colormap's low
         end. Defaults to False.
@@ -542,40 +496,22 @@ def plot_images(
         If True (default), draw the ``observation_key`` as the figure suptitle;
         if False, no suptitle is drawn.
     title_prefix : str | None
-        Prepended to the suptitle as ``"{title_prefix} - {observation_key}"``, to
-        say which set of images this figure is when several otherwise share one
-        ``observation_key``. :func:`plot_multi_source_images` passes the source
-        name. Ignored when ``title=False``.
+        Prepended to the suptitle as ``"{title_prefix} - {observation_key}"``.
+        ``plot_multi_source_images`` passes the source name.
     label_settings : bool
-        If True (default), draw each image / column's beamline-settings values
-        as a per-panel title (subject to ``labels`` and ``beamline_settings``);
-        if False, no per-panel titles are drawn regardless of ``labels`` /
-        ``beamline_settings``.
+        If True (default), title each image / column with its beamline-settings
+        values; if False, draw no per-panel titles.
     figsize : tuple[float, float] | None
         Figure size ``(width, height)`` in inches. If None (default), auto-sized
         as ``(2.5 * n_cols, 4 * n_rows)``.
     pcolormesh_kwargs : dict | None
-        Extra kwargs forwarded to ``Axes.pcolormesh`` for the filled image.
-        Merged over the defaults built from the named styling parameters
-        (``image_cmap``, ``image_alpha``, ``vmax``), so user-supplied keys win --
-        e.g. ``pcolormesh_kwargs={"edgecolors": "k", "linewidth": 0.1}`` draws cell
-        borders, and ``pcolormesh_kwargs={"cmap": "viridis"}`` overrides
-        ``image_cmap``.
+        Extra kwargs for ``Axes.pcolormesh``, merged over the defaults built from
+        ``image_cmap`` / ``image_alpha`` / ``vmax``, so user keys win.
     contour_kwargs : dict | None
-        Extra kwargs forwarded to ``Axes.contour`` for the first-arg ``images``
-        contours (the ``contours=True`` self-overlay and the dashed reference in
-        the comparison mode). Merged over the defaults built from
-        ``contour_cmap`` / ``contour_levels`` / the dashed linestyle, so
-        user-supplied keys win -- e.g. ``contour_kwargs={"linewidths": 2.0}``
-        thickens the reference contours, and
-        ``contour_kwargs={"linestyles": "solid"}`` overrides the default dashed
-        linestyle.
+        Extra kwargs for ``Axes.contour`` on the ``images`` set (dashed), merged
+        over the defaults from ``contour_cmap`` / ``contour_levels``.
     overlay_contour_kwargs : dict | None
-        Extra kwargs forwarded to ``Axes.contour`` for the ``overlay_images``
-        contours (the solid overlay in the comparison mode). Merged over the
-        defaults built from ``contour_cmap`` / ``contour_levels`` / the solid
-        linestyle, so user-supplied keys win. Ignored when no ``overlay_images``
-        is given.
+        The same, for the ``overlay_images`` contours (solid).
 
     Returns
     -------
@@ -694,33 +630,20 @@ def plot_ensemble_images(
 ) -> plt.Figure | None:
     """Plot ensemble predicted screen images: mean fill + confidence-band contours.
 
-    The ensemble analogue of :func:`plot_images`: a pure plotting function that
-    takes an already-predicted ensemble (produce it with
-    :func:`gpsr.lume.predicting.predict_ensemble_images`) rather than a model +
-    beam. Its first three positional arguments mirror ``plot_images`` --
-    ``beamline_settings``, ``ensemble_images`` (the reference set), and
-    ``observations_metadata`` -- and an optional ``overlay_images`` (e.g. the
-    measured images) reads the same way, so the two comparison calls line up::
+    Takes an already-predicted ensemble rather than a model and beam:
 
-        from gpsr.lume.predicting import predict_ensemble_images
         preds = predict_ensemble_images(model, settings, metadata, beam=ensemble_beam)
         plot_ensemble_images(settings, preds, metadata,
                              overlay_images=dataset.data["observations"])
 
-    Each per-PV ensemble prediction is a draw-indexed stack
-    ``(n_draws, n_samples, W, H)``. It is reduced over the draw dim with
-    :func:`gpsr.lume.ensemble.compute_mean_and_bounds`, then one column per scan
-    step is drawn: the mean image filled (``pcolormesh``), and -- when
-    ``band=True`` (default) -- the lower, mean, and upper histograms each
-    overlaid as a dashed contour (three dashed rings per level bracketing the
-    mean, each self-normalized to its own peak) -- mirroring the 3-contour
-    style of :func:`plot_2d_distribution` in :func:`plot_ensemble_distribution`.
-    Pass ``band=False`` to draw only the mean fill. An optional ``overlay_images``
-    (e.g. measured images) is overlaid as solid contours to serve as a
-    ground-truth reference, regardless of ``band``.
+    Each per-PV stack ``(n_draws, n_samples, W, H)`` is reduced over the draw dim
+    with ``compute_mean_and_bounds``, then one column per scan step is drawn: the
+    mean image filled, and -- when ``band=True`` (default) -- the lower, mean and
+    upper histograms each overlaid as a dashed contour, self-normalized to its own
+    peak. ``band=False`` draws only the mean fill. ``overlay_images`` is drawn as
+    solid contours either way.
 
-    Axes are in physical mm (from ``pixel_size``) and styling matches
-    ``plot_images``.
+    Axes are in physical mm (from ``pixel_size``).
 
     Parameters
     ----------
@@ -730,7 +653,7 @@ def plot_ensemble_images(
     ensemble_images : dict[str, Tensor]
         Ensemble predicted images keyed by observation PV, each of shape
         ``(n_draws, n_samples, W, H)`` -- the output of
-        :func:`gpsr.lume.predicting.predict_ensemble_images`.
+        ``predict_ensemble_images``.
     observations_metadata : dict[str, dict]
         Per-observation metadata; the selected key must have ``type == "screen"``
         and a ``pixel_size``.
@@ -754,13 +677,10 @@ def plot_ensemble_images(
         False (default), a common vmax is used across all mean images.
     band : bool
         If True (default), overlay the ensemble band (lower / mean / upper) as
-        dashed peak-normalized contours on top of the mean-image fill; if
-        False, only the mean fill is drawn. The ``overlay_images`` set is drawn
-        as solid contours regardless of this flag. Uses the ``contour_levels``
-        / ``contour_smoothing`` / ``contour_cmap`` / ``contour_kwargs`` styling
-        knobs.
+        dashed peak-normalized contours on the mean fill; if False, draw only the
+        fill. ``overlay_images`` is drawn as solid contours either way.
     uncertainty_type : "percentile" | "std_error"
-        Passed to :func:`gpsr.lume.ensemble.compute_mean_and_bounds`.
+        Passed to ``compute_mean_and_bounds``.
     confidence_level : float
         Confidence level for the band.
     contour_levels : tuple[float, ...]
@@ -785,32 +705,22 @@ def plot_ensemble_images(
         If True (default), draw the ``observation_key`` as the figure suptitle;
         if False, no suptitle is drawn.
     title_prefix : str | None
-        Prepended to the suptitle as ``"{title_prefix} - {observation_key}"``, to
-        say which set of images this figure is when several otherwise share one
-        ``observation_key``. :func:`plot_multi_source_ensemble_images` passes the
-        source name. Ignored when ``title=False``.
+        Prepended to the suptitle as ``"{title_prefix} - {observation_key}"``.
+        ``plot_multi_source_ensemble_images`` passes the source name.
     label_settings : bool
-        If True (default), draw each column's beamline-settings values as a
-        per-panel title (subject to ``labels`` and ``beamline_settings``); if
-        False, no per-panel titles are drawn regardless of ``labels`` /
-        ``beamline_settings``.
+        If True (default), title each column with its beamline-settings values; if
+        False, draw no per-panel titles.
     figsize : tuple[float, float] | None
         Figure size ``(width, height)`` in inches. If None (default), auto-sized
         as ``(2.5 * n_cols, 4 * n_rows)``.
     pcolormesh_kwargs : dict | None
-        Extra kwargs forwarded to ``Axes.pcolormesh`` for the mean-image fill.
-        Merged over the defaults built from ``image_cmap`` / ``image_alpha`` /
-        ``vmax``, so user-supplied keys win.
+        Extra kwargs for ``Axes.pcolormesh``, merged over the defaults built from
+        ``image_cmap`` / ``image_alpha`` / ``vmax``, so user keys win.
     contour_kwargs : dict | None
-        Extra kwargs forwarded to ``Axes.contour`` for the ensemble-band
-        contours (lower / mean / upper, dashed). Merged over the defaults built
-        from ``contour_cmap`` / ``contour_levels`` / the dashed linestyle+alpha,
-        so user-supplied keys win. Ignored when ``band=False``.
+        Extra kwargs for ``Axes.contour`` on the ensemble band (dashed). Ignored
+        when ``band=False``.
     overlay_contour_kwargs : dict | None
-        Extra kwargs forwarded to ``Axes.contour`` for the ``overlay_images``
-        contours (solid). Merged over the defaults built from ``contour_cmap``
-        / ``contour_levels`` / the solid linestyle, so user-supplied keys win.
-        Ignored when no ``overlay_images`` is given.
+        The same, for the ``overlay_images`` contours (solid).
 
     Returns
     -------
@@ -913,68 +823,38 @@ def plot_multi_source_images(
 ) -> dict[str, plt.Figure | None]:
     """Plot single-beam predicted screen images for every source, one figure per source.
 
-    The multi-source analogue of :func:`plot_images`: a pure plotting function
-    that fans an already-predicted single-beam set out over its sources, drawing
-    each with :func:`plot_images` (filled images, with the optional overlay as
-    contours). Its inputs mirror the multi-source predictors and the datamodule
-    projections that feed them, so a predict-then-plot pass reads directly::
-
-        from gpsr.lume.predicting import predict_multi_source_images
-        from gpsr.lume.plotting import plot_multi_source_images
+    Draws each source with ``plot_images``:
 
         spec = dm.to_sources_spec()
         preds = predict_multi_source_images(model, spec, beam=beam)
-        # plot predictions alone:
         plot_multi_source_images(preds, spec)
-        # or compare against the measured images:
-        plot_multi_source_images(
-            preds, spec, overlay_images=dm.to_observations()
-        )
-
-    The overlay is the *only* difference between the two modes: both need
-    ``sources_spec`` for each source's ``observations_metadata`` (the mm
-    extent) and ``beamline_settings`` (column titles); passing ``overlay_images``
-    additionally overlays that set as solid contours (with the first-arg
-    ``images`` set drawn as dashed contours, per :func:`plot_images`). Both are
-    keyed by source name; ``overlay_images`` must cover every source in
-    ``images``.
+        plot_multi_source_images(preds, spec, overlay_images=dm.to_observations())
 
     Each figure's suptitle is its source name followed by the observation key
     (``"S1_tdc_off - S1:Image:ArrayData"``), since sources typically observe the
-    same screen and the key alone would not say which figure is which. Pass an
-    explicit ``title_prefix`` to override it for every source, or ``title=False``
-    to drop the suptitles altogether.
+    same screen. Pass ``title_prefix`` to override it, or ``title=False`` to drop
+    the suptitles.
 
     Parameters
     ----------
     images : dict[str, dict[str, Tensor]]
         Per source, images keyed by observation PV, each of shape
-        ``(n_samples, W, H)`` -- the output of
-        :func:`gpsr.lume.predicting.predict_multi_source_images`.
+        ``(n_samples, W, H)``.
     sources_spec : dict[str, dict]
-        Per-source spec keyed by source name; each value supplies
-        ``beamline_settings`` and ``observations_metadata`` (see
-        :meth:`GPSRLUMEDataModule.to_sources_spec`). Must cover every source in
-        ``images``.
+        Per-source spec supplying each source's ``beamline_settings`` and
+        ``observations_metadata``. Must cover every source in ``images``.
     overlay_images : dict[str, dict[str, Tensor]] | None
-        Optional overlay images per source (e.g. from
-        :meth:`GPSRLUMEDataModule.to_observations`), overlaid as solid contours.
-        If given, must cover every source in ``images``.
+        Optional overlay images per source, drawn as solid contours. If given,
+        must cover every source in ``images``.
     **kwargs
-        Forwarded unchanged to :func:`plot_images` for every source. See its
-        parameter list for the available keys (``observation_key``, ``labels``,
-        ``n_cols``, ``normalize_each``, ``contours``, ``contour_levels``,
-        ``contour_smoothing``, ``white_background``, ``image_cmap``,
-        ``contour_cmap``, ``image_alpha``, ``x_range``, ``y_range``,
-        ``title``, ``title_prefix``, ``label_settings``, ``figsize``,
-        ``pcolormesh_kwargs``, ``contour_kwargs``, ``overlay_contour_kwargs``).
-        ``title_prefix`` defaults to each source's own name.
+        Forwarded to ``plot_images`` for every source. ``title_prefix`` defaults
+        to each source's own name.
 
     Returns
     -------
     dict[str, matplotlib.figure.Figure | None]
         Per source: the created figure, or None if that source's observation is
-        not a screen (mirroring :func:`plot_images`).
+        not a screen.
     """
     return _fan_over_sources(
         plot_images,
@@ -994,69 +874,41 @@ def plot_multi_source_ensemble_images(
 ) -> dict[str, plt.Figure | None]:
     """Plot ensemble predicted screen images for every source, one figure per source.
 
-    The multi-source analogue of :func:`plot_ensemble_images`: a pure plotting
-    function that fans an already-predicted ensemble out over its sources,
-    drawing each with :func:`plot_ensemble_images` (mean fill +
-    confidence-band contours, optional overlay). Its inputs mirror the
-    multi-source predictors and the datamodule projections that feed them, so a
-    predict-then-plot pass reads directly::
-
-        from gpsr.lume.predicting import predict_multi_source_ensemble_images
-        from gpsr.lume.plotting import plot_multi_source_ensemble_images
+    Draws each source with ``plot_ensemble_images`` (mean fill + confidence-band
+    contours):
 
         spec = dm.to_sources_spec()
         preds = predict_multi_source_ensemble_images(model, spec, beam)
-        # plot predictions alone:
         plot_multi_source_ensemble_images(preds, spec)
-        # or compare against the measured images:
         plot_multi_source_ensemble_images(
             preds, spec, overlay_images=dm.to_observations()
         )
 
-    The overlay is the *only* difference between the two modes: both need
-    ``sources_spec`` for each source's ``observations_metadata`` (the mm
-    extent) and ``beamline_settings`` (column titles); passing ``overlay_images``
-    additionally draws that set as solid ground-truth contours. Both are keyed
-    by source name; ``overlay_images`` must cover every source in
-    ``ensemble_images``.
-
     Each figure's suptitle is its source name followed by the observation key
     (``"S1_tdc_off - S1:Image:ArrayData"``), since sources typically observe the
-    same screen and the key alone would not say which figure is which. Pass an
-    explicit ``title_prefix`` to override it for every source, or ``title=False``
-    to drop the suptitles altogether.
+    same screen. Pass ``title_prefix`` to override it, or ``title=False`` to drop
+    the suptitles.
 
     Parameters
     ----------
     ensemble_images : dict[str, dict[str, Tensor]]
         Per source, ensemble predicted images keyed by observation PV, each of
-        shape ``(n_draws, n_samples, W, H)`` -- the output of
-        :func:`gpsr.lume.predicting.predict_multi_source_ensemble_images`.
+        shape ``(n_draws, n_samples, W, H)``.
     sources_spec : dict[str, dict]
-        Per-source spec keyed by source name; each value supplies
-        ``beamline_settings`` and ``observations_metadata`` (see
-        :meth:`GPSRLUMEDataModule.to_sources_spec`). Must cover every source in
-        ``ensemble_images``.
+        Per-source spec supplying each source's ``beamline_settings`` and
+        ``observations_metadata``. Must cover every source in ``ensemble_images``.
     overlay_images : dict[str, dict[str, Tensor]] | None
-        Optional overlay images per source (e.g. from
-        :meth:`GPSRLUMEDataModule.to_observations`), overlaid as solid contours.
-        If given, must cover every source in ``ensemble_images``.
+        Optional overlay images per source, drawn as solid contours. If given,
+        must cover every source in ``ensemble_images``.
     **kwargs
-        Forwarded unchanged to :func:`plot_ensemble_images` for every source.
-        See its parameter list for the available keys (``observation_key``,
-        ``labels``, ``n_cols``, ``normalize_each``, ``band``,
-        ``uncertainty_type``, ``confidence_level``, ``contour_levels``,
-        ``contour_smoothing``, ``white_background``, ``image_cmap``,
-        ``contour_cmap``, ``image_alpha``, ``x_range``, ``y_range``,
-        ``title``, ``title_prefix``, ``label_settings``, ``figsize``,
-        ``pcolormesh_kwargs``, ``contour_kwargs``, ``overlay_contour_kwargs``).
-        ``title_prefix`` defaults to each source's own name.
+        Forwarded to ``plot_ensemble_images`` for every source. ``title_prefix``
+        defaults to each source's own name.
 
     Returns
     -------
     dict[str, matplotlib.figure.Figure | None]
         Per source: the created figure, or None if that source's observation is
-        not a screen (mirroring :func:`plot_ensemble_images`).
+        not a screen.
     """
     return _fan_over_sources(
         plot_ensemble_images,

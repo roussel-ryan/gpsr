@@ -13,9 +13,9 @@ class GPSRLUMEModel(torch.nn.Module):
 
     ``beam_generator`` samples a beam at the reconstruction point (the only
     trainable piece); ``lume_cheetah_model`` tracks it through the lattice to
-    produce observable PVs. Call the model (see :meth:`forward`) with beamline
+    produce observable PVs. Call the model (see ``forward``) with beamline
     settings and observation metadata to predict images; use
-    :meth:`predict_multi_source` for a multi-source batch with a single shared
+    ``predict_multi_source`` for a multi-source batch with a single shared
     beam sample.
 
     Parameters
@@ -27,14 +27,11 @@ class GPSRLUMEModel(torch.nn.Module):
         energy (checked below).
     accelerator_spec : dict, optional
         ``{"builder": <import path>, "config": {...}}`` -- the recipe that produced
-        ``lume_cheetah_model``, recorded as build provenance so
-        :func:`gpsr.lume.builders.serialize_gpsr_lume_model` can round-trip it into a
-        self-contained checkpoint. Set by
-        :func:`gpsr.lume.builders.build_gpsr_lume_model`; ``None`` for a
-        hand-assembled accelerator, which then cannot be serialized. A
-        ``LUMECheetahModel`` is a flat collection of per-PV action variables with no
-        facility-wide mapping object to invert, so the recipe cannot be recovered
-        from the built model.
+        ``lume_cheetah_model``, which ``serialize_gpsr_lume_model`` needs for a
+        self-contained checkpoint. Set by ``build_gpsr_lume_model``; ``None`` for a
+        hand-assembled accelerator, which then cannot be serialized, since a
+        ``LUMECheetahModel`` is a flat collection of per-PV action variables with
+        no mapping object to invert.
     """
 
     def __init__(
@@ -45,14 +42,12 @@ class GPSRLUMEModel(torch.nn.Module):
     ):
         super().__init__()
 
-        # The accelerator converts EPICS magnet settings (BCTRL/BDES) to Cheetah
-        # geometric strengths via magnetic rigidity, which depends on beam energy.
-        # That energy is frozen into `simulator.energies` at construction from the
-        # initial (placeholder) beam, while the beam actually tracked is the
-        # generator's. The two MUST share one reference energy, or every magnet
-        # setting maps to the wrong strength. The spec build path takes the
-        # accelerator's energy *from* the generator, so it cannot disagree; this
-        # guards the direct-injection path, where the two arrive independently.
+        # The accelerator converts EPICS magnet settings to Cheetah geometric
+        # strengths via magnetic rigidity, which depends on the energy frozen into
+        # `simulator.energies` at construction -- while the beam actually tracked is
+        # the generator's. The two must share one reference energy or every magnet
+        # setting maps to the wrong strength. The spec build path threads one value
+        # into both; this guards direct injection, where they arrive independently.
         generator_energy = beam_generator.energy
         accelerator_energy = (
             lume_cheetah_model.simulator.initial_beam_distribution.energy
@@ -68,8 +63,8 @@ class GPSRLUMEModel(torch.nn.Module):
 
         self.lume_cheetah_model = lume_cheetah_model
         self.beam_generator = beam_generator
-        # Plain dict, deliberately not a buffer/parameter: it is JSON-pure build
-        # provenance for the checkpoint spec, not model state.
+        # A plain dict, not a buffer/parameter: JSON-pure build provenance for the
+        # checkpoint spec, not model state.
         self.accelerator_spec = accelerator_spec
 
     def forward(
@@ -87,10 +82,9 @@ class GPSRLUMEModel(torch.nn.Module):
             Beamline settings (e.g. magnet BCTRL/BDES values) to apply before
             tracking.
         observations_metadata : dict
-            Per-observable metadata (see :meth:`_setup_observable_elements`).
-            Keys are the observation PVs to return; the metadata is applied on
-            every call so screen configuration is explicit rather than implicit
-            state the caller must remember to set beforehand.
+            Per-observable metadata (see ``_setup_observable_elements``). Keys are
+            the observation PVs to return; it is applied on every call, so screen
+            configuration is never leftover state from a previous one.
         beam : ParticleBeam | None, default=None
             Reconstruction-point beam to track. If ``None``, samples one from
             ``self.beam_generator()``. Pass the *same* beam across multiple calls
@@ -116,7 +110,7 @@ class GPSRLUMEModel(torch.nn.Module):
         source against that *same* beam (each with its own observation metadata
         and beamline constants) so the reconstruction is jointly consistent
         across sources. This is the entry point trainers should use for
-        multi-source batches; :meth:`forward` handles the single-source case.
+        multi-source batches; ``forward`` handles the single-source case.
 
         Parameters
         ----------
@@ -150,7 +144,7 @@ class GPSRLUMEModel(torch.nn.Module):
     ):
         """Configure observation elements based on metadata.
 
-        Invoked from :meth:`forward` on every prediction call.
+        Invoked from ``forward`` on every prediction call.
 
         Parameters
         ----------
@@ -184,7 +178,7 @@ class GPSRLUMEModel(torch.nn.Module):
     ):
         """Configure a screen element for observation.
 
-        Invoked from :meth:`forward` via :meth:`_setup_observable_elements` on
+        Invoked from ``forward`` via ``_setup_observable_elements`` on
         every prediction call.
 
         Parameters
@@ -198,10 +192,8 @@ class GPSRLUMEModel(torch.nn.Module):
         pixel_size : Tensor
             The physical pixel size of the detector.
         """
-        # The observation's own key is the PV to look up -- no facility-specific PV
-        # naming convention is assumed here. :meth:`forward` already fetches these
-        # keys straight from the LUME model, so a key that is not a supported
-        # variable could not be read back anyway.
+        # The observation's own key is the PV to look up, so no facility-specific
+        # naming convention is assumed here.
         try:
             image_variable = self.lume_cheetah_model.supported_variables[
                 observation_pv_name
@@ -213,9 +205,8 @@ class GPSRLUMEModel(torch.nn.Module):
                 f"'observations_metadata' must be PVs the model supports; it "
                 f"supports {sorted(self.lume_cheetah_model.supported_variables)}."
             ) from None
-        # The image PV's action variable carries the name of the Cheetah element it
-        # reads, so the PV -> element lookup needs no facility-specific mapping
-        # object: `element_name` is declared on lume_cheetah's generic action base.
+        # `element_name` is declared on lume_cheetah's generic action base, so the
+        # PV -> element lookup needs no facility-specific mapping object.
         screen_lattice_name = image_variable.element_name
 
         screen_element = getattr(
@@ -227,14 +218,12 @@ class GPSRLUMEModel(torch.nn.Module):
             screen_element.pixel_size.device
         )  # match the segment's device
         screen_element.pixel_size = pixel_size
-        # One imaging method, always: `cloud-in-cell` is differentiable, so the same
-        # image the fit takes gradients through is the one prediction reports. Set here
-        # rather than trusted from the lattice, since a `histogram` screen would make
-        # the model silently untrainable.
+        # Always `cloud-in-cell`, which is differentiable. Forced here rather than
+        # trusted from the lattice, since a `histogram` screen would make the model
+        # silently untrainable.
         screen_element.method = "cloud-in-cell"
 
-        # set resolution in LumeModel PV. `supported_variables` returns a fresh dict
-        # each call but the Variable objects themselves are shared, so mutating the
-        # shape here does reach the model's registry.
+        # `supported_variables` returns a fresh dict each call, but the Variable
+        # objects are shared, so mutating the shape reaches the model's registry.
         image_variable.shape = tuple(resolution)
         self.lume_cheetah_model.update_state()

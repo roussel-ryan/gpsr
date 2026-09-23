@@ -15,41 +15,21 @@ from gpsr.lume.model import GPSRLUMEModel
 
 
 class LitGPSRLUME(L.LightningModule):
-    """Trains a ``GPSRLUMEModel``: a frozen LUME-Cheetah virtual accelerator plus
-    a trainable beam generator (the only trainable piece).
+    """Trains a ``GPSRLUMEModel``: a frozen virtual accelerator plus a trainable
+    beam generator.
 
-    The model is *injected*, not built here -- ``__init__`` takes an assembled
-    ``GPSRLUMEModel``, so the harness stays decoupled from how it was constructed
-    and never names a concrete ``BeamGenerator`` subclass (it is
-    generator-agnostic). Use :meth:`from_spec` for the common "build from a spec"
-    path (pair it with :func:`gpsr.lume.builders.model_spec_from_files` to build a
-    spec from lattice / name-map JSON files).
+    The model is injected, not built here, so the harness never names a concrete
+    ``BeamGenerator`` subclass. ``from_spec`` builds one from a spec instead.
 
-    The reconstruction loss is a *training* argument with no library default:
-    ``loss_func`` takes a callable or its dotted import path, and the harness has
-    no opinion on which one you fit with. It stays ``None`` for a model built only
-    to predict (the predictors in :mod:`gpsr.lume.predicting` never score
-    anything); ``training_step`` / ``test_step`` raise if it was never supplied.
-    :func:`gpsr.losses.kl_div_loss` is the usual choice::
+    ``loss_func`` has no default and may be ``None`` for a predict-only model;
+    ``training_step`` / ``test_step`` raise if it was never supplied.
 
         lit = LitGPSRLUME(model, lr=1e-3, loss_func=kl_div_loss)
 
-    Checkpointing
-    -------------
-    The injected ``GPSRLUMEModel`` is an ``nn.Module``, not a hyperparameter, so
-    it is not captured by ``save_hyperparameters``. ``on_save_checkpoint`` drops
-    the frozen ``lume_cheetah_model.*`` state (large, transient beam buffers) and
-    embeds the model's construction spec under ``checkpoint[_SPEC_KEY]`` when the
-    generator can describe itself. Two ways to load:
-
-    - **Standalone** -- rebuild from the embedded spec::
-
-          lit = LitGPSRLUME.load_self_contained(ckpt)
-
-    - **Inject** -- supply a (e.g. differently calibrated) model; embedded
-      artifacts are ignored and trained ``beam_generator`` weights are restored::
-
-          lit = LitGPSRLUME.load_from_checkpoint(ckpt, gpsr_lume_model=model)
+    ``on_save_checkpoint`` drops the frozen ``lume_cheetah_model.*`` state and
+    embeds the construction spec, so a checkpoint loads either standalone
+    (``load_self_contained``) or by re-supplying a model
+    (``load_from_checkpoint(ckpt, gpsr_lume_model=model)``).
     """
 
     # Prefix of the fixed virtual accelerator's parameters/buffers within the state_dict.
@@ -64,49 +44,30 @@ class LitGPSRLUME(L.LightningModule):
         loss_func: Callable | str | None = None,
     ):
         super().__init__()
-        # Store loss_func as an import-path string *before* save_hyperparameters so
-        # the checkpoint's hparams stay JSON-pure (a bare function would be pickled,
-        # forcing weights_only=False at load). Accepts a callable or a path string.
+        # Store as an import-path string *before* save_hyperparameters so the
+        # hparams stay JSON-pure; a bare function would be pickled, forcing
+        # weights_only=False at load.
         loss_func = to_import_path(loss_func) if loss_func is not None else None
-        # gpsr_lume_model is an injected nn.Module, not a hyperparameter: it cannot
-        # be captured by save_hyperparameters and is re-supplied at load.
         self.save_hyperparameters(ignore=["gpsr_lume_model"], logger=False)
         self.gpsr_lume_model = gpsr_lume_model
         self.lr = lr
         self.loss_func = import_from_path(loss_func) if loss_func is not None else None
-        # source_info is data metadata, not a hyperparameter; `setup` pulls it from
-        # the datamodule so it stays out of the checkpoint.
-        self.source_info = None
+        self.source_info = None  # `setup` pulls this from the datamodule
 
-        # The frozen virtual accelerator's state is stripped at save and re-supplied
-        # by injection at load, so allow its keys to be missing from the state_dict.
-        # `on_load_checkpoint` backfills them, so this tolerance is a safety net for
-        # checkpoints written by other versions rather than the everyday path.
+        # The frozen accelerator's keys are stripped at save, so tolerate their
+        # absence; `on_load_checkpoint` backfills them on the everyday path.
         self.strict_loading = False
 
     @classmethod
     def from_spec(cls, spec: dict, **kwargs) -> "LitGPSRLUME":
-        """Build a ``LitGPSRLUME`` from a canonical model spec.
+        """Build a ``LitGPSRLUME`` with a fresh (untrained) model from a spec.
 
-        The one convenience constructor: builds a fresh (untrained)
-        ``GPSRLUMEModel`` from the spec via
-        :func:`gpsr.lume.builders.build_gpsr_lume_model`, rather than injecting a
-        pre-calibrated one. The spec is the single representation used everywhere --
-        fresh build, checkpoint embed, and self-contained reload all speak it.
-
-        Build a spec from lattice / name-map JSON files with
-        :func:`gpsr.lume.builders.model_spec_from_files`::
-
-            spec = model_spec_from_files(lattice_path, name_map_path, energy,
-                                         accelerator_builder=BUILDER_IMPORT_PATH,
-                                         generator={"cls": NNParticleBeamGenerator,
-                                                    "config": {"n_particles": 10000}})
-            lit = LitGPSRLUME.from_spec(spec, lr=1e-3)
+        ``model_spec_from_files`` builds a spec from lattice / name-map JSON.
 
         Parameters
         ----------
         spec : dict
-            Canonical spec (see :mod:`gpsr.lume.builders`).
+            Canonical spec (see ``gpsr.lume.builders``).
         **kwargs
             Remaining ``LitGPSRLUME`` arguments (``lr``, ``loss_func``).
         """
@@ -116,9 +77,8 @@ class LitGPSRLUME(L.LightningModule):
     def load_self_contained(cls, checkpoint_path, **kwargs) -> "LitGPSRLUME":
         """Load a self-contained checkpoint, rebuilding the model from its spec.
 
-        Rebuilds the (calibrated) ``GPSRLUMEModel`` from the embedded spec via
-        :func:`build_gpsr_lume_model` and restores the trained ``beam_generator``
-        weights over it -- no externally supplied model needed.
+        Rebuilds the ``GPSRLUMEModel`` from the embedded spec and restores the
+        trained ``beam_generator`` weights over it.
 
         Parameters
         ----------
@@ -155,19 +115,18 @@ class LitGPSRLUME(L.LightningModule):
         )
 
     def training_step(self, batch, batch_idx):
-        """Training step: shared loss, logged as ``loss``."""
         loss = self._shared_step(batch)
         self.log("loss", loss, on_epoch=True)
         return loss
 
     def test_step(self, batch, batch_idx):
-        """Test step: same predict-and-score logic, logged as ``test_loss``.
+        """Score one batch, logged as ``test_loss``.
 
         Run with ``L.Trainer(..., inference_mode=False)``. The default
         ``inference_mode=True`` produces inference tensors that do not track a
-        version counter, which breaks Cheetah's transfer-map caching during the
-        virtual accelerator's ``track``. ``inference_mode=False`` falls back to
-        ``torch.no_grad()``, which still disables autograd without that issue.
+        version counter, which breaks Cheetah's transfer-map caching during
+        ``track``. ``inference_mode=False`` falls back to ``torch.no_grad()``,
+        which still disables autograd without that issue.
         """
         loss = self._shared_step(batch)
         self.log("test_loss", loss)
@@ -180,24 +139,20 @@ class LitGPSRLUME(L.LightningModule):
     def setup(self, stage):
         """Pull per-source data metadata from the Trainer's datamodule.
 
-        ``source_info`` is data metadata, not a hyperparameter, so it is sourced
-        here (for every stage) rather than through ``__init__`` -- keeping it out
-        of the checkpoint. The datamodule passed to ``Trainer.fit``/``Trainer.test``
-        must expose ``source_info`` (``GPSRLUMEDataModule`` does). Bare
-        ``load_from_checkpoint`` (no Trainer) leaves it ``None``.
+        Sourced here rather than in ``__init__`` to keep it out of the checkpoint.
+        The datamodule must expose ``source_info`` (``GPSRLUMEDataModule`` does).
+        Bare ``load_from_checkpoint`` (no Trainer) leaves it ``None``.
         """
         self.source_info = self.trainer.datamodule.source_info
 
     def on_save_checkpoint(self, checkpoint: dict) -> None:
         """Strip the frozen virtual accelerator's state; embed the construction spec.
 
-        Drops the large ``lume_cheetah_model.*`` subtree (transient beam buffers),
-        keeping only trained ``beam_generator.*`` weights, then embeds the model's
-        construction spec under ``checkpoint[_SPEC_KEY]`` so it can be rebuilt
-        standalone (see :meth:`load_self_contained`). A generator that cannot
-        describe itself (``get_config`` raises ``NotImplementedError``) is skipped
-        with a warning -- the checkpoint stays valid but must then be loaded by
-        re-supplying a model.
+        Drops the large ``lume_cheetah_model.*`` subtree, keeping only trained
+        ``beam_generator.*`` weights, then embeds the construction spec under
+        ``checkpoint[_SPEC_KEY]``. A generator whose ``get_config`` raises
+        ``NotImplementedError`` is skipped with a warning: the checkpoint stays
+        valid but must then be loaded by re-supplying a model.
         """
         checkpoint["state_dict"] = {
             k: v
@@ -219,14 +174,11 @@ class LitGPSRLUME(L.LightningModule):
     def on_load_checkpoint(self, checkpoint: dict) -> None:
         """Backfill the frozen virtual accelerator's stripped state before loading.
 
-        ``on_save_checkpoint`` dropped the ``lume_cheetah_model.*`` subtree, so a
-        checkpoint's ``state_dict`` is missing those keys by construction. The
-        accelerator on *this* instance was already rebuilt from the embedded spec
-        (:meth:`load_self_contained`) or injected by the caller, so its tensors
-        hold the values to keep -- copying them into the incoming ``state_dict``
-        makes the load complete and silences Lightning's "keys that are in the
-        model state dict but not in the checkpoint" warning, which would otherwise
-        list every element parameter on every load.
+        ``on_save_checkpoint`` dropped the ``lume_cheetah_model.*`` subtree, so
+        the checkpoint is missing those keys by construction. This instance's
+        accelerator (rebuilt from the spec, or injected) holds the values to keep,
+        so copying them in completes the load and silences Lightning's
+        missing-keys warning, which would otherwise list every element parameter.
 
         Only the frozen subtree is backfilled: a missing or unexpected
         ``beam_generator.*`` key still surfaces, since that would mean a genuinely
@@ -243,12 +195,9 @@ class LitGPSRLUME(L.LightningModule):
     def _shared_step(self, batch):
         """Compute the multi-source reconstruction loss for one batch.
 
-        Delegates prediction to :meth:`GPSRLUMEModel.predict_multi_source`
-        (one shared beam sample, joint reconstruction across sources), then
-        reduces the per-source predictions vs. targets to a single scalar loss,
-        averaged over all observable PVs and all sources. Shared by
-        ``training_step`` and ``test_step`` so train and eval use identical
-        predict-and-score logic; the callers only differ in what they log.
+        Predicts via ``GPSRLUMEModel.predict_multi_source`` (one shared beam
+        sample, joint across sources), then averages the per-PV loss over all
+        observable PVs and all sources.
 
         Parameters
         ----------

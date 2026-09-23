@@ -8,20 +8,9 @@ from tensordict import TensorDict
 import lightning as L
 from lightning.pytorch.utilities.combined_loader import CombinedLoader
 
-#: Marker identifying a file written by :func:`save_dataset`, so that loading
-#: some other ``.pt`` fails with a clear message instead of an obscure error from
-#: inside dataset validation.
 DATASET_FORMAT = "gpsr_lume_dataset"
-#: Layout version of that file. Bump when the ``dataset`` payload changes shape;
-#: :func:`load_dataset` refuses anything newer than it understands.
 DATASET_VERSION = 1
-
-#: Marker identifying a file written by :func:`save_datamodule`. Distinct from
-#: :data:`DATASET_FORMAT` so that a file handed to the wrong loader is redirected to
-#: the right one rather than merely rejected.
 DATAMODULE_FORMAT = "gpsr_lume_datamodule"
-#: Layout version of that file. Bump when the ``sources`` payload changes shape;
-#: :func:`load_datamodule` refuses anything newer than it understands.
 DATAMODULE_VERSION = 1
 
 
@@ -161,9 +150,9 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
 
         The dict has three keys -- ``beamline_settings``, ``images`` and
         ``observations_metadata``. Its keys match the first three (keyword)
-        arguments of :func:`gpsr.lume.plotting.plot_images` (the dataset's
+        arguments of ``plot_images`` (the dataset's
         stored ``observations`` land under the plotter's role-neutral
-        ``images`` slot), so it can be splatted straight in::
+        ``images`` slot), so it can be splatted straight in:
 
             from gpsr.lume.plotting import plot_images
             plot_images(**dataset.to_dict())
@@ -175,12 +164,12 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
         }
 
     def save(self, path) -> None:
-        """Write this dataset to ``path``. See :func:`save_dataset`."""
+        """Write this dataset to ``path``. See ``save_dataset``."""
         save_dataset(self, path)
 
     @classmethod
     def load(cls, path) -> "GPSRLUMEDataset":
-        """Read a dataset from ``path``. See :func:`load_dataset`."""
+        """Read a dataset from ``path``. See ``load_dataset``."""
         return load_dataset(path)
 
 
@@ -189,25 +178,16 @@ class GPSRLUMEDataModule(L.LightningDataModule):
 
     A datamodule carries a *single* set of per-source datasets and exposes them
     two ways: shuffled (``train_dataloader``, for ``Trainer.fit``) and unshuffled
-    (``test_dataloader``, for ``Trainer.test`` and :func:`predict_images`). The
-    "train vs test" distinction is a *role* assigned by which dataloader the
-    Trainer calls -- not two separate dataset pools.
+    (``test_dataloader``, for ``Trainer.test``). "Train vs test" is a role assigned
+    by which dataloader the Trainer calls, not two separate dataset pools -- there
+    is no validation loop, and a held-out set is simply another datamodule.
 
-    This matches the GPSR workflow, where there is no validation loop and train
-    and test data are never consumed in the same Trainer call: you reconstruct a
-    beam by fitting one set of scans, then evaluate -- often that *same* set
-    (reconstructing the training images is the deliverable), or an independently
-    collected held-out set, which is simply another datamodule instance.
-
-    This module standardizes input datasets into a per-source mapping and returns
-    one DataLoader per source. In Lightning, this means ``training_step`` (and
-    ``test_step``) receives a batch dict of the form:
+    One DataLoader is returned per source, so ``training_step`` receives
 
     ``batch[source_name] -> subbatch``
 
-    where each ``subbatch`` is a stacked ``TensorDict`` containing:
-    - ``subbatch["beamline_settings"]``
-    - ``subbatch["observations"]``
+    where each ``subbatch`` is a stacked ``TensorDict`` with keys
+    ``"beamline_settings"`` and ``"observations"``.
 
     Parameters
     ----------
@@ -237,19 +217,19 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         for ``fit`` *or* ``test`` must expose this attribute.
 
         It looks like a duplicate of what the datasets already carry, and it is --
-        but by reference, not by copy, and :func:`save_datamodule` writes nothing
+        but by reference, not by copy, and ``save_datamodule`` writes nothing
         extra for it. It exists because neither entry can reach the model *through
         the batch*: both are per-*source* rather than per-sample, and
         ``observations_metadata`` holds plain Python objects, so
-        :meth:`GPSRLUMEDataset.__getitem__` cannot index them and
-        :meth:`_collate_fn` cannot stack them -- yet ``_shared_step`` needs the
+        ``GPSRLUMEDataset.__getitem__`` cannot index them and
+        ``_collate_fn`` cannot stack them -- yet ``_shared_step`` needs the
         metadata to configure the screens it predicts with. Hence a side channel,
         read once in ``setup``. Exposing it as its own attribute (rather than
-        letting the model reach into :attr:`datasets`) is also what keeps
-        ``LitGPSRLUME`` from naming :class:`GPSRLUMEDataset` at all, so any
+        letting the model reach into ``datasets``) is also what keeps
+        ``LitGPSRLUME`` from naming ``GPSRLUMEDataset`` at all, so any
         datamodule that offers this mapping can stand in.
 
-        Derived on access from :attr:`datasets`, so replacing or adding a source
+        Derived on access from ``datasets``, so replacing or adding a source
         after construction is reflected rather than silently stale.
     """
 
@@ -270,17 +250,13 @@ class GPSRLUMEDataModule(L.LightningDataModule):
     def source_info(self) -> dict[str, dict]:
         """Per-source metadata registry, looked up by ``LitGPSRLUME`` in ``setup``.
 
-        A side channel, not a copy: the two entries are held by reference to each
-        dataset's own attributes, and neither is per-sample, so neither can ride in
-        the batch (see the class docstring for why that forces this attribute to
-        exist at all).
+        Both entries are held by reference to each dataset's own attributes, and
+        neither is per-sample, so neither can ride in the batch.
 
         Derived on access rather than snapshotted in ``__init__`` so it cannot fall
-        out of step with :attr:`datasets` -- assigning a new source into
-        ``datasets`` used to leave this registry short of it, and ``_shared_step``
-        would then ``KeyError`` on the source its own dataloader had just yielded.
-        Read once per fit, so rebuilding the mapping costs nothing; it holds no
-        state of its own, hence read-only.
+        out of step with ``datasets``: a source assigned after construction would
+        otherwise be missing here, and ``_shared_step`` would ``KeyError`` on the
+        source its own dataloader had just yielded.
         """
         return {
             source_name: {
@@ -359,17 +335,9 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         """Return this module's per-source data as a ``sources`` spec.
 
         Projects each source into the observation-free mapping the multi-source
-        predictors consume (see ``gpsr.lume.predicting``). All three pieces are read
-        off each dataset, which owns them; :attr:`source_info` is the same two
-        objects by reference, so it is not consulted here. The measured
-        ``observations`` are deliberately dropped -- prediction never needs them,
-        and they are the heavy part of a dataset -- so predictions can be made at
-        arbitrary settings the model never trained on.
+        predictors consume. The measured ``observations`` are dropped: prediction
+        never needs them, and they are the heavy part of a dataset.
 
-        A per-source projection sibling to :meth:`GPSRLUMEDataset.to_dict`; the
-        returned dict splats straight into the multi-source predictors::
-
-            from gpsr.lume.predicting import predict_multi_source_ensemble_images
             preds = predict_multi_source_ensemble_images(model, dm.to_sources_spec(), beam)
 
         Returns
@@ -390,14 +358,8 @@ class GPSRLUMEDataModule(L.LightningDataModule):
     def to_observations(self) -> dict[str, TensorDict]:
         """Return this module's measured observations, keyed by source name.
 
-        The comparison sibling to :meth:`to_sources_spec`: where that projection
-        deliberately drops the measured images (prediction never needs them),
-        this returns exactly those images, so the two together supply both halves
-        of a measured-vs-predicted plot. Splats into the multi-source plotters as
-        the measured overlay::
+        The images ``to_sources_spec`` drops, for use as the measured overlay:
 
-            from gpsr.lume.plotting import plot_multi_source_ensemble_images
-            preds = predict_multi_source_ensemble_images(model, dm.to_sources_spec(), beam)
             plot_multi_source_ensemble_images(
                 preds, dm.to_sources_spec(), overlay_images=dm.to_observations()
             )
@@ -414,12 +376,12 @@ class GPSRLUMEDataModule(L.LightningDataModule):
         }
 
     def save(self, path) -> None:
-        """Write this module's data to ``path``. See :func:`save_datamodule`."""
+        """Write this module's data to ``path``. See ``save_datamodule``."""
         save_datamodule(self, path)
 
     @classmethod
     def load(cls, path, **datamodule_kwargs) -> "GPSRLUMEDataModule":
-        """Read a datamodule from ``path``. See :func:`load_datamodule`."""
+        """Read a datamodule from ``path``. See ``load_datamodule``."""
         return load_datamodule(path, **datamodule_kwargs)
 
     def __repr__(self):
@@ -446,12 +408,10 @@ class GPSRLUMEDataModule(L.LightningDataModule):
 def _dataset_to_dict(dataset: GPSRLUMEDataset) -> dict:
     """Return ``dataset``'s contents as ``GPSRLUMEDataset`` constructor kwargs.
 
-    The faithful counterpart to :meth:`GPSRLUMEDataset.to_dict`, which is shaped
-    for the plotters instead (it renames ``observations`` to ``images`` and drops
-    ``beamline_constants``, so it cannot round-trip). Every key here is a
-    constructor parameter, so ``GPSRLUMEDataset(**_dataset_to_dict(ds))``
-    reconstructs it -- that is the whole contract, and why the on-disk payload is
-    worth reading as documentation of what a source consists of.
+    Every key is a constructor parameter, so
+    ``GPSRLUMEDataset(**_dataset_to_dict(ds))`` reconstructs it. Unlike
+    ``GPSRLUMEDataset.to_dict``, which is shaped for the plotters and cannot
+    round-trip.
 
     ``TensorDict.to_dict`` unwraps the stored batched TensorDicts into plain dicts
     of tensors, which is what makes the result loadable under
@@ -470,9 +430,9 @@ def _dataset_to_dict(dataset: GPSRLUMEDataset) -> dict:
     }
 
 
-#: The formats this module writes, mapped to the function that reads each. Used to
-#: redirect a file handed to the wrong loader -- the two are easy to confuse, since
-#: both are ``.pt`` files holding scan data.
+# The formats this module writes, mapped to the function that reads each. Used to
+# redirect a file handed to the wrong loader -- the two are easy to confuse, since
+# both are ``.pt`` files holding scan data.
 _FORMAT_READERS = {
     DATASET_FORMAT: "load_dataset",
     DATAMODULE_FORMAT: "load_datamodule",
@@ -482,7 +442,7 @@ _FORMAT_READERS = {
 def _load_envelope(path, expected_format: str, current_version: int, what: str) -> dict:
     """Read and validate one of this module's format/version envelopes.
 
-    Shared by :func:`load_dataset` and :func:`load_datamodule`; returns the raw
+    Shared by ``load_dataset`` and ``load_datamodule``; returns the raw
     dict, leaving the caller to interpret its payload.
 
     Raises
@@ -539,24 +499,17 @@ def _load_envelope(path, expected_format: str, current_version: int, what: str) 
 
 
 def save_dataset(dataset: GPSRLUMEDataset, path) -> None:
-    """Save a single :class:`GPSRLUMEDataset` -- one scan -- to ``path``.
+    """Save a single ``GPSRLUMEDataset`` -- one scan -- to ``path``.
 
-    The one-source counterpart to :func:`save_datamodule`, and written the same
-    way: the *data* under a format/version envelope, not a pickle of the object, so
-    it loads with ``weights_only=True`` (see that function for why that matters).
-
-    One file per scan is how scans are usually collected -- a quadrupole sweep on
-    one screen at a time -- so this is the natural unit to write during a
-    measurement and to hand to a collaborator. The set of them becomes a
-    :class:`GPSRLUMEDataModule` at load time::
+    Writes the *data* under a format/version envelope rather than a pickle of the
+    object, so it loads with ``weights_only=True``. One file per scan is how scans
+    are usually collected, and a set of them becomes a datamodule at load time:
 
         datasets = {p.stem: GPSRLUMEDataset.load(p) for p in sorted(dir.glob("*.pt"))}
         datamodule = GPSRLUMEDataModule(datasets)
 
-    The dataset's *source name* is deliberately not stored: a lone scan has no
-    source name, only a place in whatever set it is later loaded into. The file name
-    is the obvious carrier, as above. Use :func:`save_datamodule` when the naming
-    matters enough to be part of the payload.
+    The source name is not stored -- a lone scan has none, and the file name is the
+    natural carrier. Use ``save_datamodule`` to make the naming part of the payload.
 
     Parameters
     ----------
@@ -581,9 +534,9 @@ def save_dataset(dataset: GPSRLUMEDataset, path) -> None:
 
 
 def load_dataset(path) -> GPSRLUMEDataset:
-    """Load a :class:`GPSRLUMEDataset` written by :func:`save_dataset`.
+    """Load a ``GPSRLUMEDataset`` written by ``save_dataset``.
 
-    The file's ``dataset`` payload is splatted into :class:`GPSRLUMEDataset`, so the
+    The file's ``dataset`` payload is splatted into ``GPSRLUMEDataset``, so the
     dataset's own validation (observation and metadata keys must agree, screen
     ``shape`` must match the image dims) runs on load -- a malformed file is
     rejected here rather than at the first training step.
@@ -591,7 +544,7 @@ def load_dataset(path) -> GPSRLUMEDataset:
     Parameters
     ----------
     path : str | os.PathLike
-        A file written by :func:`save_dataset`.
+        A file written by ``save_dataset``.
 
     Returns
     -------
@@ -602,27 +555,23 @@ def load_dataset(path) -> GPSRLUMEDataset:
     ValueError
         If ``path`` does not hold a dataset file, or holds a newer layout version
         than this ``gpsr.lume`` understands. A whole-datamodule file is reported as
-        such, pointing at :func:`load_datamodule`.
+        such, pointing at ``load_datamodule``.
     """
     raw = _load_envelope(path, DATASET_FORMAT, DATASET_VERSION, "dataset")
     return GPSRLUMEDataset(**raw["dataset"])
 
 
 def save_datamodule(datamodule: GPSRLUMEDataModule, path) -> None:
-    """Save a :class:`GPSRLUMEDataModule`'s data to ``path``.
+    """Save a ``GPSRLUMEDataModule``'s data to ``path``.
 
-    Writes the *data*, not the object: a dict of plain tensors, strings and
-    numbers under a format/version envelope. Deliberately not a pickle of the
-    datamodule -- that would embed ``gpsr.lume.data.GPSRLUMEDataModule`` as a
-    module path, so the file would only load where that import resolves
-    identically, would rot on any class rename, and would force
-    ``weights_only=False`` on whoever read it. What lands here instead loads with
-    ``weights_only=True`` and is readable by anything that can read a dict.
+    Writes the *data*, not the object: a dict of plain tensors, strings and numbers
+    under a format/version envelope. A pickle of the datamodule would embed the
+    class's module path, so the file would rot on any rename and would force
+    ``weights_only=False`` on whoever read it.
 
-    The loader knobs (``batch_size``, ``num_workers``, ``pin_memory``) are *not*
-    saved: they describe how to iterate the data, not the data itself. Pass them
-    to :func:`load_datamodule`, which is why a save/load round trip restores the
-    datasets exactly but resets those three to their defaults.
+    The loader knobs (``batch_size``, ``num_workers``, ``pin_memory``) are not
+    saved, since they describe how to iterate the data rather than the data itself.
+    Pass them to ``load_datamodule``; a round trip resets them to their defaults.
 
     Parameters
     ----------
@@ -651,10 +600,10 @@ def save_datamodule(datamodule: GPSRLUMEDataModule, path) -> None:
 
 
 def load_datamodule(path, **datamodule_kwargs) -> GPSRLUMEDataModule:
-    """Load a :class:`GPSRLUMEDataModule` written by :func:`save_datamodule`.
+    """Load a ``GPSRLUMEDataModule`` written by ``save_datamodule``.
 
     Each entry of the file's ``sources`` mapping is splatted into
-    :class:`GPSRLUMEDataset`, so the dataset's own validation (observation and
+    ``GPSRLUMEDataset``, so the dataset's own validation (observation and
     metadata keys must agree, screen ``shape`` must match the image dims) runs on
     load -- a malformed file is rejected here rather than at the first training
     step.
@@ -662,9 +611,9 @@ def load_datamodule(path, **datamodule_kwargs) -> GPSRLUMEDataModule:
     Parameters
     ----------
     path : str | os.PathLike
-        A file written by :func:`save_datamodule`.
+        A file written by ``save_datamodule``.
     **datamodule_kwargs
-        Passed to :class:`GPSRLUMEDataModule` (``batch_size``, ``num_workers``,
+        Passed to ``GPSRLUMEDataModule`` (``batch_size``, ``num_workers``,
         ``pin_memory``), which the file does not carry.
 
     Returns
@@ -676,7 +625,7 @@ def load_datamodule(path, **datamodule_kwargs) -> GPSRLUMEDataModule:
     ValueError
         If ``path`` does not hold a datamodule file, or holds a newer layout
         version than this ``gpsr.lume`` understands. A single-scan file is reported
-        as such, pointing at :func:`load_dataset`.
+        as such, pointing at ``load_dataset``.
     """
     raw = _load_envelope(path, DATAMODULE_FORMAT, DATAMODULE_VERSION, "datamodule")
     datasets = {

@@ -1,27 +1,17 @@
 """GPSRLUME: Phase-space reconstruction with GPSR + a frozen LUME-Cheetah
 virtual accelerator.
 
-This ``__init__`` curates the package's public API so callers can import the
-common entry points directly from ``gpsr.lume`` (e.g.
-``from gpsr.lume import LitGPSRLUME, predict_images``) rather than reaching into
-submodules. Names not re-exported here (``gpsr.lume._imports``, the low-level
-histogram / Gaussian-kernel helpers in :mod:`gpsr.lume.ensemble`) are internal
-and may move; import them from their submodule if you need them.
+Names not re-exported here are internal and may move.
 
 The typical flow, module by module:
 
-- :mod:`gpsr.lume.data` -- wrap a scan in :class:`GPSRLUMEDataset` /
-  :class:`GPSRLUMEDataModule`; persist one as plain tensors with
-  :func:`save_dataset` / :func:`load_dataset` (one scan per file) or
-  :func:`save_datamodule` / :func:`load_datamodule` (a whole set in one).
-- :mod:`gpsr.lume.builders` -- assemble a :class:`GPSRLUMEModel` from a JSON-pure
-  spec (:func:`model_spec_from_files` -> :func:`build_gpsr_lume_model`).
-- :mod:`gpsr.lume.training` -- fit / checkpoint via :class:`LitGPSRLUME`.
-- :mod:`gpsr.lume.predicting` -- track a beam to predicted images
-  (:func:`predict_images` and its ensemble / multi-source variants).
-- :mod:`gpsr.lume.ensemble` -- build an ensemble beam (:func:`list_to_beam`) and
-  reduce ensembles to mean + confidence bands.
-- :mod:`gpsr.lume.plotting` -- screen-image and phase-space (corner) plots.
+- ``data`` -- wrap a scan in ``GPSRLUMEDataset`` / ``GPSRLUMEDataModule``, and
+  persist it as plain tensors (``save_dataset`` / ``save_datamodule``).
+- ``builders`` -- assemble a ``GPSRLUMEModel`` from a JSON-pure spec.
+- ``training`` -- fit and checkpoint via ``LitGPSRLUME``.
+- ``predicting`` -- track a beam to predicted images.
+- ``ensemble`` -- build an ensemble beam and reduce it to mean + bands.
+- ``plotting`` -- screen-image and phase-space plots.
 """
 
 from gpsr.lume.data import (

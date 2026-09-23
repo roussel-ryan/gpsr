@@ -1,15 +1,10 @@
 """Phase-space (corner) distribution plotting for GPSRLUME.
 
-One of the two halves of :mod:`gpsr.lume.plotting` (the other,
-:mod:`gpsr.lume.plotting.images`, draws screen images). Ported from Cheetah's
-``particle_beam.py`` as free functions.
-
-:func:`plot_ensemble_distribution` and :func:`plot_beam_distribution` draw
-triangle / corner plots of a Cheetah ``ParticleBeam`` -- 1D histograms on the
-diagonal, 2D projections in the lower triangle -- for an ensemble (mean +
-confidence bands) or a single beam (plain histograms, single contours),
-respectively. The ensemble statistics they rely on live in
-:mod:`gpsr.lume.ensemble`.
+``plot_ensemble_distribution`` and ``plot_beam_distribution`` draw corner plots of
+a Cheetah ``ParticleBeam`` -- 1D histograms on the diagonal, 2D projections in the
+lower triangle -- for an ensemble (mean + confidence bands) or a single beam
+(plain histograms) respectively. Ported from Cheetah's ``particle_beam.py`` as
+free functions.
 """
 
 from __future__ import annotations
@@ -184,7 +179,7 @@ def plot_1d_distribution(
     smoothing : float
         Sigma of a Gaussian kernel applied to the histogram.
     uncertainty_type : "percentile" | "std_error"
-        Passed to :func:`gpsr.lume.ensemble.compute_statistics_1d`.
+        Passed to ``compute_statistics_1d``.
     confidence_level : float
         Confidence level for the band.
     plot_kwargs : dict | None
@@ -286,7 +281,7 @@ def plot_2d_distribution(
     contour_smoothing : float
         Sigma applied to contour data (after ``histogram_smoothing``).
     uncertainty_type : "percentile" | "std_error"
-        Passed to :func:`gpsr.lume.ensemble.compute_statistics_2d`.
+        Passed to ``compute_statistics_2d``.
     confidence_level : float
         Confidence level for the bands.
     image_cmap : str
@@ -414,15 +409,11 @@ def _corner_plot(
 ) -> tuple[plt.Figure, np.ndarray]:
     """Shared triangle / corner-plot scaffolding for single-beam and ensemble beams.
 
-    Lays out the ``(N, N)`` grid -- 1D histograms on the diagonal, 2D histograms
-    in the lower triangle, upper triangle hidden -- and delegates each panel to
-    :func:`plot_1d_distribution` / :func:`plot_2d_distribution`. Those functions
-    auto-detect whether the beam is ensemble-vectorized (draws indexed by a leading
-    dim -> mean histogram plus confidence band / bounds contours) or a single beam
-    (``particles`` of shape ``(n_particles, 7)`` -> a plain histogram with single
-    contours and no bounds). Ensemble-only options (``uncertainty_type``,
-    ``confidence_level``) are threaded in via ``plot_1d_kwargs`` / ``plot_2d_kwargs`` by
-    the caller, so this helper stays agnostic to them.
+    Lays out the ``(N, N)`` grid -- 1D histograms on the diagonal, 2D in the lower
+    triangle, upper triangle hidden -- and delegates each panel to
+    ``plot_1d_distribution`` / ``plot_2d_distribution``, which auto-detect whether
+    the beam is ensemble-vectorized. Ensemble-only options are threaded in by the
+    caller via ``plot_1d_kwargs`` / ``plot_2d_kwargs``, so this stays agnostic.
     """
     if axs is None:
         fig, axs = plt.subplots(
@@ -511,13 +502,11 @@ def plot_ensemble_distribution(
 ) -> tuple[plt.Figure, np.ndarray]:
     """Corner / triangle plot of 1D and 2D projections for a beam ensemble.
 
-    The diagonal shows mean 1D histograms with confidence bands; the lower
-    triangle shows mean 2D histograms with lower / mean / upper contours. When the
-    beam is vectorized (multiple draws), uncertainty is estimated across the
-    leading (draw) dimension -- e.g. across the 16 beams of a ``(16, 100000, 7)``
-    ensemble. For a single beam (``particles`` of shape ``(n_particles, 7)``), use
-    :func:`plot_beam_distribution`, which draws plain histograms with single
-    contours and no bands.
+    The diagonal shows mean 1D histograms with confidence bands; the lower triangle
+    shows mean 2D histograms with lower / mean / upper contours. Uncertainty is
+    estimated across the leading (draw) dim -- e.g. the 16 beams of a
+    ``(16, 100000, 7)`` ensemble. For a single beam use
+    ``plot_beam_distribution``.
 
     Parameters
     ----------
@@ -533,8 +522,8 @@ def plot_ensemble_distribution(
         range across spatial dims and another across unitless dims; a single
         ``(min, max)`` applies to all; a list gives one pair per dimension.
     uncertainty_type : "percentile" | "std_error"
-        Passed to :func:`gpsr.lume.ensemble.compute_statistics_1d` /
-        :func:`gpsr.lume.ensemble.compute_statistics_2d`.
+        Passed to ``compute_statistics_1d`` /
+        ``compute_statistics_2d``.
     confidence_level : float
         Confidence level for the bands.
     image_cmap : str
@@ -544,9 +533,9 @@ def plot_ensemble_distribution(
         Colormap for the contour lines on the off-diagonal panels. Defaults to
         ``"plasma"``. Overridden by ``plot_2d_kwargs["contour_cmap"]`` if given.
     plot_1d_kwargs : dict | None
-        Extra kwargs forwarded to :func:`plot_1d_distribution`.
+        Extra kwargs forwarded to ``plot_1d_distribution``.
     plot_2d_kwargs : dict | None
-        Extra kwargs forwarded to :func:`plot_2d_distribution`.
+        Extra kwargs forwarded to ``plot_2d_distribution``.
     axs : np.ndarray | None
         Optional pre-made ``(N, N)`` Axes array.
 
@@ -591,17 +580,10 @@ def plot_beam_distribution(
 ) -> tuple[plt.Figure, np.ndarray]:
     """Corner / triangle plot of 1D and 2D projections for a single beam.
 
-    The single-beam analogue of :func:`plot_ensemble_distribution`: same layout
-    (1D histograms on the diagonal, 2D histograms in the lower triangle), but for a
-    beam with ``particles`` of shape ``(n_particles, 7)``. Because there is only one
-    draw, there is no uncertainty to estimate -- the diagonal shows plain 1D
-    histograms (no confidence band) and each off-diagonal panel shows a single set
-    of contours (one line per level) rather than the lower / mean / upper triplet.
-
-    This just calls the shared corner-plot scaffolding without any uncertainty
-    options; :func:`plot_1d_distribution` / :func:`plot_2d_distribution` already
-    fall back to single-beam rendering when the per-dimension accessor returns a 1D
-    ``(n_particles,)`` tensor.
+    Same layout as ``plot_ensemble_distribution``, but for ``particles`` of shape
+    ``(n_particles, 7)``. With only one draw there is no uncertainty to estimate, so
+    the diagonal shows plain histograms and each off-diagonal panel a single set of
+    contours rather than the lower / mean / upper triplet.
 
     Parameters
     ----------
@@ -614,7 +596,7 @@ def plot_beam_distribution(
     bins : int
         Number of bins for both 1D and 2D histograms.
     bin_ranges : "unit_same" | tuple[float, float] | list[tuple[float, float]] | None
-        Bin-range spec (see :func:`plot_ensemble_distribution`).
+        Bin-range spec (see ``plot_ensemble_distribution``).
     image_cmap : str
         Colormap for the pcolormesh fill on the off-diagonal panels. Defaults to
         ``"Greys"``. Overridden by ``plot_2d_kwargs["image_cmap"]`` if given.
@@ -622,9 +604,9 @@ def plot_beam_distribution(
         Colormap for the contour lines on the off-diagonal panels. Defaults to
         ``"plasma"``. Overridden by ``plot_2d_kwargs["contour_cmap"]`` if given.
     plot_1d_kwargs : dict | None
-        Extra kwargs forwarded to :func:`plot_1d_distribution`.
+        Extra kwargs forwarded to ``plot_1d_distribution``.
     plot_2d_kwargs : dict | None
-        Extra kwargs forwarded to :func:`plot_2d_distribution`.
+        Extra kwargs forwarded to ``plot_2d_distribution``.
     axs : np.ndarray | None
         Optional pre-made ``(N, N)`` Axes array.
 

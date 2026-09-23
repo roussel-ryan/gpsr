@@ -1,90 +1,24 @@
-"""Factory functions that build a ``GPSRLUMEModel`` from a single JSON-pure **spec**
-rather than from a pickled ``.pt``.
-
-The spec is one dict that fully describes a model as *two addressed constructors*:
-a virtual accelerator and a beam generator, each named by a dotted import-path
-string plus the kwargs it needs. The accelerator's assembly function is reached
-only through ``accelerator["builder"]``, so no facility package is imported here
-and none is named by default -- :func:`model_spec_from_files` *requires* the
-caller to say which builder to use. The facility choice is therefore made at the
-edge (a training script's ``--accelerator-builder`` flag, or a notebook constant),
-not inside this package.
-
-What this module is *not* agnostic about is the simulator: the builder has to
-return a ``LUMECheetahModel`` wrapping a Cheetah ``Segment``, because
-:func:`serialize_gpsr_lume_model` reads the live lattice back out through
-``model.lume_cheetah_model.simulator.segment``. Any facility, but Cheetah-backed.
-
-The *same* spec drives every construction path: a fresh build, a checkpoint embed,
-and a self-contained reload. ``build_gpsr_lume_model`` and
-:func:`serialize_gpsr_lume_model` are inverses, and their composition is
-**idempotent** -- the first pass normalizes, every pass after it is a fixed point::
-
-    s1 = serialize_gpsr_lume_model(build_gpsr_lume_model(spec))
-    s2 = serialize_gpsr_lume_model(build_gpsr_lume_model(s1))
-    assert s1 == s2        # holds
-    assert s1 == spec      # does NOT hold in general -- see below
-
-That first pass rewrites two things, both library-side normalization rather than
-information loss (the rebuilt segment's element parameters are bit-identical):
-
-- Cheetah's ``to_lattice_json`` emits the *current* schema, so a lattice file written
-  by an older version gains keys (``"metadata": {}``), has omitted defaults filled in
-  (``"tracking_method"``), and has float64 literals rounded to float32.
-- ``BeamGenerator.get_config()`` returns the generator's *complete* config, including
-  defaults a partial input spec left out (e.g. ``"output_scale"``).
-
-Idempotence from the first pass is what checkpointing needs: a checkpoint's embedded
-spec rebuilds to a model that re-serializes to that same spec.
-
-Spec shape::
+"""Build a ``GPSRLUMEModel`` from a JSON-pure **spec**: two constructors, each
+named by a dotted import path plus its kwargs.
 
     {
       "accelerator": {
         "builder": "virtual_accelerator.cheetah.factory.build_cheetah_model",
-        "config": {
-          "lattice": "<cheetah lattice JSON string>",
-          "name_map": {"QE10525": "QUAD:IN10:525", ...},
-        },
+        "config": {"lattice": "<lattice JSON>", "name_map": {...}},
       },
       "generator": {
-        "cls": "gpsr.beams.NNParticleBeamGenerator",   # import path (or a live class)
-        "config": {"energy": 1.0e8, "n_particles": 10000, ...},  # get_config() kwargs
+        "cls": "gpsr.beams.NNParticleBeamGenerator",
+        "config": {"energy": 1.0e8, "n_particles": 10000, ...},
       },
     }
 
-The accelerator-builder contract
---------------------------------
-``builder(**config, energy=<float>) -> LUMECheetahModel``. Two rules:
+The builder is resolved from its path at build time, so no facility package is
+imported here. It must return a ``LUMECheetahModel``, take ``energy`` as a kwarg
+rather than in ``config``, and treat ``LATTICE_CONFIG_KEY`` as reserved.
 
-- ``energy`` is *not* in ``config``. The reference momentum p0c [eV/c] is stored
-  once, as the generator's ``energy``, and threaded from the built generator into
-  the builder (see :func:`build_gpsr_lume_model`). The generator and the
-  accelerator must agree on it -- the accelerator converts EPICS magnet settings to
-  Cheetah geometric strengths via magnetic rigidity, which depends on energy -- so a
-  single source makes that structural rather than a guarded invariant.
-- :data:`LATTICE_CONFIG_KEY` is reserved. :func:`serialize_gpsr_lume_model`
-  overwrites it with the *live* segment's JSON so element parameters adjusted after
-  the build are captured in the checkpoint, and reads the incoming value as the
-  reference that tells those apart from the transient per-scan-step settings a
-  forward pass leaves behind (see that function's Notes).
-
-Kept separate from ``training.py`` so that the latter stays generator-agnostic (it
-never names a concrete ``BeamGenerator`` subclass) and model construction lives in
-one place. :func:`model_spec_from_files` is the file-path convenience that reads the
-lattice / name-map JSON files into an inline spec; it is the one place a default
-concrete generator class is named. It defaults *no* accelerator builder.
-
-Action variables
-----------------
-A ``LUMECheetahModel`` is built from *action variables*: one object per EPICS PV,
-each knowing the Cheetah element (``element_name``) and attribute it reads/writes
-plus any unit conversion. Deriving them from a segment + name-map is facility
-knowledge, and it lives in the facility package. At E341 the builder is
-``virtual_accelerator.cheetah.factory.build_cheetah_model``, whose spec fields
-``lattice`` and ``name_map`` *are* this module's accelerator ``config``, so the
-config is splatted in unchanged. No facility code is imported here at all -- the
-builder is resolved from its dotted path at build time.
+``build_gpsr_lume_model`` and ``serialize_gpsr_lume_model`` are inverses, and
+idempotent from the first round-trip -- which is what lets a checkpoint's embedded
+spec rebuild and re-serialize identically. See AGENTS.md.
 """
 
 import json
@@ -102,18 +36,14 @@ from gpsr.lume._imports import import_from_path, to_import_path
 from gpsr.lume.model import GPSRLUMEModel
 
 # Reserved key inside an accelerator spec's `config`: the Cheetah lattice, as a JSON
-# string. `serialize_gpsr_lume_model` rewrites it from the live segment so that element
-# parameters adjusted after the model was built survive into the checkpoint, and reads
-# the incoming value as the reference that distinguishes those from the transient
-# per-scan-step settings a forward pass leaves behind.
+# string. `serialize_gpsr_lume_model` rewrites it from the live segment, and reads the
+# incoming value as the reference that distinguishes element parameters from the
+# transient per-scan-step settings a forward pass leaves behind.
 LATTICE_CONFIG_KEY = "lattice"
 
-# Builder assumed by `_upgraded_spec` for *legacy* specs only -- flat, pre-`accelerator`
-# checkpoints that predate the builder being addressable and so cannot name one. This is
-# a historical fact about those files, NOT a default for new specs: nothing else in the
-# package reads it, and `model_spec_from_files` requires the caller to name a builder.
-# It is the package's only facility-specific reference, and it is a *string* -- resolved
-# at build time, never imported, so `import gpsr.lume` needs no facility package.
+# Builder assumed by `_upgraded_spec` for *legacy* specs only -- flat,
+# pre-`accelerator` checkpoints that could not name one. Not a default for new specs:
+# `model_spec_from_files` requires the caller to name a builder.
 _LEGACY_ACCELERATOR_BUILDER = "virtual_accelerator.cheetah.factory.build_cheetah_model"
 
 
@@ -137,7 +67,7 @@ def _segment_to_lattice_json(segment: cheetah.Segment) -> str:
 def _lattice_json_to_segment(lattice_json: str) -> cheetah.Segment:
     """Deserialize a lattice-JSON string into a Cheetah ``Segment``.
 
-    The inverse of :func:`_segment_to_lattice_json`, and likewise a temp-file
+    The inverse of ``_segment_to_lattice_json``, and likewise a temp-file
     round-trip because Cheetah's lattice (de)serialization is path-based.
     """
     fd, tmp_path = tempfile.mkstemp(suffix=".json")
@@ -155,40 +85,25 @@ def _unbatched_segment(
 ) -> cheetah.Segment:
     """Return a copy of ``segment`` with per-scan-step element parameters collapsed.
 
-    A forward pass applies a *batch* of beamline settings at once, so
-    ``GPSRLUMEModel.forward`` leaves every element parameter it wrote carrying a
-    leading batch dimension -- one entry per scan step of the last batch (e.g. a
-    scanned quadrupole's ``k1`` becomes 7 values). That is transient per-batch
-    state, not a property of the beamline, and serializing it verbatim would put a
-    mid-scan snapshot into the checkpoint's lattice. Worse, the rebuilt segment
-    would then *keep* those batch dimensions until something overwrote them: fine
-    for a PV the new data also scans, silently wrong for one it does not, which
-    would broadcast a stale scan axis into the predictions.
+    ``forward`` applies a batch of settings at once, leaving every parameter it
+    wrote with a leading batch dim (a scanned quad's ``k1`` becomes 7 values). A
+    rebuilt segment would keep those dims until overwritten, broadcasting a stale
+    scan axis into the predictions of any PV the new data does not also scan.
 
-    Each such parameter is collapsed back to its intrinsic shape:
-
-    - If every scan step holds the same value (a setting held constant across the
-      batch, e.g. the TDC voltage within one source), that value is kept -- exact,
-      and genuinely the accelerator's current setting.
-    - If the values differ, the parameter was being *scanned* and no single value
-      describes it. The reference lattice's value is restored, i.e. what a fresh
-      build from the recorded spec would produce.
-
-    Parameters unaffected by batching pass through untouched, so calibration
-    applied after the build still survives (see :func:`serialize_gpsr_lume_model`).
+    Batched parameters are collapsed: to their common value if every scan step
+    agrees, else to the reference lattice's value. Unbatched parameters pass
+    through, so calibration applied after the build survives.
 
     Parameters
     ----------
     segment : cheetah.Segment
         The live segment. Not modified.
     reference_lattice : str | cheetah.Segment | None
-        The lattice recorded in the model's ``accelerator_spec``, supplying both
-        each parameter's intrinsic shape (Cheetah exposes no other way to tell an
-        intrinsic dimension from a batch one) and the fallback value for a scanned
-        parameter. Lattice-JSON text, a path to a lattice JSON, or a ``Segment`` --
-        the same three forms a builder accepts for :data:`LATTICE_CONFIG_KEY`, since
-        this is that key's recorded value. If ``None`` or unreadable, the copy is
-        returned as-is.
+        The lattice recorded in the model's ``accelerator_spec``, supplying each
+        parameter's intrinsic shape (Cheetah exposes no other way to tell an
+        intrinsic dim from a batch one) and the fallback value for a scanned
+        parameter. Lattice-JSON text, a path, or a ``Segment``. If ``None`` or
+        unreadable, the copy is returned as-is.
 
     Returns
     -------
@@ -250,11 +165,9 @@ def _unbatched_segment(
 def build_generator(generator: dict) -> BeamGenerator:
     """Construct a fresh (untrained) ``BeamGenerator`` from a spec's ``generator`` dict.
 
-    Resolves ``generator["cls"]`` -- which may be a live class *or* a dotted
-    import-path string -- to a ``BeamGenerator`` subclass, then rebuilds it via the
-    ``from_config`` contract (``cls.from_config(generator["config"])``). Routing both
-    the fresh-build and checkpoint-reload paths through ``from_config`` keeps a single
-    instantiation mechanism; trained weights are restored separately via ``state_dict``.
+    ``generator["cls"]`` may be a live class or a dotted import path; either is
+    rebuilt via ``cls.from_config(generator["config"])``. Trained weights are
+    restored separately via ``state_dict``.
 
     Parameters
     ----------
@@ -273,19 +186,11 @@ def build_generator(generator: dict) -> BeamGenerator:
 
 
 def build_accelerator_from_spec(accelerator: dict, energy: float) -> LUMECheetahModel:
-    """Construct a ``LUMECheetahModel`` from a spec's ``accelerator`` dict.
+    """Resolve a spec's ``accelerator["builder"]`` and delegate to it.
 
-    Resolves ``accelerator["builder"]`` -- a dotted import-path string, or a live
-    callable -- and calls it with the spec's ``config`` plus ``energy``. This
-    indirection is what keeps the package facility-agnostic: the builder that knows
-    how to turn a lattice into per-PV action variables is *named*, never imported
-    here (see this module's docstring for the contract).
-
-    Named ``..._from_spec`` because it does not itself build anything: it reads the
-    spec, resolves the address, and delegates. The function it delegates *to* is the
-    real builder, and lives at the facility (e.g. the example's
-    ``example_virtual_accelerator.factory.build_accelerator``) -- keeping the two
-    names distinct is what makes a traceback across this seam readable.
+    The real builder lives at the facility (e.g. the example's
+    ``example_virtual_accelerator.factory.build_accelerator``); this only reads the
+    spec and resolves the address.
 
     Parameters
     ----------
@@ -293,7 +198,7 @@ def build_accelerator_from_spec(accelerator: dict, energy: float) -> LUMECheetah
         ``{"builder": <callable or import path>, "config": <builder kwargs>}``.
     energy : float
         Reference momentum p0c [eV/c], passed as the builder's ``energy`` kwarg.
-        Deliberately not read from ``config`` -- it is stored once, on the generator.
+        Not read from ``config`` -- it is stored once, on the generator.
 
     Returns
     -------
@@ -309,23 +214,18 @@ def build_accelerator_from_spec(accelerator: dict, energy: float) -> LUMECheetah
 def build_gpsr_lume_model(spec: dict) -> GPSRLUMEModel:
     """Construct a ``GPSRLUMEModel`` from a canonical spec dict.
 
-    The single model builder: resolves the spec's two addressed constructors. The
-    beam generator is built *first* (see :func:`build_generator`) because it owns the
-    reference energy, which is then threaded into the accelerator builder (see
-    :func:`build_accelerator_from_spec`) so both halves share one value by
-    construction.
-    Inverse of :func:`serialize_gpsr_lume_model` (see this module's docstring on the
-    normalization their first round-trip applies).
+    The generator is built first, since it owns the reference energy that is then
+    threaded into the accelerator builder so both halves share one value.
 
-    Produces an *untrained* model: the lattice (with its serialized element
-    parameters) is restored exactly, but the beam generator's trained weights must be
-    restored separately via ``load_state_dict``.
+    Produces an *untrained* model: the lattice is restored exactly, but the beam
+    generator's trained weights must be restored separately via
+    ``load_state_dict``.
 
     Parameters
     ----------
     spec : dict
         Canonical spec with keys ``"accelerator"`` and ``"generator"`` (see this
-        module's docstring). Built from files via :func:`model_spec_from_files`, or
+        module's docstring). Built from files via ``model_spec_from_files``, or
         recovered from a checkpoint. Pre-``accelerator`` specs (flat ``energy`` /
         ``lattice_json`` / ``name_map``) are upgraded on the fly.
 
@@ -364,9 +264,7 @@ def model_spec_from_files(
 ) -> dict:
     """Read the lattice / name-map JSON files into an inline canonical spec.
 
-    File-path convenience for the common fresh-build case: inlines the lattice and
-    name-map files so the returned spec is self-contained and JSON-pure, ready for
-    :func:`build_gpsr_lume_model` (or ``LitGPSRLUME.from_spec``).
+    Inlines both files, so the returned spec is self-contained and JSON-pure.
 
     Parameters
     ----------
@@ -377,15 +275,13 @@ def model_spec_from_files(
         EPICS control names (e.g. ``"QUAD:IN10:525"``).
     energy : float
         Reference momentum p0c [eV/c]. Stored *once*, as the beam generator's
-        ``energy`` config (via ``setdefault``); :func:`build_gpsr_lume_model` threads
+        ``energy`` config (via ``setdefault``); ``build_gpsr_lume_model`` threads
         it from the built generator into the accelerator builder.
     accelerator_builder : str | Callable
-        The accelerator assembly function, as a dotted import path or a live callable
-        (stored as a path). **Required, by design** -- this is the one facility-specific
-        decision in a spec, so the caller makes it explicitly rather than inheriting a
-        default from this package. At E341 that is
-        ``"virtual_accelerator.cheetah.factory.build_cheetah_model"``; see the
-        ``--accelerator-builder`` flag on ``scripts/{4d,6d}_train.py``.
+        The accelerator assembly function, as a dotted import path or a live
+        callable (stored as a path). Required: this is the one facility-specific
+        decision in a spec, so the package supplies no default. At E341 it is
+        ``"virtual_accelerator.cheetah.factory.build_cheetah_model"``.
     generator : dict, optional
         ``{"cls": <class or import path>, "config": <kwargs>}``. Defaults to
         ``NNParticleBeamGenerator`` with an empty config.
@@ -394,12 +290,6 @@ def model_spec_from_files(
     -------
     dict
         A canonical spec (see this module's docstring).
-
-    Notes
-    -----
-    The ``generator`` default makes this the one place a concrete generator class is
-    named, which is what keeps ``training.py`` generator-agnostic. There is
-    deliberately no matching accelerator default: the package names no facility.
     """
     with open(cheetah_lattice_path) as f:
         lattice_json = f.read()
@@ -426,46 +316,35 @@ def model_spec_from_files(
 def serialize_gpsr_lume_model(model: GPSRLUMEModel) -> dict:
     """Capture a ``GPSRLUMEModel``'s construction artifacts as a JSON-able dict.
 
-    Everything needed to rebuild an architecturally-equivalent model via
-    :func:`build_gpsr_lume_model`: the accelerator's recorded build recipe is
-    re-emitted with :data:`LATTICE_CONFIG_KEY` refreshed from the live segment, so
-    element parameters adjusted after the build are captured. Trained generator
-    weights are NOT included -- they live in the checkpoint ``state_dict`` and are
-    restored separately. The dict is JSON-pure (both constructors are stored as
-    import-path strings, not pickled) so the checkpoint loads with
-    ``weights_only=True``.
-
-    Returns a canonical spec (see this module's docstring) -- the inverse of
-    :func:`build_gpsr_lume_model`, idempotent from the first round-trip on.
+    The accelerator's recorded build recipe is re-emitted with
+    ``LATTICE_CONFIG_KEY`` refreshed from the live segment, so element parameters
+    adjusted after the build are captured. Trained generator weights are NOT
+    included -- they live in the checkpoint ``state_dict``. The dict is JSON-pure,
+    so the checkpoint loads with ``weights_only=True``.
 
     Notes
     -----
-    The refreshed lattice is a snapshot of the *live* segment, which a model that
-    has been run is not a pristine copy of the file it was built from. Three kinds
-    of difference land in the emitted lattice, and only the first is what "capture
-    the calibration" means:
+    The refreshed lattice snapshots the *live* segment, which is not a pristine copy
+    of the file it was built from. Three kinds of difference land in it, and only
+    the first is what "capture the calibration" means:
 
-    - **Element parameters as currently set.** Includes float noise from a
-      round trip through the control-system units of an action variable (a constant
-      quadrupole's ``k1`` can differ in its last digit), which is real and worth
-      recording -- it is the state the fit actually saw.
+    - **Element parameters as currently set.** Includes float noise from a round
+      trip through an action variable's control-system units (a constant
+      quadrupole's ``k1`` can differ in its last digit). This is the state the fit
+      actually saw.
     - **Screen configuration derived from the data**, applied on every forward pass
-      by ``GPSRLUMEModel._setup_screen`` from the datamodule's
-      ``observations_metadata``: ``resolution``, ``pixel_size``, ``is_active``, and
-      ``method`` (always ``cloud-in-cell``). Recorded, but not authoritative -- the
-      next forward pass overwrites it from whatever metadata that datamodule
-      carries.
+      by ``GPSRLUMEModel._setup_screen``: ``resolution``, ``pixel_size``,
+      ``is_active``, ``method``. Recorded but not authoritative -- the next forward
+      pass overwrites it from whatever metadata the datamodule carries.
     - **Per-scan-step settings from the last forward pass**, which are *not*
-      recorded: they are collapsed first by :func:`_unbatched_segment`, since a
-      batch of scan settings is transient state rather than a property of the
-      beamline.
+      recorded: ``_unbatched_segment`` collapses them first.
 
     Raises
     ------
     NotImplementedError
         If the beam generator does not support ``get_config``, or if the model
         carries no recorded ``accelerator_spec`` (it was assembled outside
-        :func:`build_gpsr_lume_model`). Such a model cannot be made self-contained
+        ``build_gpsr_lume_model``). Such a model cannot be made self-contained
         and must be rebuilt and re-supplied explicitly.
     """
     accelerator_spec = model.accelerator_spec
@@ -505,13 +384,10 @@ def serialize_gpsr_lume_model(model: GPSRLUMEModel) -> dict:
 def _upgraded_spec(spec: dict) -> dict:
     """Return ``spec`` in canonical form, upgrading a pre-``accelerator`` one.
 
-    Specs written before the accelerator became an addressed constructor were flat --
-    ``{"energy", "lattice_json", "name_map", "generator"}`` -- with ``energy``
-    duplicated at the top level and inside ``generator["config"]``. Checkpoints
-    holding one still load: the flat keys map onto
-    :data:`_LEGACY_ACCELERATOR_BUILDER` -- the builder such a spec was necessarily
-    built with, since it had no way to name one -- and the top-level ``energy`` folds
-    into the generator config, which is now its only home.
+    Specs predating the addressed accelerator were flat -- ``{"energy",
+    "lattice_json", "name_map", "generator"}``. Their keys map onto
+    ``_LEGACY_ACCELERATOR_BUILDER`` (the only builder they could have used), and the
+    top-level ``energy`` folds into the generator config, now its only home.
     """
     if "accelerator" in spec:
         return spec
