@@ -35,6 +35,17 @@ class TestTrainGPSR:
         mock_checkpoint.assert_called_once()
         assert mock_checkpoint.call_args.kwargs["dirpath"] == "/tmp/custom-checkpoints"
 
+    @patch("gpsr.train.L.Trainer")
+    @patch("gpsr.train.ModelCheckpoint")
+    def test_train_gpsr_preserves_empty_dirpath(self, mock_checkpoint, mock_trainer):
+        mock_logger = Mock()
+        mock_logger.log_dir = "/tmp/logger"
+
+        train_gpsr(Mock(), Mock(), logger=mock_logger, dirpath="")
+
+        mock_checkpoint.assert_called_once()
+        assert mock_checkpoint.call_args.kwargs["dirpath"] == ""
+
 
 class TestTrainGPSRMultistep:
     def test_requires_skip_connection(self):
@@ -54,10 +65,14 @@ class TestTrainGPSRMultistep:
             phase_space_dim=2,
             use_skip_connection=True,
         )
+        with torch.no_grad():
+            transformer.alpha.fill_(0.5)
         model = DummyGPSR(transformer)
         recorded_requires_grad = []
+        recorded_alpha_values = []
 
         def capture_call(gpsr_model, *args, **kwargs):
+            recorded_alpha_values.append(transformer.alpha.item())
             recorded_requires_grad.append(
                 {
                     "linear": [p.requires_grad for p in transformer.linear_parameters],
@@ -76,6 +91,7 @@ class TestTrainGPSRMultistep:
         train_gpsr_multistep(model, Mock())
 
         assert len(recorded_requires_grad) == 2
+        assert recorded_alpha_values == [0.0, 0.5]
         assert all(recorded_requires_grad[0]["linear"])
         assert not recorded_requires_grad[0]["alpha"]
         assert not any(recorded_requires_grad[0]["non_linear"])

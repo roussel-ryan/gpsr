@@ -99,7 +99,8 @@ def train_gpsr(
     """
 
     logger = logger or CSVLogger("logs", name="gpsr")
-    dirpath = dirpath or os.path.join(logger.log_dir, "checkpoints")
+    if dirpath is None:
+        dirpath = os.path.join(logger.log_dir, "checkpoints")
 
     periodic_checkpoint_callback = ModelCheckpoint(
         dirpath=dirpath,  # Directory to save checkpoints
@@ -212,7 +213,9 @@ def train_gpsr_multistep(
 
     # zero out the skip-connection scale so stage 1's output is purely linear
     alpha = getattr(transformer, "alpha", None)
+    original_alpha = None
     if torch.is_tensor(alpha):
+        original_alpha = alpha.detach().clone()
         with torch.no_grad():
             alpha.zero_()
 
@@ -231,6 +234,9 @@ def train_gpsr_multistep(
     # stage 2: train the full model jointly
     for p in non_linear_params:
         p.requires_grad_(True)
+    if original_alpha is not None:
+        with torch.no_grad():
+            alpha.copy_(original_alpha)
 
     lit_gpsr_model = train_gpsr(
         lit_gpsr_model.gpsr_model,

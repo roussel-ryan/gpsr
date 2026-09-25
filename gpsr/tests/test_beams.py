@@ -123,7 +123,19 @@ class TestBeams:
         assert not torch.isnan(beam.emittance_x)
         assert not torch.isnan(beam.emittance_y)
 
-    def test_to_linear_beam_preserves_device_and_dtype(self):
+    @pytest.mark.parametrize(
+        "device",
+        [
+            "cpu",
+            pytest.param(
+                "cuda",
+                marks=pytest.mark.skipif(
+                    not torch.cuda.is_available(), reason="CUDA not available"
+                ),
+            ),
+        ],
+    )
+    def test_to_linear_beam_preserves_device_and_dtype(self, device):
         transformer = ResNNTransform(
             n_hidden=2,
             width=10,
@@ -135,7 +147,7 @@ class TestBeams:
             energy=1e9,
             transformer=transformer,
             n_dim=4,
-        )
+        ).to(device)
         generator.base_particles = generator.base_particles.double()
 
         beam = to_linear_beam(generator)
