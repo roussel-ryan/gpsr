@@ -61,6 +61,7 @@ class TestTrainGPSRMultistep:
             recorded_requires_grad.append(
                 {
                     "linear": [p.requires_grad for p in transformer.linear_parameters],
+                    "alpha": transformer.alpha.requires_grad,
                     "non_linear": [
                         p.requires_grad
                         for p in gpsr_model.parameters()
@@ -76,6 +77,8 @@ class TestTrainGPSRMultistep:
 
         assert len(recorded_requires_grad) == 2
         assert all(recorded_requires_grad[0]["linear"])
+        assert not recorded_requires_grad[0]["alpha"]
         assert not any(recorded_requires_grad[0]["non_linear"])
         assert all(recorded_requires_grad[1]["linear"])
+        assert recorded_requires_grad[1]["alpha"]
         assert all(recorded_requires_grad[1]["non_linear"])

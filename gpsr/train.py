@@ -195,9 +195,16 @@ def train_gpsr_multistep(
     
     linear_params = list(transformer.linear_parameters)
     linear_param_ids = {id(p) for p in linear_params}
-    non_linear_params = [
-        p for p in gpsr_model.parameters() if id(p) not in linear_param_ids
-    ]
+    non_linear_params = []
+    seen_param_ids = set()
+    for param in gpsr_model.parameters():
+        if id(param) not in linear_param_ids and id(param) not in seen_param_ids:
+            non_linear_params.append(param)
+            seen_param_ids.add(id(param))
+    for param in transformer.other_parameters:
+        if isinstance(param, torch.nn.Parameter) and id(param) not in seen_param_ids:
+            non_linear_params.append(param)
+            seen_param_ids.add(id(param))
 
     # stage 1: freeze everything except the transformer's linear parameters
     for p in non_linear_params:
