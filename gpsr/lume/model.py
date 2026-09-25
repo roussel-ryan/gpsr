@@ -48,7 +48,14 @@ class GPSRLUMEModel(torch.nn.Module):
         # the generator's. The two must share one reference energy or every magnet
         # setting maps to the wrong strength. The spec build path threads one value
         # into both; this guards direct injection, where they arrive independently.
-        generator_energy = beam_generator.energy
+        generator_energy = getattr(beam_generator, "energy", None)
+        if generator_energy is None:
+            raise TypeError(
+                f"{type(beam_generator).__name__} has no 'energy' attribute. A "
+                f"generator used with GPSRLUMEModel must expose its reference "
+                f"energy [eV] as a buffer, attribute or property, so that it can be "
+                f"matched against the accelerator's."
+            )
         accelerator_energy = (
             lume_cheetah_model.simulator.initial_beam_distribution.energy
         )

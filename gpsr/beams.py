@@ -11,22 +11,20 @@ from cheetah.particles import ParticleBeam
 
 
 class BeamGenerator(torch.nn.Module, ABC):
+    energy: Tensor
+    """Reference particle energy [eV] of the generated beam.
+
+    A single scalar that defines the phase-space coordinate system. Consumers
+    that pair the beam with an external model (e.g. a tracking simulation) read
+    it here without sampling a beam. Only an annotation, so a subclass is free to
+    supply it as a buffer, a plain attribute or a property -- a concrete property
+    here would break the first two.
+    """
+
     @abstractmethod
     def forward(self) -> ParticleBeam:
         pass
 
-    @property
-    @abstractmethod
-    def energy(self) -> Tensor:
-        """Reference particle energy [eV] of the generated beam.
-
-        A single scalar that defines the phase-space coordinate system; every
-        generator has one. Consumers that pair the beam with an external model
-        (e.g. a tracking simulation) read it here without sampling a beam.
-        """
-        pass
-
-    @abstractmethod
     def get_config(self) -> dict:
         """Return JSON-serializable kwargs that reconstruct this generator.
 
@@ -36,8 +34,15 @@ class BeamGenerator(torch.nn.Module, ABC):
         via ``state_dict`` / ``load_state_dict``. This lets a generator be made
         self-describing (e.g. embedded in a checkpoint) without pickling the
         object or its class internals.
+
+        Optional: generators that cannot describe themselves leave this raising,
+        and callers that want a self-contained checkpoint catch the error.
         """
-        pass
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement get_config(), so it cannot "
+            "be reconstructed from a config; rebuild it explicitly and restore "
+            "weights via load_state_dict."
+        )
 
     @classmethod
     def from_config(cls, config: dict) -> "BeamGenerator":
@@ -291,27 +296,12 @@ class EntropyBeamGenerator(BeamGenerator):
         self.gen_model = gen_model
         self.prior = prior
 
-        self.register_buffer("beam_energy", torch.tensor(energy))
+        self.register_buffer("energy", torch.tensor(energy))
         self.register_buffer("mass", torch.tensor(mass))
         self.register_buffer("particle_charges", torch.tensor(particle_charges))
 
-    @property
-    def energy(self) -> Tensor:
-        return self.beam_energy
-
     def set_base_particles(self, n_particles: int) -> None:
         self.n_particles = n_particles
-
-    def get_config(self) -> dict:
-        """Not supported: this generator is composed of non-serializable
-        ``gen_model`` / ``prior`` submodules that cannot be rebuilt from scalar
-        config, so it cannot describe itself for self-contained reconstruction.
-        """
-        raise NotImplementedError(
-            "EntropyBeamGenerator cannot be reconstructed from a scalar config "
-            "because it wraps gen_model/prior objects; rebuild it explicitly and "
-            "restore weights via load_state_dict."
-        )
 
     def forward(self) -> tuple[ParticleBeam, torch.Tensor]:
         x, log_p = self.gen_model.sample_and_log_prob(self.n_particles)
@@ -329,9 +319,7 @@ class EntropyBeamGenerator(BeamGenerator):
         )
 
         beam = ParticleBeam(
-            particles=coords,
-            energy=self.beam_energy,
-            particle_charges=self.particle_charges,
+            particles=coords, energy=self.energy, particle_charges=self.particle_charges
         )
         return (beam, entropy)
 
