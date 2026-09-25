@@ -254,9 +254,6 @@ def train_gpsr_multistep(
     finally:
         for param in all_params:
             param.requires_grad_(original_requires_grad[id(param)])
-        if original_alpha is not None:
-            with torch.no_grad():
-                alpha.copy_(original_alpha)
 
 
 class EntropyLitGPSR(L.LightningModule, ABC):
