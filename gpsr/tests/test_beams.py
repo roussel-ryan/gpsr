@@ -123,7 +123,7 @@ class TestBeams:
         assert not torch.isnan(beam.emittance_x)
         assert not torch.isnan(beam.emittance_y)
 
-    def test_to_linear_beam_preserves_dtype(self):
+    def test_to_linear_beam_preserves_device_and_dtype(self):
         transformer = ResNNTransform(
             n_hidden=2,
             width=10,
@@ -140,4 +140,5 @@ class TestBeams:
 
         beam = to_linear_beam(generator)
 
+        assert beam.particles.device == generator.base_particles.device
         assert beam.particles.dtype == generator.base_particles.dtype

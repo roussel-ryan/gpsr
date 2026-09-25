@@ -188,10 +188,7 @@ def train_gpsr_multistep(
         raise TypeError(
             f"Expected transformer to be an instance of ResNNTransform, but got {type(transformer).__name__}"
         )
-    if not (
-        transformer.use_skip_connection
-        and isinstance(getattr(transformer, "alpha", None), torch.nn.Parameter)
-    ):
+    if not transformer.use_skip_connection:
         raise ValueError(
             "train_gpsr_multistep requires a ResNNTransform with use_skip_connection=True"
         )
@@ -208,7 +205,7 @@ def train_gpsr_multistep(
 
     # zero out the skip-connection scale so stage 1's output is purely linear
     alpha = getattr(transformer, "alpha", None)
-    if isinstance(alpha, torch.nn.Parameter):
+    if torch.is_tensor(alpha):
         with torch.no_grad():
             alpha.zero_()
 
