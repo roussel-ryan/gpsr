@@ -26,6 +26,11 @@ if TYPE_CHECKING:
 
 from gpsr.lume.ensemble import UncertaintyType, compute_mean_and_bounds
 
+DEFAULT_IMAGE_CMAP = "Greys"
+DEFAULT_CONTOUR_CMAP = "plasma"
+DEFAULT_CONTOUR_LEVELS = (0.1, 0.5, 0.9)
+DEFAULT_CONTOUR_SMOOTHING = 1.0
+
 
 # ---------------------------------------------------------------------------
 # Screen-image helpers
@@ -63,11 +68,16 @@ def _norm_to_peak(image: np.ndarray) -> np.ndarray:
     return image / peak if peak > 0 else image
 
 
-def _screen_cmap(name: str):
-    """Return the colormap ``name`` with white for masked (zero) pixels."""
-    cmap = copy.copy(mpl.colormaps[name])
-    cmap.set_bad("white")
-    return cmap
+def _white_masked_cmap(cmap) -> mpl.colors.Colormap:
+    """Return a copy of ``cmap`` (a name or an instance) with white masked pixels.
+
+    Copied before mutating, so neither matplotlib's registry nor a caller's own
+    colormap instance is left with a white "bad" color.
+    """
+    resolved = mpl.colormaps[cmap] if isinstance(cmap, str) else cmap
+    resolved = copy.copy(resolved)
+    resolved.set_bad("white")
+    return resolved
 
 
 def _draw_screen_image(
@@ -75,33 +85,35 @@ def _draw_screen_image(
     image: np.ndarray,
     x_edges: np.ndarray,
     y_edges: np.ndarray,
-    cmap,
     vmax: float | None = None,
-    white_background: bool = False,
-    alpha: float = 1.0,
     pcolormesh_kwargs: dict | None = None,
 ) -> None:
     """Draw a single screen image on ``ax`` in physical (mm) units.
 
-    When ``white_background`` is True, zero pixels are masked (shown as the
-    colormap's white "bad" color) instead of the colormap's low end. ``alpha``
-    sets the fill opacity. Shares the pcolormesh / aspect styling used across all
-    GPSRLUME image plots. Axis labels are set once per figure by
-    ``_label_edge_axes``, not here.
-    Note: image is in [x,y] ordering, so it is transposed for pcolormesh (which expects [y,x]).
+    ``image`` is in ``[x,y]`` order, so it is transposed for pcolormesh's
+    ``[y,x]``. Axis labels are set per figure by ``_label_edge_axes``, not here.
+
+    ``pcolormesh_kwargs["white_background"]`` is popped rather than forwarded: it
+    masks zero pixels, which also means the cmap must be resolved *after* the merge
+    so one supplied in the same dict gets the white "bad" color.
     """
-    if white_background:
+    kwargs = {
+        "cmap": DEFAULT_IMAGE_CMAP,
+        "vmin": 0,
+        "vmax": vmax,
+        "white_background": False,
+    } | (pcolormesh_kwargs or {})
+    if kwargs.pop("white_background"):
         image = np.ma.masked_where(image == 0, image)
-    defaults = {"cmap": cmap, "vmin": 0, "vmax": vmax, "alpha": alpha}
-    ax.pcolormesh(x_edges, y_edges, image.T, **(defaults | (pcolormesh_kwargs or {})))
+        kwargs["cmap"] = _white_masked_cmap(kwargs["cmap"])
+    ax.pcolormesh(x_edges, y_edges, image.T, **kwargs)
     ax.set_aspect("equal")
 
 
 def _label_edge_axes(axes: np.ndarray) -> None:
     """Label mm axes on the figure edge only: x on the bottom row, y on the left col.
 
-    ``axes`` is the 2D array from ``plt.subplots(..., squeeze=False)``. With shared
-    axes this keeps columns tight (no repeated per-axis labels between them).
+    ``axes`` is the 2D array from ``plt.subplots(..., squeeze=False)``.
     """
     for ax in axes[-1, :]:
         ax.set_xlabel("x (mm)")
@@ -129,9 +141,8 @@ def _resolve_screen_key(
 ) -> tuple[str, dict] | None:
     """Resolve an observation key + metadata, skipping non-screen observations.
 
-    Returns ``(observation_key, metadata)`` or ``None`` when the observation is
-    not a screen (a skip message is printed in that case). Encapsulates the guard
-    both public image plotters open with.
+    Returns ``(observation_key, metadata)``, or ``None`` after printing a skip
+    message when the observation is not a screen.
     """
     observation_key = _resolve_single_key(mapping, name, key)
     metadata = observations_metadata[observation_key]
@@ -148,50 +159,34 @@ def _images_to_numpy(images, observation_key: str) -> np.ndarray:
     return images[observation_key].detach().cpu().numpy()
 
 
-def _resolve_label_keys(beamline_settings, labels: str | list[str] | None) -> list[str]:
-    """Resolve which beamline-settings keys title each image / column.
-
-    ``labels`` may be a single key, a list of keys, or ``None`` (use *all*
-    settings keys). Returns ``[]`` when there are no settings to title with.
-    """
-    if beamline_settings is None:
-        return []
-    if labels is None:
-        return list(beamline_settings.keys())
-    return [labels] if isinstance(labels, str) else list(labels)
-
-
-def _label_values(beamline_settings, label_keys: list[str]) -> dict[str, np.ndarray]:
-    """Return ``{key: per-sample values}`` (detached numpy) for ``label_keys``."""
-    return {key: beamline_settings[key].detach().cpu().numpy() for key in label_keys}
-
-
 def _resolve_label_values(
     beamline_settings, labels: str | list[str] | None
 ) -> dict[str, np.ndarray]:
-    """One-shot ``{key: per-sample values}`` for column titles.
+    """Return ``{key: per-sample values}`` (detached numpy) for the column titles.
 
-    Combines ``_resolve_label_keys`` and ``_label_values`` -- the
-    two-step call both public image plotters otherwise repeat verbatim.
+    ``labels`` may be a single key, a list of keys, or ``None`` for *all* settings
+    keys. Empty when there is nothing to title with.
     """
-    return _label_values(
-        beamline_settings, _resolve_label_keys(beamline_settings, labels)
-    )
+    if beamline_settings is None:
+        return {}
+    if labels is None:
+        keys = list(beamline_settings.keys())
+    else:
+        keys = [labels] if isinstance(labels, str) else list(labels)
+    return {key: beamline_settings[key].detach().cpu().numpy() for key in keys}
 
 
 def _screen_axes(
-    image_stack: np.ndarray, metadata: dict, image_cmap: str
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, mpl.colors.Colormap]:
-    """Return the pcolormesh mesh (edges + centers) + fill cmap for a screen stack.
+    image_stack: np.ndarray, metadata: dict
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Return the pcolormesh mesh (edges + centers) for a screen image stack.
 
     ``image_stack``'s trailing two dims are ``(W, H)`` -- anything stacked in
-    front (samples, draws) is ignored. Bundles the four-line setup both public
-    image plotters share.
+    front (samples, draws) is ignored.
     """
     nx, ny = image_stack.shape[-2:]
     x_edges, y_edges = _screen_extent(metadata, nx, ny)
-    x_centers, y_centers = _edges_to_centers(x_edges), _edges_to_centers(y_edges)
-    return x_edges, y_edges, x_centers, y_centers, _screen_cmap(image_cmap)
+    return x_edges, y_edges, _edges_to_centers(x_edges), _edges_to_centers(y_edges)
 
 
 def _load_overlay_images(
@@ -199,10 +194,9 @@ def _load_overlay_images(
 ) -> np.ndarray | None:
     """Load ``overlay`` for ``observation_key`` and check its scan-step count.
 
-    Returns ``None`` if ``overlay`` is ``None`` (nothing to overlay). Raises
-    ``ValueError`` when the loaded stack's leading dim does not match
-    ``n_reference``. ``reference_name`` (``"images"`` / ``"ensemble_images"``)
-    is used only in the error message.
+    ``None`` for a ``None`` overlay; raises ``ValueError`` when the leading dim
+    does not match ``n_reference``. ``reference_name`` names the compared-against
+    set in that error.
     """
     if overlay is None:
         return None
@@ -232,48 +226,40 @@ def _draw_peak_normalized_contour(
     image: np.ndarray,
     x_centers: np.ndarray,
     y_centers: np.ndarray,
-    cmap: str,
-    levels: list[float],
     linestyle: str,
-    smoothing: float | None,
     alpha: float = 1.0,
     contour_kwargs: dict | None = None,
 ) -> None:
-    """Peak-normalize ``image`` (optionally smoothing first) and draw as contours.
+    """Smooth, peak-normalize and contour ``image`` at fractional ``levels``.
 
-    Shared by both image plotters: the source is optionally Gaussian-smoothed,
-    transposed to pcolormesh's ``[y,x]`` ordering, normalized to its own peak,
-    then contoured at fractional ``levels`` using ``cmap`` mapped to ``[0, 1]``.
+    ``linestyle`` encodes the role: dashed = reference / band, solid = overlay.
+    ``contour_kwargs["smoothing"]`` is popped rather than forwarded, since it
+    transforms the data and ``Axes.contour`` raises on an unknown kwarg.
     """
-    if smoothing is not None:
-        image = gaussian_filter(image, smoothing)
-    defaults = {
-        "cmap": cmap,
-        "levels": levels,
+    kwargs = {
+        "cmap": DEFAULT_CONTOUR_CMAP,
+        "levels": list(DEFAULT_CONTOUR_LEVELS),
         "vmin": 0,
         "vmax": 1.0,
         "linestyles": linestyle,
         "alpha": alpha,
-    }
-    ax.contour(
-        x_centers,
-        y_centers,
-        _norm_to_peak(image.T),
-        **(defaults | (contour_kwargs or {})),
-    )
+        "smoothing": DEFAULT_CONTOUR_SMOOTHING,
+    } | (contour_kwargs or {})
+
+    smoothing = kwargs.pop("smoothing")
+    if smoothing is not None:
+        image = gaussian_filter(image, smoothing)
+    ax.contour(x_centers, y_centers, _norm_to_peak(image.T), **kwargs)
 
 
 def _plot_screen_grid(
     fill_images,
     x_edges,
     y_edges,
-    cmap,
     observation_key,
     label_values,
     n_cols,
     vmax,
-    white_background,
-    image_alpha,
     x_range,
     y_range,
     draw_overlays=None,
@@ -285,10 +271,8 @@ def _plot_screen_grid(
     """Common layout for a per-scan-step grid of filled screen images.
 
     Draws one filled ``pcolormesh`` cell per sample, plus whatever the
-    ``draw_overlays(ax, col)`` callback adds per cell -- contours for
-    ``plot_images``, the confidence band for ``plot_ensemble_images``. Pass
-    ``label_values={}`` to suppress per-column titles, ``title=False`` for no
-    suptitle.
+    ``draw_overlays(ax, col)`` callback adds per cell. Pass ``label_values={}`` to
+    suppress per-column titles, ``title=False`` for no suptitle.
     """
     n_samples = len(fill_images)
     if n_cols is None:
@@ -308,10 +292,7 @@ def _plot_screen_grid(
             image,
             x_edges,
             y_edges,
-            cmap,
             vmax=vmax,
-            white_background=white_background,
-            alpha=image_alpha,
             pcolormesh_kwargs=pcolormesh_kwargs,
         )
         if draw_overlays is not None:
@@ -347,9 +328,7 @@ def _fan_over_sources(
 ) -> dict[str, plt.Figure | None]:
     """Fan a per-source images dict out to a single-source plotting function.
 
-    ``images_field`` is used only in the missing-source error message. Each
-    figure's suptitle is prefixed with its source name, since ``observation_key``
-    is usually the same screen across sources.
+    ``images_field`` names the fanned-out dict in the missing-source errors.
     """
     figures: dict[str, plt.Figure | None] = {}
     for source_name, source_images in images.items():
@@ -373,9 +352,7 @@ def _fan_over_sources(
             source_images,
             source["observations_metadata"],
             overlay_images=overlay,
-            # Merged (rather than setdefault'd into plot_kwargs) so the prefix is
-            # recomputed per source and an explicit caller-supplied title_prefix
-            # still wins without colliding as a duplicate keyword.
+            # Source name as the default prefix; a caller's own title_prefix wins.
             **{"title_prefix": source_name, **plot_kwargs},
         )
     return figures
@@ -394,17 +371,10 @@ def plot_images(
     n_cols: int | None = None,
     normalize_each: bool = False,
     contours: bool = False,
-    contour_levels: tuple[float, ...] = (0.1, 0.5, 0.9),
-    contour_smoothing: float | None = 1.0,
-    white_background: bool = False,
-    image_cmap: str = "Greys",
-    contour_cmap: str = "plasma",
-    image_alpha: float = 1.0,
     x_range: tuple[float, float] | None = None,
     y_range: tuple[float, float] | None = None,
     title: bool = True,
     title_prefix: str | None = None,
-    label_settings: bool = True,
     figsize: tuple[float, float] | None = None,
     pcolormesh_kwargs: dict | None = None,
     contour_kwargs: dict | None = None,
@@ -455,9 +425,8 @@ def plot_images(
     labels : str | list[str] | None
         Beamline-settings key(s) whose per-sample values title each image (single
         grid) or each column (overlay comparison), one ``"key = value"`` line per
-        key. If None (default), *all* settings keys are shown. Pass a single key or
-        a list to restrict which settings are shown; titles are drawn only when
-        ``beamline_settings`` is given.
+        key. If None (default), *all* settings keys are shown; pass ``[]`` for no
+        per-panel titles. Titles are drawn only when ``beamline_settings`` is given.
     n_cols : int | None
         Number of columns in the single-grid layout. If None (default), all images
         are placed in a single row. Ignored in comparison mode (columns are fixed
@@ -469,23 +438,6 @@ def plot_images(
     contours : bool
         Overlay the ``images`` set as peak-normalized dashed contours on top of the
         fill. Defaults to False.
-    contour_levels : tuple[float, ...]
-        Contour levels as fractions of each image's peak. Defaults to
-        (0.1, 0.5, 0.9).
-    contour_smoothing : float | None
-        Gaussian-smooth by this sigma before contouring, to tame noisy contours.
-        Defaults to 1.0.
-    white_background : bool
-        If True, masked (zero) pixels are drawn white instead of the colormap's low
-        end. Defaults to False.
-    image_cmap : str
-        Colormap for the filled ``pcolormesh`` images. Defaults to ``"Greys"``.
-    contour_cmap : str
-        Colormap for the contour lines (both the ``contours=True`` overlay and
-        the overlay comparison set). Defaults to ``"plasma"``.
-    image_alpha : float
-        Opacity of the filled ``pcolormesh`` images, in ``[0, 1]``. Defaults to
-        1.0 (opaque).
     x_range : tuple[float, float] | None
         Horizontal axis limits in mm, e.g. ``(-5, 5)``. If None (default), the
         full image extent is shown.
@@ -498,20 +450,23 @@ def plot_images(
     title_prefix : str | None
         Prepended to the suptitle as ``"{title_prefix} - {observation_key}"``.
         ``plot_multi_source_images`` passes the source name.
-    label_settings : bool
-        If True (default), title each image / column with its beamline-settings
-        values; if False, draw no per-panel titles.
     figsize : tuple[float, float] | None
         Figure size ``(width, height)`` in inches. If None (default), auto-sized
         as ``(2.5 * n_cols, 4 * n_rows)``.
     pcolormesh_kwargs : dict | None
-        Extra kwargs for ``Axes.pcolormesh``, merged over the defaults built from
-        ``image_cmap`` / ``image_alpha`` / ``vmax``, so user keys win.
+        Extra kwargs for ``Axes.pcolormesh``, merged over the fill defaults
+        (``cmap="Greys"``, ``vmin=0``, the ``vmax`` from ``normalize_each``), so
+        user keys win. The extra key ``white_background`` (default False) masks
+        zero pixels white instead of using the colormap's low end; a ``cmap`` in
+        the same dict gets that white masked colour too.
     contour_kwargs : dict | None
-        Extra kwargs for ``Axes.contour`` on the ``images`` set (dashed), merged
-        over the defaults from ``contour_cmap`` / ``contour_levels``.
+        Extra kwargs for ``Axes.contour`` on the ``images`` set, merged over the
+        defaults (``cmap="plasma"``, ``levels=(0.1, 0.5, 0.9)``, dashed). The extra
+        key ``smoothing`` (default 1.0, ``None`` to disable) Gaussian-smooths the
+        contour source first, to tame noisy contours.
     overlay_contour_kwargs : dict | None
-        The same, for the ``overlay_images`` contours (solid).
+        The same, for the ``overlay_images`` contours (solid), so the two sets can
+        be smoothed independently.
 
     Returns
     -------
@@ -526,12 +481,8 @@ def plot_images(
     observation_key, metadata = resolved
 
     images = _images_to_numpy(images, observation_key)
-    x_edges, y_edges, x_centers, y_centers, cmap = _screen_axes(
-        images, metadata, image_cmap
-    )
-    label_values = (
-        _resolve_label_values(beamline_settings, labels) if label_settings else {}
-    )
+    x_edges, y_edges, x_centers, y_centers = _screen_axes(images, metadata)
+    label_values = _resolve_label_values(beamline_settings, labels)
     overlay = _load_overlay_images(
         overlay_images, observation_key, images.shape[0], "images"
     )
@@ -539,30 +490,21 @@ def plot_images(
     # Contours are each self-normalized, so per-image normalize the fill too.
     normalize_each = normalize_each or overlay is not None
     vmax = None if normalize_each else np.max(images)
-    levels = list(contour_levels)
 
     def draw_overlays(ax, col):
         reference_kws = contour_kwargs or {}
         overlay_kws = overlay_contour_kwargs or {}
         if overlay is None:
             if contours:
-                # No comparison: draw the reference (first-arg) as dashed
-                # contours -- linestyle encodes the source dict (dashed =
-                # first-arg / reconstruction, solid = overlay_images).
                 _draw_peak_normalized_contour(
                     ax,
                     images[col],
                     x_centers,
                     y_centers,
-                    cmap=contour_cmap,
-                    levels=levels,
                     linestyle="dashed",
-                    smoothing=contour_smoothing,
                     contour_kwargs=reference_kws,
                 )
             return
-        # Reference contours (dashed) and overlay-set contours (solid), each
-        # peak-normalized. Mirrors ``gpsr.datasets.QuadScanDataset.plot_data``.
         for source, linestyle, role_kws in (
             (images[col], "dashed", reference_kws),
             (overlay[col], "solid", overlay_kws),
@@ -572,10 +514,7 @@ def plot_images(
                 source,
                 x_centers,
                 y_centers,
-                cmap=contour_cmap,
-                levels=levels,
                 linestyle=linestyle,
-                smoothing=contour_smoothing,
                 contour_kwargs=role_kws,
             )
 
@@ -583,13 +522,10 @@ def plot_images(
         images,
         x_edges,
         y_edges,
-        cmap,
         observation_key=observation_key,
         label_values=label_values,
         n_cols=n_cols,
         vmax=vmax,
-        white_background=white_background,
-        image_alpha=image_alpha,
         x_range=x_range,
         y_range=y_range,
         draw_overlays=draw_overlays,
@@ -611,18 +547,11 @@ def plot_ensemble_images(
     normalize_each: bool = False,
     band: bool = True,
     uncertainty_type: UncertaintyType = "percentile",
-    confidence_level: float = 0.8,
-    contour_levels: tuple[float, ...] = (0.1, 0.5, 0.9),
-    contour_smoothing: float | None = 1.0,
-    white_background: bool = False,
-    image_cmap: str = "Greys",
-    contour_cmap: str = "plasma",
-    image_alpha: float = 1.0,
+    confidence_level: float = 0.9,
     x_range: tuple[float, float] | None = None,
     y_range: tuple[float, float] | None = None,
     title: bool = True,
     title_prefix: str | None = None,
-    label_settings: bool = True,
     figsize: tuple[float, float] | None = None,
     pcolormesh_kwargs: dict | None = None,
     contour_kwargs: dict | None = None,
@@ -667,7 +596,7 @@ def plot_ensemble_images(
     labels : str | list[str] | None
         Beamline-settings key(s) whose per-sample values title each column, one
         ``"key = value"`` line per key. If None (default), *all* settings keys are
-        shown. Pass a single key or a list to restrict which settings are shown.
+        shown; pass ``[]`` for no per-panel titles.
     n_cols : int | None
         Number of columns in the image grid. ``None`` (default) places all
         samples in a single row.
@@ -683,18 +612,6 @@ def plot_ensemble_images(
         Passed to ``compute_mean_and_bounds``.
     confidence_level : float
         Confidence level for the band.
-    contour_levels : tuple[float, ...]
-        Contour levels (fractions of each image's peak) for the band / overlay.
-    contour_smoothing : float | None
-        If given, contour sources are Gaussian-smoothed by this sigma first.
-    white_background : bool
-        If True, masked (zero) pixels of the mean image are drawn white.
-    image_cmap : str
-        Colormap for the filled mean image. Defaults to ``"Greys"``.
-    contour_cmap : str
-        Colormap for the contour lines. Defaults to ``"plasma"``.
-    image_alpha : float
-        Opacity of the filled mean image.
     x_range : tuple[float, float] | None
         Horizontal axis limits in mm. If None (default), the full image extent
         is shown.
@@ -707,20 +624,23 @@ def plot_ensemble_images(
     title_prefix : str | None
         Prepended to the suptitle as ``"{title_prefix} - {observation_key}"``.
         ``plot_multi_source_ensemble_images`` passes the source name.
-    label_settings : bool
-        If True (default), title each column with its beamline-settings values; if
-        False, draw no per-panel titles.
     figsize : tuple[float, float] | None
         Figure size ``(width, height)`` in inches. If None (default), auto-sized
         as ``(2.5 * n_cols, 4 * n_rows)``.
     pcolormesh_kwargs : dict | None
-        Extra kwargs for ``Axes.pcolormesh``, merged over the defaults built from
-        ``image_cmap`` / ``image_alpha`` / ``vmax``, so user keys win.
+        Extra kwargs for ``Axes.pcolormesh``, merged over the fill defaults
+        (``cmap="Greys"``, ``vmin=0``, the ``vmax`` from ``normalize_each``), so
+        user keys win. The extra key ``white_background`` (default False) masks
+        zero pixels white instead of using the colormap's low end; a ``cmap`` in
+        the same dict gets that white masked colour too.
     contour_kwargs : dict | None
-        Extra kwargs for ``Axes.contour`` on the ensemble band (dashed). Ignored
-        when ``band=False``.
+        Extra kwargs for ``Axes.contour`` on the ensemble band, merged over the
+        defaults (``cmap="plasma"``, ``levels=(0.1, 0.5, 0.9)``, dashed). The extra
+        key ``smoothing`` (default 1.0, ``None`` to disable) Gaussian-smooths the
+        contour source first. Ignored when ``band=False``.
     overlay_contour_kwargs : dict | None
-        The same, for the ``overlay_images`` contours (solid).
+        The same, for the ``overlay_images`` contours (solid), so the band and the
+        overlay can be smoothed independently.
 
     Returns
     -------
@@ -747,49 +667,34 @@ def plot_ensemble_images(
     lower = lower.detach().cpu().numpy()
     upper = upper.detach().cpu().numpy()
 
-    x_edges, y_edges, x_centers, y_centers, cmap = _screen_axes(
-        mean, metadata, image_cmap
-    )
-    label_values = (
-        _resolve_label_values(beamline_settings, labels) if label_settings else {}
-    )
+    x_edges, y_edges, x_centers, y_centers = _screen_axes(mean, metadata)
+    label_values = _resolve_label_values(beamline_settings, labels)
     overlay = _load_overlay_images(
         overlay_images, observation_key, mean.shape[0], "ensemble_images"
     )
     vmax = None if normalize_each else np.max(mean)
-    levels = list(contour_levels)
 
     def draw_overlays(ax, col):
         band_kws = contour_kwargs or {}
         overlay_kws = overlay_contour_kwargs or {}
         if band:
-            # Ensemble band: lower / mean / upper each as a dashed contour over
-            # the mean fill -- three dashed rings per level bracketing the mean,
-            # mirroring the 3-contour style of plot_2d_distribution.
             for source in (lower[col], mean[col], upper[col]):
                 _draw_peak_normalized_contour(
                     ax,
                     source,
                     x_centers,
                     y_centers,
-                    cmap=contour_cmap,
-                    levels=levels,
                     linestyle="dashed",
-                    smoothing=contour_smoothing,
                     alpha=0.75,
                     contour_kwargs=band_kws,
                 )
-        # Overlay (if given) as solid ground-truth contours.
         if overlay is not None:
             _draw_peak_normalized_contour(
                 ax,
                 overlay[col],
                 x_centers,
                 y_centers,
-                cmap=contour_cmap,
-                levels=levels,
                 linestyle="solid",
-                smoothing=contour_smoothing,
                 alpha=1.0,
                 contour_kwargs=overlay_kws,
             )
@@ -798,13 +703,10 @@ def plot_ensemble_images(
         mean,
         x_edges,
         y_edges,
-        cmap,
         observation_key=observation_key,
         label_values=label_values,
         n_cols=n_cols,
         vmax=vmax,
-        white_background=white_background,
-        image_alpha=image_alpha,
         x_range=x_range,
         y_range=y_range,
         draw_overlays=draw_overlays,
@@ -830,10 +732,8 @@ def plot_multi_source_images(
         plot_multi_source_images(preds, spec)
         plot_multi_source_images(preds, spec, overlay_images=dm.to_observations())
 
-    Each figure's suptitle is its source name followed by the observation key
-    (``"S1_tdc_off - S1:Image:ArrayData"``), since sources typically observe the
-    same screen. Pass ``title_prefix`` to override it, or ``title=False`` to drop
-    the suptitles.
+    Each suptitle is ``"<source> - <observation key>"``, since sources typically
+    observe the same screen.
 
     Parameters
     ----------
@@ -884,10 +784,8 @@ def plot_multi_source_ensemble_images(
             preds, spec, overlay_images=dm.to_observations()
         )
 
-    Each figure's suptitle is its source name followed by the observation key
-    (``"S1_tdc_off - S1:Image:ArrayData"``), since sources typically observe the
-    same screen. Pass ``title_prefix`` to override it, or ``title=False`` to drop
-    the suptitles.
+    Each suptitle is ``"<source> - <observation key>"``, since sources typically
+    observe the same screen.
 
     Parameters
     ----------

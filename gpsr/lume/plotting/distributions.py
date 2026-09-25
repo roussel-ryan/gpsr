@@ -25,6 +25,12 @@ from gpsr.lume.ensemble import (
     compute_statistics_1d,
     compute_statistics_2d,
 )
+from gpsr.lume.plotting.images import (
+    DEFAULT_CONTOUR_CMAP,
+    DEFAULT_CONTOUR_LEVELS,
+    DEFAULT_CONTOUR_SMOOTHING,
+    DEFAULT_IMAGE_CMAP,
+)
 
 Dimension = Literal["x", "px", "y", "py", "tau", "p"]
 
@@ -42,9 +48,7 @@ SCALED_DIMENSIONS = ("px", "py", "p")
 
 
 # ---------------------------------------------------------------------------
-# Phase-space (corner) distribution plots (ported from Cheetah's
-# particle_beam.py, as free functions). Ensemble statistics come from
-# gpsr.lume.ensemble.
+# Phase-space (corner) distribution plots.
 # ---------------------------------------------------------------------------
 def _scale_axis_ticks_1e3(axis) -> str:
     """Multiply an axis's tick display by 1e3; return the label's inner math text.
@@ -67,14 +71,10 @@ def _format_spatial_axis_mm(axis) -> None:
 
 
 def _format_axis_scaled_1e3(axis) -> None:
-    """Scale a dimensionless axis's ticks by 1e3 and annotate its label.
+    """Scale a dimensionless axis's ticks by 1e3 and label it ``10^3 <quantity>``.
 
-    Used for ``px``/``py``, which have no physical unit for
-    ``format_axis_with_prefixed_unit`` to prefix; instead we multiply the
-    displayed tick values by 1000 and label the axis with the plotted quantity
-    ``10^3 <quantity>`` (e.g. ``$10^{3}\\,p_x$``). This avoids a multiplication
-    sign against a unit / an isolated power of ten, both of which many journal
-    style guides forbid.
+    For ``px``/``py``/``p``, which have no unit for
+    ``format_axis_with_prefixed_unit`` to prefix.
     """
     inner = _scale_axis_ticks_1e3(axis)
     axis.set_label_text(r"$10^{3}\," + inner + "$")
@@ -85,10 +85,8 @@ def _label_and_format_axis(
 ) -> None:
     """Set a phase-space axis's label and unit formatting for ``dimension``.
 
-    Sets the pretty label first (``_format_axis_scaled_1e3`` reads it back), then
-    applies unit prefixing for spatial dims (metres) or the 1e3 scaling for the
-    dimensionless momenta ``px``/``py``. Dimensions in neither group (e.g. ``p``)
-    are labelled but left unformatted.
+    The label is set first, since ``_format_axis_scaled_1e3`` reads it back.
+    Spatial dims get metre prefixing, the dimensionless momenta the 1e3 scaling.
     """
     axis.set_label_text(PRETTY_DIMENSION_LABELS[dimension])
     if dimension in SPATIAL_DIMENSIONS:
@@ -113,16 +111,16 @@ def _resolve_bin_ranges(
     dimensions: tuple[str, ...],
     full_tensor: np.ndarray,
 ) -> list[tuple[float, float]]:
-    """Normalize a `_corner_plot` ``bin_ranges`` arg to one ``(min, max)`` per dim.
+    """Normalize a ``bin_ranges`` arg to one ``(min, max)`` per dimension.
 
-    Accepts ``None`` (infer per-dim), ``"unit_same"`` (one shared range across
-    spatial dims and another across unitless dims), a single ``(min, max)``
-    (broadcast to all dims), or an already-per-dim list. ``full_tensor`` is the
-    stacked per-dim data used to infer ranges. Raises ``ValueError`` if the
-    resolved list does not match ``dimensions`` in length or pair shape.
+    ``None`` infers per-dim from ``full_tensor`` (the stacked per-dim data);
+    ``"unit_same"`` shares one range across spatial dims and another across
+    unitless ones; a single ``(min, max)`` broadcasts; a list passes through.
+    Raises ``ValueError`` if the result doesn't match ``dimensions``.
     """
     if bin_ranges is None:
         bin_ranges = [_padded_range(full_tensor[i]) for i in range(len(dimensions))]
+    # `isinstance` first: a numpy `bin_ranges` would raise on `== "unit_same"`.
     elif isinstance(bin_ranges, str) and bin_ranges == "unit_same":
         spatial_idxs = [
             i for i, dim in enumerate(dimensions) if dim in SPATIAL_DIMENSIONS
@@ -249,13 +247,8 @@ def plot_2d_distribution(
     bins: int = 100,
     bin_ranges: tuple[tuple[float, float], tuple[float, float]] | None = None,
     histogram_smoothing: float = 0.0,
-    contour_smoothing: float = 1.0,
     uncertainty_type: UncertaintyType = "percentile",
     confidence_level: float = 0.9,
-    image_cmap: str = "Greys",
-    contour_cmap: str = "plasma",
-    contour_levels: tuple[float, ...] = (0.1, 0.5, 0.9),
-    image_alpha: float = 1.0,
     pcolormesh_kwargs: dict | None = None,
     contour_kwargs: dict | None = None,
     ax: plt.Axes | None = None,
@@ -278,28 +271,18 @@ def plot_2d_distribution(
         ``((xmin, xmax), (ymin, ymax))`` or None to infer.
     histogram_smoothing : float
         Sigma applied to the mean histogram.
-    contour_smoothing : float
-        Sigma applied to contour data (after ``histogram_smoothing``).
     uncertainty_type : "percentile" | "std_error"
         Passed to ``compute_statistics_2d``.
     confidence_level : float
         Confidence level for the bands.
-    image_cmap : str
-        Colormap for the pcolormesh fill. Defaults to ``"Greys"``.
-    contour_cmap : str
-        Colormap for the contour lines. Defaults to ``"plasma"``.
-    contour_levels : tuple[float, ...]
-        Contour levels as fractions of each histogram's peak. Defaults to
-        ``(0.1, 0.5, 0.9)``.
-    image_alpha : float
-        Opacity of the filled ``pcolormesh``, in ``[0, 1]``. Defaults to 1.0.
     pcolormesh_kwargs : dict | None
-        Extra kwargs forwarded to ``Axes.pcolormesh``. Merged over the defaults
-        built from ``image_cmap`` / ``image_alpha`` (user keys win).
+        Extra kwargs forwarded to ``Axes.pcolormesh``, merged over the fill
+        defaults (``cmap="Greys"``), so user keys win.
     contour_kwargs : dict | None
-        Extra kwargs forwarded to ``Axes.contour``. Merged over the defaults
-        built from ``contour_cmap`` / ``contour_levels`` / the internal
-        ``linestyles`` / ``alpha`` (user keys win).
+        Extra kwargs forwarded to ``Axes.contour``, merged over the defaults
+        (``cmap="plasma"``, ``levels=(0.1, 0.5, 0.9)``, dashed). The extra key
+        ``smoothing`` (default 1.0) is the sigma applied to the contour data after
+        ``histogram_smoothing``.
     ax : plt.Axes | None
         Axes to draw on; a new one is created if None.
     force_spatial_mm : bool
@@ -312,6 +295,23 @@ def plot_2d_distribution(
     """
     if ax is None:
         _, ax = plt.subplots()
+
+    # `smoothing` transforms the data (here and the ensemble bounds below) rather
+    # than reaching `contour`, which raises on an unknown kwarg.
+    contour_kwargs = {
+        "cmap": DEFAULT_CONTOUR_CMAP,
+        "levels": list(DEFAULT_CONTOUR_LEVELS),
+        # Pin the colour scale to the peak-normalized [0, 1] range the contour data
+        # is already in. Without it matplotlib autoscales to the level range
+        # (0.1-0.9), so a level would draw in a different colour here than in the
+        # same-cmap, same-levels contours of `plotting.images`.
+        "vmin": 0,
+        "vmax": 1.0,
+        "linestyles": "dashed",
+        "alpha": 0.75,
+        "smoothing": DEFAULT_CONTOUR_SMOOTHING,
+    } | (contour_kwargs or {})
+    contour_smoothing = contour_kwargs.pop("smoothing")
 
     x_full = getattr(beam, x_dimension)
     y_full = getattr(beam, y_dimension)
@@ -354,29 +354,17 @@ def plot_2d_distribution(
 
     contour_histogram = gaussian_filter(smoothed_histogram, contour_smoothing)
 
-    pcolormesh_defaults = {"cmap": image_cmap, "alpha": image_alpha}
     ax.pcolormesh(
         x_centers,
         y_centers,
         smoothed_histogram.T,
-        **(pcolormesh_defaults | (pcolormesh_kwargs or {})),
+        **({"cmap": DEFAULT_IMAGE_CMAP} | (pcolormesh_kwargs or {})),
     )
-    contour_defaults = {
-        "levels": list(contour_levels),
-        "cmap": contour_cmap,
-        "linestyles": "dashed",
-        "alpha": 0.75,
-    }
 
     def draw_contour(data):
         peak = data.max()
         normalized = data.T / peak if peak > 0 else data.T
-        ax.contour(
-            x_centers,
-            y_centers,
-            normalized,
-            **(contour_defaults | (contour_kwargs or {})),
-        )
+        ax.contour(x_centers, y_centers, normalized, **contour_kwargs)
 
     draw_contour(contour_histogram)
     if is_ensemble:
@@ -401,8 +389,6 @@ def _corner_plot(
     | tuple[float, float]
     | list[tuple[float, float]]
     | None,
-    image_cmap: str,
-    contour_cmap: str,
     plot_1d_kwargs: dict | None,
     plot_2d_kwargs: dict | None,
     axs: np.ndarray | None,
@@ -412,8 +398,7 @@ def _corner_plot(
     Lays out the ``(N, N)`` grid -- 1D histograms on the diagonal, 2D in the lower
     triangle, upper triangle hidden -- and delegates each panel to
     ``plot_1d_distribution`` / ``plot_2d_distribution``, which auto-detect whether
-    the beam is ensemble-vectorized. Ensemble-only options are threaded in by the
-    caller via ``plot_1d_kwargs`` / ``plot_2d_kwargs``, so this stays agnostic.
+    the beam is ensemble-vectorized.
     """
     if axs is None:
         fig, axs = plt.subplots(
@@ -458,10 +443,7 @@ def _corner_plot(
             bins=bins,
             bin_ranges=(bin_ranges[i], bin_ranges[j]),
             ax=axs[j, i],
-            **(
-                {"image_cmap": image_cmap, "contour_cmap": contour_cmap}
-                | (plot_2d_kwargs or {})
-            ),
+            **(plot_2d_kwargs or {}),
         )
         axs[i, j].set_visible(False)
 
@@ -494,8 +476,6 @@ def plot_ensemble_distribution(
     | None = None,
     uncertainty_type: UncertaintyType = "percentile",
     confidence_level: float = 0.9,
-    image_cmap: str = "Greys",
-    contour_cmap: str = "plasma",
     plot_1d_kwargs: dict | None = None,
     plot_2d_kwargs: dict | None = None,
     axs: np.ndarray | None = None,
@@ -526,16 +506,12 @@ def plot_ensemble_distribution(
         ``compute_statistics_2d``.
     confidence_level : float
         Confidence level for the bands.
-    image_cmap : str
-        Colormap for the pcolormesh fill on the off-diagonal panels. Defaults to
-        ``"Greys"``. Overridden by ``plot_2d_kwargs["image_cmap"]`` if given.
-    contour_cmap : str
-        Colormap for the contour lines on the off-diagonal panels. Defaults to
-        ``"plasma"``. Overridden by ``plot_2d_kwargs["contour_cmap"]`` if given.
     plot_1d_kwargs : dict | None
-        Extra kwargs forwarded to ``plot_1d_distribution``.
+        Extra kwargs forwarded to ``plot_1d_distribution`` for the diagonal panels.
     plot_2d_kwargs : dict | None
-        Extra kwargs forwarded to ``plot_2d_distribution``.
+        Extra kwargs forwarded to ``plot_2d_distribution`` for the off-diagonal
+        panels, so panel styling goes through its ``pcolormesh_kwargs`` /
+        ``contour_kwargs``.
     axs : np.ndarray | None
         Optional pre-made ``(N, N)`` Axes array.
 
@@ -544,8 +520,6 @@ def plot_ensemble_distribution(
     tuple[plt.Figure, np.ndarray]
         ``(fig, axs)``.
     """
-    # `force_spatial_mm` isn't uncertainty-related, but it's threaded through the
-    # same kwargs channel to both per-panel plotters.
     shared_kwargs = {
         "uncertainty_type": uncertainty_type,
         "confidence_level": confidence_level,
@@ -556,8 +530,6 @@ def plot_ensemble_distribution(
         dimensions=dimensions,
         bins=bins,
         bin_ranges=bin_ranges,
-        image_cmap=image_cmap,
-        contour_cmap=contour_cmap,
         plot_1d_kwargs=shared_kwargs | (plot_1d_kwargs or {}),
         plot_2d_kwargs=shared_kwargs | (plot_2d_kwargs or {}),
         axs=axs,
@@ -572,8 +544,6 @@ def plot_beam_distribution(
     | tuple[float, float]
     | list[tuple[float, float]]
     | None = None,
-    image_cmap: str = "Greys",
-    contour_cmap: str = "plasma",
     plot_1d_kwargs: dict | None = None,
     plot_2d_kwargs: dict | None = None,
     axs: np.ndarray | None = None,
@@ -597,16 +567,12 @@ def plot_beam_distribution(
         Number of bins for both 1D and 2D histograms.
     bin_ranges : "unit_same" | tuple[float, float] | list[tuple[float, float]] | None
         Bin-range spec (see ``plot_ensemble_distribution``).
-    image_cmap : str
-        Colormap for the pcolormesh fill on the off-diagonal panels. Defaults to
-        ``"Greys"``. Overridden by ``plot_2d_kwargs["image_cmap"]`` if given.
-    contour_cmap : str
-        Colormap for the contour lines on the off-diagonal panels. Defaults to
-        ``"plasma"``. Overridden by ``plot_2d_kwargs["contour_cmap"]`` if given.
     plot_1d_kwargs : dict | None
-        Extra kwargs forwarded to ``plot_1d_distribution``.
+        Extra kwargs forwarded to ``plot_1d_distribution`` for the diagonal panels.
     plot_2d_kwargs : dict | None
-        Extra kwargs forwarded to ``plot_2d_distribution``.
+        Extra kwargs forwarded to ``plot_2d_distribution`` for the off-diagonal
+        panels, so panel styling goes through its ``pcolormesh_kwargs`` /
+        ``contour_kwargs``.
     axs : np.ndarray | None
         Optional pre-made ``(N, N)`` Axes array.
 
@@ -620,8 +586,6 @@ def plot_beam_distribution(
         dimensions=dimensions,
         bins=bins,
         bin_ranges=bin_ranges,
-        image_cmap=image_cmap,
-        contour_cmap=contour_cmap,
         plot_1d_kwargs={"force_spatial_mm": True} | (plot_1d_kwargs or {}),
         plot_2d_kwargs={"force_spatial_mm": True} | (plot_2d_kwargs or {}),
         axs=axs,
