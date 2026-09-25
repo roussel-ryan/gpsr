@@ -24,6 +24,7 @@ dependencies = [
   "scipy",
   "scikit-image",
   "zuko==1.4.0",
+  "tensordict",
 ]
 description = "Phase space reconstruction using differentiable beam dynamics and generative beam representations"
 dynamic = [ "version" ]
