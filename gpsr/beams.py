@@ -47,6 +47,151 @@ class NNTransform(torch.nn.Module):
         return self.stack(X) * self.output_scale
 
 
+class ResNNTransform(torch.nn.Module):
+    """
+    Residual Neural Network Transform for phase space data.
+
+    This transformer contains a 2-step model, which first aims to learn the
+    linear transformation of the input phase space data, followed by a residual
+    neural network that captures more complex, non-linear relationships.
+
+    This reduces the complexity that the residual network needs to capture,
+    making the overall model more efficient and easier to train.
+
+    """
+
+    def __init__(
+        self,
+        n_hidden: int = 2,
+        width: int = 20,
+        activation: Module = torch.nn.LeakyReLU(),
+        log_output_scale: float = -2.0,
+        phase_space_dim: int = 6,
+        use_skip_connection: bool = False,
+        track_metrics: bool = False,
+    ):
+        """
+        Initialize the Residual Neural Network Transformer.
+
+        Parameters
+        ----------
+        n_hidden : int
+            Number of hidden layers in the residual network.
+        width : int
+            Width of each hidden layer.
+        activation : Module
+            Activation function to use in the residual network.
+        log_output_scale : float
+            Logarithm of the output scale factor.
+        phase_space_dim : int
+            Dimensionality of the input phase space data.
+        use_skip_connection : bool
+            Whether to use a skip connection for the residual network.
+        track_metrics : bool
+            Whether to track metrics such as residual ratio and norms.
+
+        """
+        super().__init__()
+        # First layer before the main network
+        self.first_layer = torch.nn.Linear(phase_space_dim, phase_space_dim)
+        # use a linear activation for the first layer
+        self.first_layer_activation = torch.nn.LeakyReLU(negative_slope=1.0)
+
+        # residual network: phase_space_dim -> width -> ... -> width -> phase_space_dim
+        if n_hidden < 1:
+            raise ValueError("n_hidden must be at least 1")
+
+        layers = [torch.nn.Linear(phase_space_dim, width), activation]
+        for _ in range(n_hidden - 1):
+            layers += [torch.nn.Linear(width, width), activation]
+        layers.append(torch.nn.Linear(width, phase_space_dim))
+        self.res_net = torch.nn.Sequential(*layers)
+
+        self.log_output_scale = torch.nn.Parameter(torch.tensor(log_output_scale))
+
+        self.use_skip_connection = use_skip_connection
+
+        # alpha scales the res_net's contribution; only trainable when the
+        # skip connection is used, otherwise it's fixed at 1 (full res_net output)
+        if use_skip_connection:
+            self.alpha = torch.nn.Parameter(torch.tensor(0.0))
+        else:
+            self.register_buffer("alpha", torch.tensor(1.0))
+
+        self.track_metrics = track_metrics
+
+        if self.track_metrics:
+            self.residual_ratio = 0.0
+            self.first_layer_norm = 0.0
+            self.residual_norm = 0.0
+
+    @property
+    def output_scale(self):
+        return 10**self.log_output_scale
+
+    @property
+    def linear_parameters(self):
+        return [
+            *self.first_layer.parameters(),
+            *self.first_layer_activation.parameters(),
+        ]
+
+    @property
+    def res_net_parameters(self):
+        return list(self.res_net.parameters())
+
+    @property
+    def other_parameters(self):
+        other_params = []
+        if hasattr(self, "alpha"):
+            other_params.append(self.alpha)
+        if hasattr(self, "log_output_scale"):
+            other_params.append(self.log_output_scale)
+        return other_params
+
+    def linear_forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through the initial linear transformation layer.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input tensor representing the phase space data.
+
+        Returns
+        -------
+        torch.Tensor
+            Output of the first layer after applying the activation function.
+        """
+        x = self.first_layer(x)
+        x = self.first_layer_activation(x)
+        return x
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        # always pass through the first layer
+        x = self.linear_forward(x)
+
+        # send the output of the first layer through the residual network
+        residual = self.res_net(x) * self.alpha
+
+        if self.track_metrics:
+            # compute the residual ratio and norms for tracking purposes
+            with torch.no_grad():
+                res_norm = torch.norm(residual, dim=-1).mean()
+                first_layer_norm = torch.norm(x, dim=-1).mean()
+                self.residual_ratio = (res_norm / (first_layer_norm + 1e-8)).item()
+                self.first_layer_norm = first_layer_norm.item()
+                self.residual_norm = res_norm.item()
+
+        if self.use_skip_connection:
+            # do the skip connection by adding the residual to the first layer output
+            output = x + residual
+        else:
+            output = residual
+
+        return output * self.output_scale
+
+
 class NNParticleBeamGenerator(BeamGenerator):
     def __init__(
         self,

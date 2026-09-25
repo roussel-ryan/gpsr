@@ -1,7 +1,9 @@
 import os
 from abc import ABC
 from typing import Callable
+from torch.utils.data import DataLoader
 
+from gpsr.beams import ResNNTransform
 import lightning as L
 import torch
 from lightning.pytorch.callbacks import Callback, ModelCheckpoint
@@ -61,7 +63,7 @@ class LitGPSR(L.LightningModule, ABC):
 
 def train_gpsr(
     gpsr_model: GPSR,
-    train_dataloader,
+    train_dataloader: DataLoader,
     n_epochs: int = 100,
     lr: float = 1e-3,
     loss_func: Callable = mae_loss,
@@ -83,8 +85,8 @@ def train_gpsr(
         Number of epochs to train the model. Default is 100.
     lr: float, optional
         Learning rate for the optimizer. Default is 1e-3.
-    log_name: str, optional
-        Name of the log file to save training logs. Default is "gpsr".
+    logger: optional
+        Logger passed to the Lightning `Trainer`. Default is a new `CSVLogger` with name "gpsr".
     checkpoint_period_epochs: int, optional
         Number of epochs between saving checkpoints. Default is 100.
     kwargs: Additional arguments to be passed to the Trainer.
@@ -97,7 +99,8 @@ def train_gpsr(
     """
 
     logger = logger or CSVLogger("logs", name="gpsr")
-    dirpath = os.path.join(logger.log_dir, "checkpoints")
+    if dirpath is None:
+        dirpath = os.path.join(logger.log_dir, "checkpoints")
 
     periodic_checkpoint_callback = ModelCheckpoint(
         dirpath=dirpath,  # Directory to save checkpoints
@@ -122,6 +125,135 @@ def train_gpsr(
     )
 
     return lit_gpsr_model
+
+
+def train_gpsr_multistep(
+    gpsr_model: GPSR,
+    train_dataloader: DataLoader,
+    n_epochs_linear: int = 100,
+    n_epochs_full: int = 100,
+    lr_linear: float = 1e-3,
+    lr_full: float = 1e-3,
+    loss_func: Callable = mae_loss,
+    logger=None,
+    dirpath=None,
+    checkpoint_period_epochs: int = 100,
+    **kwargs,
+):
+    """
+    Train a GPSR model that uses an instance of ResNNTransform as the transformer in two stages.
+
+    In the first stage, only the linear parameters and output scale of the beam generator's
+    transformer (`transformer.linear_parameters`, e.g. `ResNNTransform`'s first
+    layer) are trained, with all other parameters frozen. If the transformer has
+    a trainable `alpha` (skip-connection scale) parameter, it is also zeroed out
+    for this stage so that the model's output is purely linear. Multistep
+    training therefore requires a `ResNNTransform` with `use_skip_connection=True`.
+
+    In the second stage, all model parameters are trained together. This lets the
+    linear transformation fit the coarse, dominant behavior of the beam before
+    the full model is jointly fine-tuned, which can improve training
+    stability/convergence.
+
+    Arguments
+    ---------
+    gpsr_model: GPSR
+        GPSR model to be trained that has a transformer of type `ResNNTransform`.
+    train_dataloader: DataLoader
+        DataLoader for the training data.
+    n_epochs_linear: int, optional
+        Number of epochs for the linear-only training stage. Default is 100.
+    n_epochs_full: int, optional
+        Number of epochs for the full-model training stage. Default is 100.
+    lr_linear: float, optional
+        Learning rate used during the linear-only stage. Default is 1e-3.
+    lr_full: float, optional
+        Learning rate used during the full-model stage. Default is 1e-3.
+    loss_func: Callable, optional
+        Loss function used in both stages. Default is `mae_loss`.
+    logger: optional
+        Logger passed to the Lightning `Trainer` in both stages. Default is a new
+        `CSVLogger` per stage.
+    checkpoint_period_epochs: int, optional
+        Number of epochs between saving checkpoints. Default is 100.
+    kwargs: Additional arguments to be passed to the Trainer in both stages.
+
+    Returns
+    -------
+    lit_gpsr_model: LitGPSR
+        Trained LitGPSR model after both stages.
+
+    """
+    transformer = gpsr_model.beam_generator.transformer
+    if not isinstance(transformer, ResNNTransform):
+        raise TypeError(
+            f"Expected transformer to be an instance of ResNNTransform, but got {type(transformer).__name__}"
+        )
+    if not transformer.use_skip_connection:
+        raise ValueError(
+            "train_gpsr_multistep requires a ResNNTransform with use_skip_connection=True"
+        )
+
+    stage_one_trainable_params = list(transformer.linear_parameters)
+    log_output_scale = getattr(transformer, "log_output_scale", None)
+    if isinstance(log_output_scale, torch.nn.Parameter):
+        stage_one_trainable_params.append(log_output_scale)
+    linear_param_ids = {id(p) for p in stage_one_trainable_params}
+    all_params = list(gpsr_model.parameters())
+    original_requires_grad = {id(param): param.requires_grad for param in all_params}
+    non_linear_params = [
+        param for param in all_params if id(param) not in linear_param_ids
+    ]
+
+    # zero out the skip-connection scale so stage 1's output is purely linear
+    alpha = getattr(transformer, "alpha", None)
+    original_alpha = None
+    if torch.is_tensor(alpha):
+        original_alpha = alpha.detach().clone()
+
+    lit_gpsr_model = None
+    try:
+        # stage 1: freeze everything except the transformer's linear parameters
+        for p in non_linear_params:
+            p.requires_grad_(False)
+        if original_alpha is not None:
+            with torch.no_grad():
+                alpha.zero_()
+
+        lit_gpsr_model = train_gpsr(
+            gpsr_model,
+            train_dataloader,
+            n_epochs=n_epochs_linear,
+            lr=lr_linear,
+            loss_func=loss_func,
+            logger=logger,
+            dirpath=dirpath,
+            checkpoint_period_epochs=checkpoint_period_epochs,
+            **kwargs,
+        )
+
+        # stage 2: train the full model jointly
+        for p in non_linear_params:
+            p.requires_grad_(True)
+        if original_alpha is not None:
+            with torch.no_grad():
+                alpha.copy_(original_alpha)
+
+        lit_gpsr_model = train_gpsr(
+            lit_gpsr_model.gpsr_model,
+            train_dataloader,
+            n_epochs=n_epochs_full,
+            lr=lr_full,
+            loss_func=loss_func,
+            logger=logger,
+            dirpath=dirpath,
+            checkpoint_period_epochs=checkpoint_period_epochs,
+            **kwargs,
+        )
+        return lit_gpsr_model
+    finally:
+        for param in all_params:
+            param.requires_grad_(original_requires_grad[id(param)])
 
 
 class EntropyLitGPSR(L.LightningModule, ABC):
