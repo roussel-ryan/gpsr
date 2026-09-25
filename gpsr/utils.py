@@ -1,3 +1,5 @@
+from gpsr.beams import NNParticleBeamGenerator, ResNNTransform
+from gpsr.beams import ParticleBeam
 import torch
 
 
@@ -73,3 +75,42 @@ def get_core_fraction(beam_coords, frac=0.9, dims=slice(0, 4), normalized_output
     else:
         sorted_coords = beam_coords[torch.argsort(origin_dist)]
         return sorted_coords[: int(beam_coords.shape[0] * frac)]
+
+
+def to_linear_beam(beam_generator: NNParticleBeamGenerator) -> ParticleBeam:
+    """Return a particle beam computed by the linear part of a ResNNTransform.
+
+    Parameters
+    ----------
+    beam_generator : NNParticleBeamGenerator
+        The beam generator containing a ResNNTransform as its transformer.
+
+    Returns
+    -------
+    ParticleBeam
+        The resulting ParticleBeam with linear output embedded in 6d phase space.
+    """
+    transformer = beam_generator.transformer
+
+    if not isinstance(transformer, ResNNTransform):
+        raise TypeError(
+            f"Expected beam generator transformer to be an instance of ResNNTransform, "
+            f"but got {type(transformer)}"
+        )
+
+    with torch.no_grad():
+        linear_output = (
+            transformer.linear_forward(beam_generator.base_particles)
+            * transformer.output_scale
+        )
+
+    coords = torch.randn(linear_output.shape[0], 6) * 1e-7
+    coords[:, : linear_output.shape[-1]] = linear_output
+    coords = torch.cat((coords, torch.ones_like(coords[:, :1])), dim=-1)
+
+    return ParticleBeam(
+        particles=coords,
+        energy=beam_generator.beam_energy,
+        particle_charges=beam_generator.particle_charges,
+        survival_probabilities=beam_generator.survival_probabilities,
+    )
