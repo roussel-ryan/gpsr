@@ -399,6 +399,9 @@ def _corner_plot(
     triangle, upper triangle hidden -- and delegates each panel to
     ``plot_1d_distribution`` / ``plot_2d_distribution``, which auto-detect whether
     the beam is ensemble-vectorized.
+
+    ``plot_1d_kwargs`` / ``plot_2d_kwargs`` are splatted into those two calls, so
+    they take *their* signatures rather than matplotlib kwargs.
     """
     if axs is None:
         fig, axs = plt.subplots(
@@ -507,11 +510,13 @@ def plot_ensemble_distribution(
     confidence_level : float
         Confidence level for the bands.
     plot_1d_kwargs : dict | None
-        Extra kwargs forwarded to ``plot_1d_distribution`` for the diagonal panels.
+        Arguments for ``plot_1d_distribution``, which draws the diagonal panels --
+        its signature, not matplotlib's. Matplotlib kwargs go in the nested
+        ``plot_kwargs`` / ``fill_between_kwargs`` it accepts.
     plot_2d_kwargs : dict | None
-        Extra kwargs forwarded to ``plot_2d_distribution`` for the off-diagonal
-        panels, so panel styling goes through its ``pcolormesh_kwargs`` /
-        ``contour_kwargs``.
+        Arguments for ``plot_2d_distribution``, which draws the off-diagonal panels
+        -- its signature, not matplotlib's. Matplotlib kwargs go in the nested
+        ``pcolormesh_kwargs`` / ``contour_kwargs`` it accepts.
     axs : np.ndarray | None
         Optional pre-made ``(N, N)`` Axes array.
 
@@ -568,11 +573,13 @@ def plot_beam_distribution(
     bin_ranges : "unit_same" | tuple[float, float] | list[tuple[float, float]] | None
         Bin-range spec (see ``plot_ensemble_distribution``).
     plot_1d_kwargs : dict | None
-        Extra kwargs forwarded to ``plot_1d_distribution`` for the diagonal panels.
+        Arguments for ``plot_1d_distribution``, which draws the diagonal panels --
+        its signature, not matplotlib's. Matplotlib kwargs go in the nested
+        ``plot_kwargs`` / ``fill_between_kwargs`` it accepts.
     plot_2d_kwargs : dict | None
-        Extra kwargs forwarded to ``plot_2d_distribution`` for the off-diagonal
-        panels, so panel styling goes through its ``pcolormesh_kwargs`` /
-        ``contour_kwargs``.
+        Arguments for ``plot_2d_distribution``, which draws the off-diagonal panels
+        -- its signature, not matplotlib's. Matplotlib kwargs go in the nested
+        ``pcolormesh_kwargs`` / ``contour_kwargs`` it accepts.
     axs : np.ndarray | None
         Optional pre-made ``(N, N)`` Axes array.
 

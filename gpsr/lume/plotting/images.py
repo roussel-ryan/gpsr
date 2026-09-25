@@ -93,6 +93,9 @@ def _draw_screen_image(
     ``image`` is in ``[x,y]`` order, so it is transposed for pcolormesh's
     ``[y,x]``. Axis labels are set per figure by ``_label_edge_axes``, not here.
 
+    ``vmax`` is the grid-wide default; an explicit ``vmax`` in ``pcolormesh_kwargs``
+    wins, including ``None`` for per-image autoscaling.
+
     ``pcolormesh_kwargs["white_background"]`` is popped rather than forwarded: it
     masks zero pixels, which also means the cmap must be resolved *after* the merge
     so one supplied in the same dict gets the white "bad" color.
@@ -369,7 +372,6 @@ def plot_images(
     observation_key: str | None = None,
     labels: str | list[str] | None = None,
     n_cols: int | None = None,
-    normalize_each: bool = False,
     contours: bool = False,
     x_range: tuple[float, float] | None = None,
     y_range: tuple[float, float] | None = None,
@@ -392,8 +394,8 @@ def plot_images(
     - Default: fill only.
     - ``contours=True``: each image also drawn as peak-normalized dashed contours.
     - ``overlay_images`` given: one row per scan step, with the overlay as contour
-      lines on the same axes. Each image is normalized to its own peak, so
-      ``normalize_each`` is ignored.
+      lines on the same axes. Each image is normalized to its own peak, so the fill
+      autoscales per image unless ``pcolormesh_kwargs["vmax"]`` says otherwise.
 
     Linestyle encodes the source dict: dashed = the first-arg ``images`` set
     (reference / reconstruction), solid = the ``overlay_images`` ground-truth
@@ -431,10 +433,6 @@ def plot_images(
         Number of columns in the single-grid layout. If None (default), all images
         are placed in a single row. Ignored in comparison mode (columns are fixed
         to one per scan step).
-    normalize_each : bool
-        Single-grid only. If True, each image is scaled independently; if False, a
-        common vmax is used across all images. Ignored by the overlay comparison,
-        which always per-image normalizes.
     contours : bool
         Overlay the ``images`` set as peak-normalized dashed contours on top of the
         fill. Defaults to False.
@@ -455,10 +453,12 @@ def plot_images(
         as ``(2.5 * n_cols, 4 * n_rows)``.
     pcolormesh_kwargs : dict | None
         Extra kwargs for ``Axes.pcolormesh``, merged over the fill defaults
-        (``cmap="Greys"``, ``vmin=0``, the ``vmax`` from ``normalize_each``), so
-        user keys win. The extra key ``white_background`` (default False) masks
-        zero pixels white instead of using the colormap's low end; a ``cmap`` in
-        the same dict gets that white masked colour too.
+        (``cmap="Greys"``, ``vmin=0``, ``vmax`` the max over all images), so user
+        keys win. Pass ``vmax=None`` to scale each image to its own peak instead of
+        a common scale; with ``overlay_images`` that is already the default. The
+        extra key ``white_background`` (default False) masks zero pixels white
+        instead of using the colormap's low end; a ``cmap`` in the same dict gets
+        that white masked colour too.
     contour_kwargs : dict | None
         Extra kwargs for ``Axes.contour`` on the ``images`` set, merged over the
         defaults (``cmap="plasma"``, ``levels=(0.1, 0.5, 0.9)``, dashed). The extra
@@ -488,8 +488,7 @@ def plot_images(
     )
 
     # Contours are each self-normalized, so per-image normalize the fill too.
-    normalize_each = normalize_each or overlay is not None
-    vmax = None if normalize_each else np.max(images)
+    vmax = None if overlay is not None else np.max(images)
 
     def draw_overlays(ax, col):
         reference_kws = contour_kwargs or {}
@@ -544,7 +543,6 @@ def plot_ensemble_images(
     observation_key: str | None = None,
     labels: str | list[str] | None = None,
     n_cols: int | None = None,
-    normalize_each: bool = False,
     band: bool = True,
     uncertainty_type: UncertaintyType = "percentile",
     confidence_level: float = 0.9,
@@ -600,10 +598,6 @@ def plot_ensemble_images(
     n_cols : int | None
         Number of columns in the image grid. ``None`` (default) places all
         samples in a single row.
-    normalize_each : bool
-        Governs the mean-image fill only (the band / overlay contours are always
-        self-normalized). If True, each mean image is scaled independently; if
-        False (default), a common vmax is used across all mean images.
     band : bool
         If True (default), overlay the ensemble band (lower / mean / upper) as
         dashed peak-normalized contours on the mean fill; if False, draw only the
@@ -628,11 +622,13 @@ def plot_ensemble_images(
         Figure size ``(width, height)`` in inches. If None (default), auto-sized
         as ``(2.5 * n_cols, 4 * n_rows)``.
     pcolormesh_kwargs : dict | None
-        Extra kwargs for ``Axes.pcolormesh``, merged over the fill defaults
-        (``cmap="Greys"``, ``vmin=0``, the ``vmax`` from ``normalize_each``), so
-        user keys win. The extra key ``white_background`` (default False) masks
-        zero pixels white instead of using the colormap's low end; a ``cmap`` in
-        the same dict gets that white masked colour too.
+        Extra kwargs for ``Axes.pcolormesh``, merged over the mean-image fill
+        defaults (``cmap="Greys"``, ``vmin=0``, ``vmax`` the max over all mean
+        images), so user keys win. Pass ``vmax=None`` to scale each mean image to
+        its own peak instead of a common scale; the band and overlay contours are
+        self-normalized either way. The extra key ``white_background`` (default
+        False) masks zero pixels white instead of using the colormap's low end; a
+        ``cmap`` in the same dict gets that white masked colour too.
     contour_kwargs : dict | None
         Extra kwargs for ``Axes.contour`` on the ensemble band, merged over the
         defaults (``cmap="plasma"``, ``levels=(0.1, 0.5, 0.9)``, dashed). The extra
@@ -672,7 +668,7 @@ def plot_ensemble_images(
     overlay = _load_overlay_images(
         overlay_images, observation_key, mean.shape[0], "ensemble_images"
     )
-    vmax = None if normalize_each else np.max(mean)
+    vmax = np.max(mean)
 
     def draw_overlays(ax, col):
         band_kws = contour_kwargs or {}
