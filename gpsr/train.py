@@ -149,7 +149,7 @@ def train_gpsr_multistep(
     a trainable `alpha` (skip-connection scale) parameter, it is also zeroed out
     for this stage so that the model's output is purely linear. Multistep
     training therefore requires a `ResNNTransform` with `use_skip_connection=True`.
-    
+
     In the second stage, all model parameters are trained together. This lets the
     linear transformation fit the coarse, dominant behavior of the beam before
     the full model is jointly fine-tuned, which can improve training
@@ -193,7 +193,7 @@ def train_gpsr_multistep(
         raise ValueError(
             "train_gpsr_multistep requires a ResNNTransform with use_skip_connection=True"
         )
-    
+
     stage_one_trainable_params = list(transformer.linear_parameters)
     log_output_scale = getattr(transformer, "log_output_scale", None)
     if isinstance(log_output_scale, torch.nn.Parameter):

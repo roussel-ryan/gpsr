@@ -50,14 +50,14 @@ class NNTransform(torch.nn.Module):
 class ResNNTransform(torch.nn.Module):
     """
     Residual Neural Network Transform for phase space data.
-    
+
     This transformer contains a 2-step model, which first aims to learn the
     linear transformation of the input phase space data, followed by a residual
     neural network that captures more complex, non-linear relationships.
 
-    This reduces the complexity that the residual network needs to capture, 
+    This reduces the complexity that the residual network needs to capture,
     making the overall model more efficient and easier to train.
-    
+
     """
 
     def __init__(
@@ -89,7 +89,7 @@ class ResNNTransform(torch.nn.Module):
             Whether to use a skip connection for the residual network.
         track_metrics : bool
             Whether to track metrics such as residual ratio and norms.
-        
+
         """
         super().__init__()
         # First layer before the main network
@@ -127,7 +127,7 @@ class ResNNTransform(torch.nn.Module):
 
     @property
     def output_scale(self):
-        return 10 ** self.log_output_scale
+        return 10**self.log_output_scale
 
     @property
     def linear_parameters(self):
@@ -182,7 +182,6 @@ class ResNNTransform(torch.nn.Module):
                 self.residual_ratio = (res_norm / (first_layer_norm + 1e-8)).item()
                 self.first_layer_norm = first_layer_norm.item()
                 self.residual_norm = res_norm.item()
-
 
         if self.use_skip_connection:
             # do the skip connection by adding the residual to the first layer output
