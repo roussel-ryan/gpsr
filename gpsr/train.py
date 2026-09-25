@@ -99,7 +99,7 @@ def train_gpsr(
     """
 
     logger = logger or CSVLogger("logs", name="gpsr")
-    dirpath = os.path.join(logger.log_dir, "checkpoints")
+    dirpath = dirpath or os.path.join(logger.log_dir, "checkpoints")
 
     periodic_checkpoint_callback = ModelCheckpoint(
         dirpath=dirpath,  # Directory to save checkpoints
@@ -146,12 +146,13 @@ def train_gpsr_multistep(
     transformer (`transformer.linear_parameters`, e.g. `ResNNTransform`'s first
     layer) are trained, with all other parameters frozen. If the transformer has
     a trainable `alpha` (skip-connection scale) parameter, it is also zeroed out
-    for this stage so that the model's output is purely linear. 
+    for this stage so that the model's output is purely linear. Multistep
+    training therefore requires a `ResNNTransform` with `use_skip_connection=True`.
     
-    In the second stage, the linear parameters are frozen and the remaining parameters are
-    trained instead. This lets the linear transformation fit the coarse, dominant
-    behavior of the beam before the (harder to fit) nonlinear residual
-    parameters are trained, which can improve training stability/convergence.
+    In the second stage, all model parameters are trained together. This lets the
+    linear transformation fit the coarse, dominant behavior of the beam before
+    the full model is jointly fine-tuned, which can improve training
+    stability/convergence.
 
     Arguments
     ---------
@@ -187,6 +188,13 @@ def train_gpsr_multistep(
         raise TypeError(
             f"Expected transformer to be an instance of ResNNTransform, but got {type(transformer).__name__}"
         )
+    if not (
+        transformer.use_skip_connection
+        and isinstance(getattr(transformer, "alpha", None), torch.nn.Parameter)
+    ):
+        raise ValueError(
+            "train_gpsr_multistep requires a ResNNTransform with use_skip_connection=True"
+        )
     
     linear_params = list(transformer.linear_parameters)
     linear_param_ids = {id(p) for p in linear_params}
@@ -216,11 +224,9 @@ def train_gpsr_multistep(
         **kwargs,
     )
 
-    # stage 2: freeze the linear parameters and train everything else
+    # stage 2: train the full model jointly
     for p in non_linear_params:
         p.requires_grad_(True)
-    for p in linear_params:
-        p.requires_grad_(False)
 
     lit_gpsr_model = train_gpsr(
         lit_gpsr_model.gpsr_model,
@@ -233,10 +239,6 @@ def train_gpsr_multistep(
         checkpoint_period_epochs=checkpoint_period_epochs,
         **kwargs,
     )
-
-    # restore the linear parameters to trainable so the returned model is unfrozen
-    for p in linear_params:
-        p.requires_grad_(True)
 
     return lit_gpsr_model
 

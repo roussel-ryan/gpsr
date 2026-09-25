@@ -104,7 +104,15 @@ def to_linear_beam(beam_generator: NNParticleBeamGenerator) -> ParticleBeam:
             * transformer.output_scale
         )
 
-    coords = torch.randn(linear_output.shape[0], 6) * 1e-7
+    coords = (
+        torch.randn(
+            linear_output.shape[0],
+            6,
+            device=linear_output.device,
+            dtype=linear_output.dtype,
+        )
+        * 1e-7
+    )
     coords[:, : linear_output.shape[-1]] = linear_output
     coords = torch.cat((coords, torch.ones_like(coords[:, :1])), dim=-1)
 

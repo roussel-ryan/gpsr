@@ -2,7 +2,8 @@ import pytest
 import torch
 from torch.distributions import MultivariateNormal
 from cheetah.particles import ParticleBeam
-from gpsr.beams import NNTransform, NNParticleBeamGenerator
+from gpsr.beams import NNTransform, NNParticleBeamGenerator, ResNNTransform
+from gpsr.utils import to_linear_beam
 
 
 class TestBeams:
@@ -35,6 +36,47 @@ class TestBeams:
         output = transformer(X)
         assert output.shape == X.shape
         assert torch.is_tensor(output)
+
+    @pytest.mark.parametrize("dim", [2, 4, 6])
+    def test_resnn_transform_linear_forward(self, dim):
+        transformer = ResNNTransform(n_hidden=2, width=10, phase_space_dim=dim)
+        X = torch.rand(5, dim)
+
+        output = transformer.linear_forward(X)
+
+        assert output.shape == X.shape
+        assert torch.is_tensor(output)
+
+    @pytest.mark.parametrize("dim", [2, 4, 6])
+    def test_resnn_transform_forward_without_skip_connection(self, dim):
+        transformer = ResNNTransform(n_hidden=2, width=10, phase_space_dim=dim)
+        X = torch.rand(5, dim)
+
+        for layer in transformer.res_net:
+            if isinstance(layer, torch.nn.Linear):
+                torch.nn.init.zeros_(layer.weight)
+                torch.nn.init.zeros_(layer.bias)
+
+        output = transformer(X)
+
+        assert output.shape == X.shape
+        assert torch.allclose(output, torch.zeros_like(X))
+
+    @pytest.mark.parametrize("dim", [2, 4, 6])
+    def test_resnn_transform_forward_with_skip_connection(self, dim):
+        transformer = ResNNTransform(
+            n_hidden=2, width=10, phase_space_dim=dim, use_skip_connection=True
+        )
+        X = torch.rand(5, dim)
+
+        with torch.no_grad():
+            transformer.alpha.zero_()
+
+        output = transformer(X)
+        expected = transformer.linear_forward(X) * transformer.output_scale
+
+        assert output.shape == X.shape
+        assert torch.allclose(output, expected)
 
     @pytest.mark.parametrize("dim", [2, 4, 6])
     def test_nn_particle_beam_generator_initialization(self, dim):
@@ -80,3 +122,22 @@ class TestBeams:
         # check to make sure emittances are not nan
         assert not torch.isnan(beam.emittance_x)
         assert not torch.isnan(beam.emittance_y)
+
+    def test_to_linear_beam_preserves_dtype(self):
+        transformer = ResNNTransform(
+            n_hidden=2,
+            width=10,
+            phase_space_dim=4,
+            use_skip_connection=True,
+        ).double()
+        generator = NNParticleBeamGenerator(
+            n_particles=10,
+            energy=1e9,
+            transformer=transformer,
+            n_dim=4,
+        )
+        generator.base_particles = generator.base_particles.double()
+
+        beam = to_linear_beam(generator)
+
+        assert beam.particles.dtype == generator.base_particles.dtype
