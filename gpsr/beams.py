@@ -131,7 +131,10 @@ class ResNNTransform(torch.nn.Module):
 
     @property
     def linear_parameters(self):
-        return list(self.first_layer.parameters())
+        return [
+            *self.first_layer.parameters(),
+            *self.first_layer_activation.parameters(),
+        ]
 
     @property
     def res_net_parameters(self):

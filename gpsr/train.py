@@ -196,61 +196,64 @@ def train_gpsr_multistep(
     
     linear_params = list(transformer.linear_parameters)
     linear_param_ids = {id(p) for p in linear_params}
-    non_linear_params = []
-    seen_param_ids = set()
-    for param in gpsr_model.parameters():
-        if id(param) not in linear_param_ids and id(param) not in seen_param_ids:
-            non_linear_params.append(param)
-            seen_param_ids.add(id(param))
-    for param in transformer.other_parameters:
-        if isinstance(param, torch.nn.Parameter) and id(param) not in seen_param_ids:
-            non_linear_params.append(param)
-            seen_param_ids.add(id(param))
-
-    # stage 1: freeze everything except the transformer's linear parameters
-    for p in non_linear_params:
-        p.requires_grad_(False)
+    all_params = list(gpsr_model.parameters())
+    original_requires_grad = {id(param): param.requires_grad for param in all_params}
+    non_linear_params = [
+        param for param in all_params if id(param) not in linear_param_ids
+    ]
 
     # zero out the skip-connection scale so stage 1's output is purely linear
     alpha = getattr(transformer, "alpha", None)
     original_alpha = None
     if torch.is_tensor(alpha):
         original_alpha = alpha.detach().clone()
-        with torch.no_grad():
-            alpha.zero_()
 
-    lit_gpsr_model = train_gpsr(
-        gpsr_model,
-        train_dataloader,
-        n_epochs=n_epochs_linear,
-        lr=lr_linear,
-        loss_func=loss_func,
-        logger=logger,
-        dirpath=dirpath,
-        checkpoint_period_epochs=checkpoint_period_epochs,
-        **kwargs,
-    )
+    lit_gpsr_model = None
+    try:
+        # stage 1: freeze everything except the transformer's linear parameters
+        for p in non_linear_params:
+            p.requires_grad_(False)
+        if original_alpha is not None:
+            with torch.no_grad():
+                alpha.zero_()
 
-    # stage 2: train the full model jointly
-    for p in non_linear_params:
-        p.requires_grad_(True)
-    if original_alpha is not None:
-        with torch.no_grad():
-            alpha.copy_(original_alpha)
+        lit_gpsr_model = train_gpsr(
+            gpsr_model,
+            train_dataloader,
+            n_epochs=n_epochs_linear,
+            lr=lr_linear,
+            loss_func=loss_func,
+            logger=logger,
+            dirpath=dirpath,
+            checkpoint_period_epochs=checkpoint_period_epochs,
+            **kwargs,
+        )
 
-    lit_gpsr_model = train_gpsr(
-        lit_gpsr_model.gpsr_model,
-        train_dataloader,
-        n_epochs=n_epochs_full,
-        lr=lr_full,
-        loss_func=loss_func,
-        logger=logger,
-        dirpath=dirpath,
-        checkpoint_period_epochs=checkpoint_period_epochs,
-        **kwargs,
-    )
+        # stage 2: train the full model jointly
+        for p in non_linear_params:
+            p.requires_grad_(True)
+        if original_alpha is not None:
+            with torch.no_grad():
+                alpha.copy_(original_alpha)
 
-    return lit_gpsr_model
+        lit_gpsr_model = train_gpsr(
+            lit_gpsr_model.gpsr_model,
+            train_dataloader,
+            n_epochs=n_epochs_full,
+            lr=lr_full,
+            loss_func=loss_func,
+            logger=logger,
+            dirpath=dirpath,
+            checkpoint_period_epochs=checkpoint_period_epochs,
+            **kwargs,
+        )
+        return lit_gpsr_model
+    finally:
+        for param in all_params:
+            param.requires_grad_(original_requires_grad[id(param)])
+        if original_alpha is not None:
+            with torch.no_grad():
+                alpha.copy_(original_alpha)
 
 
 class EntropyLitGPSR(L.LightningModule, ABC):

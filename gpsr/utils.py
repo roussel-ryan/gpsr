@@ -2,6 +2,9 @@ from gpsr.beams import NNParticleBeamGenerator, ResNNTransform
 from gpsr.beams import ParticleBeam
 import torch
 
+LINEAR_BEAM_PHASE_SPACE_DIM = 6
+LINEAR_BEAM_NOISE_SCALE = 1e-7
+
 
 def calculate_centroid(images, x, y):
     x_projection = images.sum(dim=-2)
@@ -107,11 +110,11 @@ def to_linear_beam(beam_generator: NNParticleBeamGenerator) -> ParticleBeam:
     coords = (
         torch.randn(
             linear_output.shape[0],
-            6,
+            LINEAR_BEAM_PHASE_SPACE_DIM,
             device=linear_output.device,
             dtype=linear_output.dtype,
         )
-        * 1e-7
+        * LINEAR_BEAM_NOISE_SCALE
     )
     coords[:, : linear_output.shape[-1]] = linear_output
     coords = torch.cat((coords, torch.ones_like(coords[:, :1])), dim=-1)

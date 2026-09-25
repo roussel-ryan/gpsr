@@ -8,11 +8,16 @@ from gpsr.beams import ResNNTransform
 from gpsr.train import train_gpsr, train_gpsr_multistep
 
 
-class DummyGPSR(torch.nn.Module):
+class DummyBeamGenerator(torch.nn.Module):
     def __init__(self, transformer):
         super().__init__()
         self.transformer = transformer
-        self.beam_generator = SimpleNamespace(transformer=transformer)
+
+
+class DummyGPSR(torch.nn.Module):
+    def __init__(self, transformer):
+        super().__init__()
+        self.beam_generator = DummyBeamGenerator(transformer)
         self.readout = torch.nn.Linear(2, 2)
 
 
@@ -98,3 +103,22 @@ class TestTrainGPSRMultistep:
         assert all(recorded_requires_grad[1]["linear"])
         assert recorded_requires_grad[1]["alpha"]
         assert all(recorded_requires_grad[1]["non_linear"])
+
+    @patch("gpsr.train.train_gpsr", side_effect=RuntimeError("stage failure"))
+    def test_stage_one_failure_restores_state(self, mock_train_gpsr):
+        transformer = ResNNTransform(
+            n_hidden=2,
+            width=10,
+            phase_space_dim=2,
+            use_skip_connection=True,
+        )
+        with torch.no_grad():
+            transformer.alpha.fill_(0.5)
+        model = DummyGPSR(transformer)
+        original_requires_grad = [p.requires_grad for p in model.parameters()]
+
+        with pytest.raises(RuntimeError, match="stage failure"):
+            train_gpsr_multistep(model, Mock())
+
+        assert [p.requires_grad for p in model.parameters()] == original_requires_grad
+        assert transformer.alpha.item() == pytest.approx(0.5)
