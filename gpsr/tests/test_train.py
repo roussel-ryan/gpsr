@@ -75,17 +75,21 @@ class TestTrainGPSRMultistep:
         model = DummyGPSR(transformer)
         recorded_requires_grad = []
         recorded_alpha_values = []
+        stage_one_trainable_ids = {
+            id(param) for param in transformer.linear_parameters
+        } | {id(transformer.log_output_scale)}
 
         def capture_call(gpsr_model, *args, **kwargs):
             recorded_alpha_values.append(transformer.alpha.item())
             recorded_requires_grad.append(
                 {
                     "linear": [p.requires_grad for p in transformer.linear_parameters],
+                    "output_scale": transformer.log_output_scale.requires_grad,
                     "alpha": transformer.alpha.requires_grad,
                     "non_linear": [
                         p.requires_grad
                         for p in gpsr_model.parameters()
-                        if id(p) not in {id(param) for param in transformer.linear_parameters}
+                        if id(p) not in stage_one_trainable_ids
                     ],
                 }
             )
@@ -98,9 +102,11 @@ class TestTrainGPSRMultistep:
         assert len(recorded_requires_grad) == 2
         assert recorded_alpha_values == [0.0, 0.5]
         assert all(recorded_requires_grad[0]["linear"])
+        assert recorded_requires_grad[0]["output_scale"]
         assert not recorded_requires_grad[0]["alpha"]
         assert not any(recorded_requires_grad[0]["non_linear"])
         assert all(recorded_requires_grad[1]["linear"])
+        assert recorded_requires_grad[1]["output_scale"]
         assert recorded_requires_grad[1]["alpha"]
         assert all(recorded_requires_grad[1]["non_linear"])
 

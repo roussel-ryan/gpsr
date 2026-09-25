@@ -143,7 +143,7 @@ def train_gpsr_multistep(
     """
     Train a GPSR model that uses an instance of ResNNTransform as the transformer in two stages.
 
-    In the first stage, only the linear parameters of the beam generator's
+    In the first stage, only the linear parameters and output scale of the beam generator's
     transformer (`transformer.linear_parameters`, e.g. `ResNNTransform`'s first
     layer) are trained, with all other parameters frozen. If the transformer has
     a trainable `alpha` (skip-connection scale) parameter, it is also zeroed out
@@ -194,8 +194,11 @@ def train_gpsr_multistep(
             "train_gpsr_multistep requires a ResNNTransform with use_skip_connection=True"
         )
     
-    linear_params = list(transformer.linear_parameters)
-    linear_param_ids = {id(p) for p in linear_params}
+    stage_one_trainable_params = list(transformer.linear_parameters)
+    log_output_scale = getattr(transformer, "log_output_scale", None)
+    if isinstance(log_output_scale, torch.nn.Parameter):
+        stage_one_trainable_params.append(log_output_scale)
+    linear_param_ids = {id(p) for p in stage_one_trainable_params}
     all_params = list(gpsr_model.parameters())
     original_requires_grad = {id(param): param.requires_grad for param in all_params}
     non_linear_params = [

@@ -154,3 +154,14 @@ class TestBeams:
 
         assert beam.particles.device == generator.base_particles.device
         assert beam.particles.dtype == generator.base_particles.dtype
+
+    def test_to_linear_beam_requires_resnn_transform(self):
+        generator = NNParticleBeamGenerator(
+            n_particles=10,
+            energy=1e9,
+            transformer=NNTransform(2, 10, phase_space_dim=4),
+            n_dim=4,
+        )
+
+        with pytest.raises(TypeError, match="Expected beam generator transformer"):
+            to_linear_beam(generator)
