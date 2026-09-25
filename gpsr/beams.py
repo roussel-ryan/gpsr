@@ -11,9 +11,47 @@ from cheetah.particles import ParticleBeam
 
 
 class BeamGenerator(torch.nn.Module, ABC):
+    energy: Tensor
+    """Reference particle energy [eV] of the generated beam.
+
+    A single scalar that defines the phase-space coordinate system. Consumers
+    that pair the beam with an external model (e.g. a tracking simulation) read
+    it here without sampling a beam. Only an annotation, so a subclass is free to
+    supply it as a buffer, a plain attribute or a property -- a concrete property
+    here would break the first two.
+    """
+
     @abstractmethod
     def forward(self) -> ParticleBeam:
         pass
+
+    def get_config(self) -> dict:
+        """Return JSON-serializable kwargs that reconstruct this generator.
+
+        The returned dict, passed to :meth:`from_config`, must rebuild an
+        architecturally-equivalent (but *untrained*) generator. Trained weights
+        are not part of the config -- they are persisted and restored separately
+        via ``state_dict`` / ``load_state_dict``. This lets a generator be made
+        self-describing (e.g. embedded in a checkpoint) without pickling the
+        object or its class internals.
+
+        Optional: generators that cannot describe themselves leave this raising,
+        and callers that want a self-contained checkpoint catch the error.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement get_config(), so it cannot "
+            "be reconstructed from a config; rebuild it explicitly and restore "
+            "weights via load_state_dict."
+        )
+
+    @classmethod
+    def from_config(cls, config: dict) -> "BeamGenerator":
+        """Reconstruct an untrained generator from :meth:`get_config` output.
+
+        Defaults to ``cls(**config)``; override if construction does not map
+        directly onto keyword arguments.
+        """
+        return cls(**config)
 
 
 class NNTransform(torch.nn.Module):
@@ -58,6 +96,11 @@ class NNParticleBeamGenerator(BeamGenerator):
         n_dim: int = 6,
     ):
         super(NNParticleBeamGenerator, self).__init__()
+        # Retained so get_config() can reconstruct an equivalent generator.
+        self.n_particles = n_particles
+        self.n_dim = n_dim
+        self.output_scale = output_scale
+
         self.base_dist = base_dist or MultivariateNormal(
             torch.zeros(n_dim), torch.eye(n_dim)
         )
@@ -69,6 +112,24 @@ class NNParticleBeamGenerator(BeamGenerator):
         self.register_buffer("survival_probabilities", torch.ones(n_particles))
 
         self.set_base_particles(n_particles)
+
+    @property
+    def energy(self) -> Tensor:
+        return self.beam_energy
+
+    def get_config(self) -> dict:
+        """Reconstruction kwargs: see :meth:`BeamGenerator.get_config`.
+
+        ``energy`` is included for completeness; ``base_dist`` and
+        ``transformer`` are omitted -- the defaults are rebuilt from ``n_dim`` /
+        ``output_scale`` and their trained weights are restored via state_dict.
+        """
+        return {
+            "n_particles": self.n_particles,
+            "energy": float(self.beam_energy),
+            "output_scale": self.output_scale,
+            "n_dim": self.n_dim,
+        }
 
     def set_base_particles(self, n_particles: int):
         self.register_buffer(

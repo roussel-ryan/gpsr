@@ -17,7 +17,7 @@ classifiers = [
   "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "lightning>=2,<=2.6.1",
+  "lightning>=2",
   "matplotlib>=3.3.0",
   "cheetah-accelerator>=0.8.0",
   "tensorboard",
@@ -39,6 +39,10 @@ dev = [
   "jupyter",
   "pre-commit"
 ]
+lume = [
+  "lume-cheetah>=0.1.0",
+  "tensordict",
+]
 doc = [
   "mkdocs",
   "mkdocs-jupyter",
@@ -57,7 +61,11 @@ include_package_data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = [ "gpsr", ]
+# These patterns are fnmatched against the full dotted package name, so "gpsr" alone
+# matches only the top-level package: a subpackage needs its own entry or it is
+# silently left out of the wheel while editable installs keep working. Spelled out
+# rather than "gpsr*" so that shipping a new package stays a deliberate act.
+include = [ "gpsr", "gpsr.lume*", ]
 namespaces = false
 
 [project.license]
