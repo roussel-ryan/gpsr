@@ -183,9 +183,8 @@ def build_generator(generator: dict) -> BeamGenerator:
 def build_accelerator_from_spec(accelerator: dict, energy: float) -> LUMECheetahModel:
     """Resolve a spec's ``accelerator["builder"]`` and delegate to it.
 
-    The real builder lives at the facility (e.g. the example's
-    ``example_virtual_accelerator.factory.build_accelerator``); this only reads the
-    spec and resolves the address.
+    The real builder lives at the facility; this only reads the spec and resolves
+    the address.
 
     Parameters
     ----------
@@ -278,8 +277,7 @@ def model_spec_from_files(
     accelerator_builder : str | Callable
         The accelerator assembly function, as a dotted import path or a live
         callable (stored as a path). Required: this is the one facility-specific
-        decision in a spec, so the package supplies no default. At E341 it is
-        ``"virtual_accelerator.cheetah.factory.build_cheetah_model"``.
+        decision in a spec, so the package supplies no default.
     generator : dict, optional
         ``{"cls": <class or import path>, "config": <kwargs>}``. Defaults to
         ``NNParticleBeamGenerator`` with an empty config.
