@@ -28,7 +28,7 @@ class BeamGenerator(torch.nn.Module, ABC):
     def get_config(self) -> dict:
         """Return JSON-serializable kwargs that reconstruct this generator.
 
-        The returned dict, passed to :meth:`from_config`, must rebuild an
+        The returned dict, passed to ``from_config``, must rebuild an
         architecturally-equivalent (but *untrained*) generator. Trained weights
         are not part of the config -- they are persisted and restored separately
         via ``state_dict`` / ``load_state_dict``. This lets a generator be made
@@ -46,7 +46,7 @@ class BeamGenerator(torch.nn.Module, ABC):
 
     @classmethod
     def from_config(cls, config: dict) -> "BeamGenerator":
-        """Reconstruct an untrained generator from :meth:`get_config` output.
+        """Reconstruct an untrained generator from ``get_config`` output.
 
         Defaults to ``cls(**config)``; override if construction does not map
         directly onto keyword arguments.
@@ -118,7 +118,7 @@ class NNParticleBeamGenerator(BeamGenerator):
         return self.beam_energy
 
     def get_config(self) -> dict:
-        """Reconstruction kwargs: see :meth:`BeamGenerator.get_config`.
+        """Reconstruction kwargs: see ``BeamGenerator.get_config``.
 
         ``energy`` is included for completeness; ``base_dist`` and
         ``transformer`` are omitted -- the defaults are rebuilt from ``n_dim`` /

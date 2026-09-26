@@ -40,11 +40,11 @@ def kl_div_loss(target: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
     """Kullback-Leibler divergence ``KL(target || pred)`` as a scalar loss.
 
     True signed KL, ``sum_i t_i (log t_i - log p_i)``, summed over the image axes
-    and averaged over the batch -- unlike :func:`kl_div`, which is per-pixel and
+    and averaged over the batch -- unlike ``kl_div``, which is per-pixel and
     takes an absolute value.
 
     KL is defined between probability distributions, so ``target`` and ``pred``
-    are expected pre-normalized to unit intensity (see :func:`normalize_images`).
+    are expected pre-normalized to unit intensity (see ``normalize_images``).
     The target-weighting (each term scales with ``t_i``) is what makes a small
     secondary peak carry weight proportional to its share of the beam's mass while
     the near-zero background contributes ~0 to both loss and gradient. KL is
@@ -74,7 +74,7 @@ def kl_div_loss(target: torch.Tensor, pred: torch.Tensor) -> torch.Tensor:
 def center_images_on_centroid(images: torch.Tensor) -> torch.Tensor:
     """Shift each image so its intensity centroid sits at the geometric center.
 
-    Unlike :func:`gpsr.data_processing.center_images`, this takes no centroids --
+    Unlike ``gpsr.data_processing.center_images``, this takes no centroids --
     it derives each image's own -- and is a differentiable torch op rather than a
     numpy/``scipy.ndimage.shift`` pass, so it can sit inside a training loss.
 
