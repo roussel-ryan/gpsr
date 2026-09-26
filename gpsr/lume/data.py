@@ -9,9 +9,7 @@ import lightning as L
 from lightning.pytorch.utilities.combined_loader import CombinedLoader
 
 DATASET_FORMAT = "gpsr_lume_dataset"
-DATASET_VERSION = 1
 DATAMODULE_FORMAT = "gpsr_lume_datamodule"
-DATAMODULE_VERSION = 1
 
 
 class GPSRLUMEDataset(torch.utils.data.Dataset):
@@ -30,15 +28,14 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
     Parameters
     ----------
     beamline_settings : dict[str, Tensor]
-        Scan parameters keyed by PV name. Each tensor has leading dim = n_samples.
+        Scan parameters keyed by PV name. Each tensor's leading dim is the number
+        of scan steps, and must match the observations'.
     observations : dict[str, Tensor]
-        Measured observations keyed by PV name. Each tensor has leading dim = n_samples.
+        Measured observations keyed by PV name. Each tensor's leading dim is the
+        number of scan steps, which must be at least one.
     observations_metadata : dict[str, dict]
         Metadata for each observation key (must have the same keys as observations).
         Typical entries include "type" (e.g. "screen") and "pixel_size".
-    n_samples : int | None
-        Number of scan steps (samples) in the dataset. If None (default), it is
-        inferred from the leading dimension of the beamline_settings tensors.
     beamline_constants : dict[str, Tensor] | None
         Fixed beamline parameters keyed by PV name. Keys must not overlap with
         beamline_settings.
@@ -63,7 +60,6 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
         beamline_settings: dict[str, Tensor],
         observations: dict[str, Tensor],
         observations_metadata: dict[str, dict],
-        n_samples: int | None = None,
         beamline_constants: dict[str, Tensor] | None = None,
     ):
         if not isinstance(observations_metadata, dict):
@@ -79,12 +75,15 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
         if beamline_constants is None:
             beamline_constants = {}
 
-        if n_samples is None:
-            if not beamline_settings:
-                raise ValueError(
-                    "Cannot infer n_samples from empty beamline_settings; pass n_samples explicitly."
-                )
-            n_samples = next(iter(beamline_settings.values())).shape[0]
+        if not observations:
+            raise ValueError("observations is empty; a dataset needs at least one.")
+
+        n_samples = next(iter(observations.values())).shape[0]
+        if n_samples < 1:
+            raise ValueError(
+                f"observations have a leading dim of {n_samples}; a dataset needs "
+                "at least one scan step."
+            )
 
         obs_keys = set(observations.keys())
         meta_keys = set(observations_metadata.keys())
@@ -423,10 +422,6 @@ def _dataset_to_dict(dataset: GPSRLUMEDataset) -> dict:
         "observations": data["observations"].to_dict(),
         "observations_metadata": dataset.observations_metadata,
         "beamline_constants": dataset.beamline_constants,
-        # Stored rather than re-inferred: a source whose settings are all held
-        # constant has empty `beamline_settings`, and the constructor cannot infer
-        # a sample count from that.
-        "n_samples": len(dataset),
     }
 
 
@@ -439,8 +434,8 @@ _FORMAT_READERS = {
 }
 
 
-def _load_envelope(path, expected_format: str, current_version: int, what: str) -> dict:
-    """Read and validate one of this module's format/version envelopes.
+def _load_envelope(path, expected_format: str, what: str) -> dict:
+    """Read and check one of this module's format envelopes.
 
     Shared by ``load_dataset`` and ``load_datamodule``; returns the raw
     dict, leaving the caller to interpret its payload.
@@ -448,8 +443,7 @@ def _load_envelope(path, expected_format: str, current_version: int, what: str) 
     Raises
     ------
     ValueError
-        If ``path`` does not hold an envelope of ``expected_format``, or holds a
-        newer layout version than this ``gpsr.lume`` understands.
+        If ``path`` does not hold an envelope of ``expected_format``.
     """
     try:
         raw = torch.load(path, weights_only=True)
@@ -488,21 +482,14 @@ def _load_envelope(path, expected_format: str, current_version: int, what: str) 
             f"object does not."
         )
 
-    version = raw.get("version")
-    if not isinstance(version, int) or version > current_version:
-        raise ValueError(
-            f"'{path}' has {what} layout version {version!r}, but this "
-            f"gpsr.lume understands up to {current_version}. It was written by "
-            f"a newer version; upgrade gpsr to read it."
-        )
     return raw
 
 
 def save_dataset(dataset: GPSRLUMEDataset, path) -> None:
     """Save a single ``GPSRLUMEDataset`` -- one scan -- to ``path``.
 
-    Writes the *data* under a format/version envelope rather than a pickle of the
-    object, so it loads with ``weights_only=True``. One file per scan is how scans
+    Writes the *data* under a format tag rather than a pickle of the object, so it
+    loads with ``weights_only=True``. One file per scan is how scans
     are usually collected, and a set of them becomes a datamodule at load time:
 
         datasets = {p.stem: GPSRLUMEDataset.load(p) for p in sorted(dir.glob("*.pt"))}
@@ -526,7 +513,6 @@ def save_dataset(dataset: GPSRLUMEDataset, path) -> None:
     torch.save(
         {
             "format": DATASET_FORMAT,
-            "version": DATASET_VERSION,
             "dataset": _dataset_to_dict(dataset),
         },
         path,
@@ -553,11 +539,10 @@ def load_dataset(path) -> GPSRLUMEDataset:
     Raises
     ------
     ValueError
-        If ``path`` does not hold a dataset file, or holds a newer layout version
-        than this ``gpsr.lume`` understands. A whole-datamodule file is reported as
-        such, pointing at ``load_datamodule``.
+        If ``path`` does not hold a dataset file. A whole-datamodule file is
+        reported as such, pointing at ``load_datamodule``.
     """
-    raw = _load_envelope(path, DATASET_FORMAT, DATASET_VERSION, "dataset")
+    raw = _load_envelope(path, DATASET_FORMAT, "dataset")
     return GPSRLUMEDataset(**raw["dataset"])
 
 
@@ -565,8 +550,8 @@ def save_datamodule(datamodule: GPSRLUMEDataModule, path) -> None:
     """Save a ``GPSRLUMEDataModule``'s data to ``path``.
 
     Writes the *data*, not the object: a dict of plain tensors, strings and numbers
-    under a format/version envelope. A pickle of the datamodule would embed the
-    class's module path, so the file would rot on any rename and would force
+    under a format tag. A pickle of the datamodule would embed the class's module
+    path, so the file would rot on any rename and would force
     ``weights_only=False`` on whoever read it.
 
     The loader knobs (``batch_size``, ``num_workers``, ``pin_memory``) are not
@@ -589,7 +574,6 @@ def save_datamodule(datamodule: GPSRLUMEDataModule, path) -> None:
     torch.save(
         {
             "format": DATAMODULE_FORMAT,
-            "version": DATAMODULE_VERSION,
             "sources": {
                 source_name: _dataset_to_dict(dataset)
                 for source_name, dataset in datamodule.datasets.items()
@@ -623,11 +607,10 @@ def load_datamodule(path, **datamodule_kwargs) -> GPSRLUMEDataModule:
     Raises
     ------
     ValueError
-        If ``path`` does not hold a datamodule file, or holds a newer layout
-        version than this ``gpsr.lume`` understands. A single-scan file is reported
+        If ``path`` does not hold a datamodule file. A single-scan file is reported
         as such, pointing at ``load_dataset``.
     """
-    raw = _load_envelope(path, DATAMODULE_FORMAT, DATAMODULE_VERSION, "datamodule")
+    raw = _load_envelope(path, DATAMODULE_FORMAT, "datamodule")
     datasets = {
         source_name: GPSRLUMEDataset(**fields)
         for source_name, fields in raw["sources"].items()
