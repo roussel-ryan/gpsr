@@ -3,7 +3,7 @@ named by a dotted import path plus its kwargs.
 
     {
       "accelerator": {
-        "builder": "virtual_accelerator.cheetah.factory.build_cheetah_model",
+        "builder": "<facility package>.factory.build_accelerator",
         "config": {"lattice": "<lattice JSON>", "name_map": {...}},
       },
       "generator": {
@@ -40,11 +40,6 @@ from gpsr.lume.model import GPSRLUMEModel
 # incoming value as the reference that distinguishes element parameters from the
 # transient per-scan-step settings a forward pass leaves behind.
 LATTICE_CONFIG_KEY = "lattice"
-
-# Builder assumed by `_upgraded_spec` for *legacy* specs only -- flat,
-# pre-`accelerator` checkpoints that could not name one. Not a default for new specs:
-# `model_spec_from_files` requires the caller to name a builder.
-_LEGACY_ACCELERATOR_BUILDER = "virtual_accelerator.cheetah.factory.build_cheetah_model"
 
 
 def _segment_to_lattice_json(segment: cheetah.Segment) -> str:
@@ -226,15 +221,18 @@ def build_gpsr_lume_model(spec: dict) -> GPSRLUMEModel:
     spec : dict
         Canonical spec with keys ``"accelerator"`` and ``"generator"`` (see this
         module's docstring). Built from files via ``model_spec_from_files``, or
-        recovered from a checkpoint. Pre-``accelerator`` specs (flat ``energy`` /
-        ``lattice_json`` / ``name_map``) are upgraded on the fly.
+        recovered from a checkpoint.
 
     Returns
     -------
     GPSRLUMEModel
         Freshly constructed model (untrained generator weights).
     """
-    spec = _upgraded_spec(spec)
+    if "accelerator" not in spec:
+        raise KeyError(
+            f"Spec has no 'accelerator' entry; got keys {sorted(spec)}. See "
+            "gpsr.lume.builders for the spec shape."
+        )
     accelerator = spec["accelerator"]
 
     beam_generator = build_generator(spec["generator"])
@@ -378,44 +376,4 @@ def serialize_gpsr_lume_model(model: GPSRLUMEModel) -> dict:
             "cls": to_import_path(type(beam_generator)),
             "config": beam_generator.get_config(),
         },
-    }
-
-
-def _upgraded_spec(spec: dict) -> dict:
-    """Return ``spec`` in canonical form, upgrading a pre-``accelerator`` one.
-
-    Specs predating the addressed accelerator were flat -- ``{"energy",
-    "lattice_json", "name_map", "generator"}``. Their keys map onto
-    ``_LEGACY_ACCELERATOR_BUILDER`` (the only builder they could have used), and the
-    top-level ``energy`` folds into the generator config, now its only home.
-    """
-    if "accelerator" in spec:
-        return spec
-
-    if "lattice_json" not in spec:
-        raise KeyError(
-            "Spec has neither an 'accelerator' entry nor a legacy 'lattice_json'; got "
-            f"keys {sorted(spec)}. See gpsr.lume.builders for the spec shape."
-        )
-
-    generator = dict(spec["generator"])
-    config = dict(generator.get("config") or {})
-    if "energy" not in config:
-        if "energy" not in spec:
-            raise KeyError(
-                "Legacy spec has no top-level 'energy' and generator.config has no "
-                "'energy' either; one of the two must supply it."
-            )
-        config["energy"] = spec["energy"]
-    generator["config"] = config
-
-    return {
-        "accelerator": {
-            "builder": _LEGACY_ACCELERATOR_BUILDER,
-            "config": {
-                LATTICE_CONFIG_KEY: spec["lattice_json"],
-                "name_map": spec["name_map"],
-            },
-        },
-        "generator": generator,
     }
