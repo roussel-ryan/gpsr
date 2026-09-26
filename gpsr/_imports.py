@@ -2,8 +2,7 @@
 
 A checkpoint references a class or function by its dotted import path (e.g.
 ``"gpsr.beams.NNParticleBeamGenerator"``) rather than pickling the object, so it
-loads with ``torch.load(..., weights_only=True)``. Used by ``builders`` for the
-beam-generator class and ``training`` for the loss function.
+loads with ``torch.load(..., weights_only=True)``.
 """
 
 import importlib

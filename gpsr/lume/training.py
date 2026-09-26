@@ -4,9 +4,9 @@ from typing import Callable
 import lightning as L
 import torch
 
+from gpsr._imports import import_from_path, to_import_path
 from gpsr.losses import normalize_images
 
-from gpsr.lume._imports import import_from_path, to_import_path
 from gpsr.lume.builders import (
     build_gpsr_lume_model,
     serialize_gpsr_lume_model,

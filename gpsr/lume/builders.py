@@ -31,8 +31,8 @@ import torch
 import cheetah
 from lume_cheetah.model import LUMECheetahModel
 
+from gpsr._imports import import_from_path, to_import_path
 from gpsr.beams import BeamGenerator, NNParticleBeamGenerator
-from gpsr.lume._imports import import_from_path, to_import_path
 from gpsr.lume.model import GPSRLUMEModel
 
 # Reserved key inside an accelerator spec's `config`: the Cheetah lattice, as a JSON
