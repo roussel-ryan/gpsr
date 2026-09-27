@@ -440,13 +440,16 @@ def _load_envelope(path, expected_format: str, what: str) -> dict:
     Shared by ``load_dataset`` and ``load_datamodule``; returns the raw
     dict, leaving the caller to interpret its payload.
 
+    Tensors are read onto the CPU, so a file written on a GPU machine loads
+    anywhere.
+
     Raises
     ------
     ValueError
         If ``path`` does not hold an envelope of ``expected_format``.
     """
     try:
-        raw = torch.load(path, weights_only=True)
+        raw = torch.load(path, weights_only=True, map_location="cpu")
     except pickle.UnpicklingError as err:
         # Everything this module writes is a tensor, string or number, so a
         # weights-only read of a genuine file always succeeds. Failing here means the
@@ -527,6 +530,9 @@ def load_dataset(path) -> GPSRLUMEDataset:
     ``shape`` must match the image dims) runs on load -- a malformed file is
     rejected here rather than at the first training step.
 
+    Tensors are read onto the CPU, so a file written on a GPU machine loads
+    anywhere.
+
     Parameters
     ----------
     path : str | os.PathLike
@@ -591,6 +597,9 @@ def load_datamodule(path, **datamodule_kwargs) -> GPSRLUMEDataModule:
     metadata keys must agree, screen ``shape`` must match the image dims) runs on
     load -- a malformed file is rejected here rather than at the first training
     step.
+
+    Tensors are read onto the CPU, so a file written on a GPU machine loads
+    anywhere.
 
     Parameters
     ----------
