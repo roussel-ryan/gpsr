@@ -30,11 +30,11 @@ def list_to_beam(beam_list: list[ParticleBeam]) -> ParticleBeam:
     """Stack a list of single beams into one vectorized ensemble beam.
 
     Stacks the per-beam ``particles`` along a new leading draw axis to build an
-    ensemble beam with ``particles`` of shape ``(n_draws, n_particles, 7)``, reusing
-    the first beam's ``energy``. Only ``particles`` is stacked -- the per-particle
-    buffers (``particle_charges`` / ``survival_probabilities``) are left at their
-    defaults, which broadcast fine; ``predict_images``
-    inserts the size-1 scan-step axis at track time.
+    ensemble beam with ``particles`` of shape ``(n_draws, n_particles, 7)``. All the
+    beams must have the same ``energy``, which the ensemble carries. Only
+    ``particles`` is stacked -- the per-particle buffers (``particle_charges`` /
+    ``survival_probabilities``) are left at their defaults, which broadcast fine;
+    ``predict_images`` inserts the size-1 scan-step axis at track time.
 
     Parameters
     ----------
@@ -46,9 +46,28 @@ def list_to_beam(beam_list: list[ParticleBeam]) -> ParticleBeam:
     -------
     ParticleBeam
         One vectorized ensemble ``ParticleBeam``.
+
+    Raises
+    ------
+    ValueError
+        If ``beam_list`` is empty, or if the beams do not all share one ``energy``.
     """
+    if not beam_list:
+        raise ValueError("beam_list is empty; an ensemble needs at least one beam.")
+
+    energy = beam_list[0].energy
+    mismatched = [
+        i for i, beam in enumerate(beam_list) if not torch.equal(beam.energy, energy)
+    ]
+    if mismatched:
+        raise ValueError(
+            f"All beams must have the same energy. Beam 0 has {float(energy)} eV, "
+            f"but beams {mismatched} differ (beam {mismatched[0]} has "
+            f"{float(beam_list[mismatched[0]].energy)} eV)."
+        )
+
     all_particles = torch.stack([beam.particles for beam in beam_list], dim=0)
-    return ParticleBeam(particles=all_particles, energy=beam_list[0].energy)
+    return ParticleBeam(particles=all_particles, energy=energy)
 
 
 # ---------------------------------------------------------------------------
