@@ -26,21 +26,42 @@ UncertaintyType = Literal["percentile", "std_error"]
 # ---------------------------------------------------------------------------
 # Ensemble beam construction
 # ---------------------------------------------------------------------------
+def _check_shared(beam_list: list[ParticleBeam], what: str, value_of) -> None:
+    """Raise unless ``value_of`` returns the same value for every beam.
+
+    ``value_of`` returns a comparable stand-in for the attribute (a float or a
+    string), so beams are compared by value. Cheetah's ``Species`` has no value
+    equality -- two ``Species("electron")`` compare unequal -- so it is compared
+    by name.
+    """
+    first = value_of(beam_list[0])
+    mismatched = [i for i, beam in enumerate(beam_list) if value_of(beam) != first]
+    if mismatched:
+        odd = mismatched[0]
+        raise ValueError(
+            f"All beams must have the same {what}. Beam 0 has {first}, but beams "
+            f"{mismatched} differ (beam {odd} has {value_of(beam_list[odd])})."
+        )
+
+
 def list_to_beam(beam_list: list[ParticleBeam]) -> ParticleBeam:
     """Stack a list of single beams into one vectorized ensemble beam.
 
     Stacks the per-beam ``particles`` along a new leading draw axis to build an
-    ensemble beam with ``particles`` of shape ``(n_draws, n_particles, 7)``. All the
-    beams must have the same ``energy``, which the ensemble carries. Only
-    ``particles`` is stacked -- the per-particle buffers (``particle_charges`` /
-    ``survival_probabilities``) are left at their defaults, which broadcast fine;
-    ``predict_images`` inserts the size-1 scan-step axis at track time.
+    ensemble beam with ``particles`` of shape ``(n_draws, n_particles, 7)``. The
+    per-particle buffers (``particle_charges`` / ``survival_probabilities``) are
+    stacked the same way, so non-default charges and particle losses carry into the
+    ensemble and its screen readings; ``predict_images`` inserts the size-1
+    scan-step axis at track time.
+
+    The beams must agree on the values one ensemble beam can hold only once --
+    ``energy``, ``s`` and ``species`` -- which are taken from the first beam.
 
     Parameters
     ----------
     beam_list : list[ParticleBeam]
         Single (non-vectorized) ``ParticleBeam`` s, each with ``particles`` of
-        shape ``(n_particles, 7)`` and a shared ``energy``.
+        shape ``(n_particles, 7)``, and a shared ``energy`` / ``s`` / ``species``.
 
     Returns
     -------
@@ -50,24 +71,34 @@ def list_to_beam(beam_list: list[ParticleBeam]) -> ParticleBeam:
     Raises
     ------
     ValueError
-        If ``beam_list`` is empty, or if the beams do not all share one ``energy``.
+        If ``beam_list`` is empty, or if the beams disagree on ``energy``, ``s``
+        or ``species``.
     """
     if not beam_list:
         raise ValueError("beam_list is empty; an ensemble needs at least one beam.")
 
-    energy = beam_list[0].energy
-    mismatched = [
-        i for i, beam in enumerate(beam_list) if not torch.equal(beam.energy, energy)
-    ]
-    if mismatched:
-        raise ValueError(
-            f"All beams must have the same energy. Beam 0 has {float(energy)} eV, "
-            f"but beams {mismatched} differ (beam {mismatched[0]} has "
-            f"{float(beam_list[mismatched[0]].energy)} eV)."
-        )
+    _check_shared(beam_list, "energy [eV]", lambda beam: float(beam.energy))
+    _check_shared(beam_list, "s [m]", lambda beam: float(beam.s))
+    _check_shared(beam_list, "species", lambda beam: beam.species.name)
 
-    all_particles = torch.stack([beam.particles for beam in beam_list], dim=0)
-    return ParticleBeam(particles=all_particles, energy=energy)
+    first = beam_list[0]
+    return ParticleBeam(
+        particles=torch.stack([beam.particles for beam in beam_list], dim=0),
+        energy=first.energy,
+        # charges are often one scalar for the whole beam; expand so they stack.
+        particle_charges=torch.stack(
+            [
+                beam.particle_charges.expand(beam.particles.shape[-2])
+                for beam in beam_list
+            ],
+            dim=0,
+        ),
+        survival_probabilities=torch.stack(
+            [beam.survival_probabilities for beam in beam_list], dim=0
+        ),
+        s=first.s,
+        species=first.species,
+    )
 
 
 # ---------------------------------------------------------------------------

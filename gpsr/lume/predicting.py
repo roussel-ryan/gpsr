@@ -30,9 +30,9 @@ def _add_scan_broadcast_axis(beam: ParticleBeam) -> ParticleBeam:
     broadcasts to the outer product, so one ``track`` yields per-PV images of
     shape ``(n_draws, n_samples, W, H)``.
 
-    Only buffers that carry a draw dim get the axis; ``list_to_beam`` leaves
-    ``particle_charges`` / ``survival_probabilities`` at ``(n_particles,)``, which
-    already broadcast. The original beam is left untouched.
+    Only buffers that carry a draw dim get the axis, so a beam whose
+    ``particle_charges`` / ``survival_probabilities`` are per-particle rather than
+    per-draw broadcasts as-is. The original beam is left untouched.
     """
 
     def _maybe_unsqueeze(buffer):
