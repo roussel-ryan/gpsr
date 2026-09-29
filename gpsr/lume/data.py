@@ -251,11 +251,6 @@ class GPSRLUMEDataModule(L.LightningDataModule):
 
         Both entries are held by reference to each dataset's own attributes, and
         neither is per-sample, so neither can ride in the batch.
-
-        Derived on access rather than snapshotted in ``__init__`` so it cannot fall
-        out of step with ``datasets``: a source assigned after construction would
-        otherwise be missing here, and ``_shared_step`` would ``KeyError`` on the
-        source its own dataloader had just yielded.
         """
         return {
             source_name: {
