@@ -61,10 +61,6 @@ include_package_data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-# These patterns are fnmatched against the full dotted package name, so "gpsr" alone
-# matches only the top-level package: a subpackage needs its own entry or it is
-# silently left out of the wheel while editable installs keep working. Spelled out
-# rather than "gpsr*" so that shipping a new package stays a deliberate act.
 include = [ "gpsr", "gpsr.lume*", ]
 namespaces = false
 
@@ -76,15 +72,9 @@ file = "LICENSE"
 # ignore = []
 
 [tool.ruff.lint]
-# E402 is on by default in the pinned ruff (see .pre-commit-config.yaml) but not in
-# newer ones, so select it explicitly: otherwise a newer local ruff passes a file
-# that CI rejects.
 extend-select = ["E402"]
 
 [tool.ruff.lint.per-file-ignores]
-# The lume tests skip themselves when the optional lume dependencies are missing,
-# using `pytest.importorskip` at module level. Those guards have to run before the
-# imports they protect, so the imports cannot sit at the top of the file.
 "gpsr/tests/test_lume_*.py" = ["E402"]
 
 [tool.pytest.ini_options]
