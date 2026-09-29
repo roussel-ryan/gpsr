@@ -114,8 +114,8 @@ def predict_images(
         If ``None``, one is sampled from the model's generator. Used by
         ``predict_ensemble_images`` to inject a pre-built ensemble beam.
     beamline_constants : dict[str, Tensor] | None
-        Fixed parameters folded into the settings before tracking. Keys must not
-        overlap ``beamline_settings``.
+        Fixed parameters applied alongside the settings. Its keys must not appear
+        in ``beamline_settings``.
     normalize : bool, default=True
         Normalize each image to unit pixel sum.
 
@@ -124,13 +124,17 @@ def predict_images(
     dict[str, Tensor]
         Predicted images keyed by observation PV. Shape ``(n_samples, W, H)``.
         Normalized to unit sum per image unless ``normalize=False``.
+
+    Raises
+    ------
+    ValueError
+        If a key appears in both ``beamline_settings`` and ``beamline_constants``.
     """
-    # `or {}` would call bool() on a TensorDict, which raises; test None explicitly.
-    beamline_constants = beamline_constants if beamline_constants is not None else {}
     predictions = model.gpsr_lume_model(
-        settings=dict(beamline_settings) | dict(beamline_constants),
+        settings=beamline_settings,
         observations_metadata=observations_metadata,
         beam=beam,
+        beamline_constants=beamline_constants,
     )
     if normalize:
         predictions = {pv: normalize_images(image) for pv, image in predictions.items()}
@@ -167,8 +171,8 @@ def predict_ensemble_images(
         Ensemble beam; ``particles`` must have shape
         ``(n_draws, n_particles, 7)``.
     beamline_constants : dict[str, Tensor] | None
-        Fixed parameters folded into the settings before tracking. Keys must not
-        overlap ``beamline_settings``.
+        Fixed parameters applied alongside the settings. Its keys must not appear
+        in ``beamline_settings``.
     normalize : bool, default=True
         Normalize each image to unit pixel sum.
     chunk_size : int | None, default=None

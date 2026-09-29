@@ -8,6 +8,29 @@ from gpsr.beams import BeamGenerator
 from lume_cheetah import LUMECheetahModel
 
 
+def _merge_settings(
+    beamline_settings: dict[str, Tensor] | TensorDict,
+    beamline_constants: dict[str, Tensor] | None,
+) -> dict[str, Tensor]:
+    """Combine scanned settings with fixed constants, rejecting shared keys.
+
+    A key in both would take its constant value, silently replacing the scanned
+    one and leaving the scan looking flat.
+    """
+    settings = dict(beamline_settings)
+    # Testing None rather than falsiness: bool() on a TensorDict raises.
+    constants = dict(beamline_constants) if beamline_constants is not None else {}
+
+    shared = settings.keys() & constants.keys()
+    if shared:
+        raise ValueError(
+            f"beamline_settings and beamline_constants share the key(s) "
+            f"{sorted(shared)}; a parameter is either scanned or held fixed, "
+            f"not both."
+        )
+    return settings | constants
+
+
 class GPSRLUMEModel(torch.nn.Module):
     """A beam generator paired with a frozen LUME-Cheetah virtual accelerator.
 
@@ -79,6 +102,7 @@ class GPSRLUMEModel(torch.nn.Module):
         settings: dict[str, Tensor] | TensorDict,
         observations_metadata: dict,
         beam: ParticleBeam | None = None,
+        beamline_constants: dict[str, Tensor] | None = None,
     ) -> dict[str, Tensor]:
         """Apply beamline ``settings``, track the beam, and return the observable
         PVs described by ``observations_metadata`` (e.g. screen images).
@@ -86,8 +110,8 @@ class GPSRLUMEModel(torch.nn.Module):
         Parameters
         ----------
         settings : dict[str, Tensor] | TensorDict
-            Beamline settings (e.g. magnet BCTRL/BDES values) to apply before
-            tracking.
+            Scanned beamline settings (e.g. magnet BCTRL/BDES values), one value
+            per scan step.
         observations_metadata : dict
             Per-observable metadata (see ``_setup_observable_elements``). Keys are
             the observation PVs to return; it is applied on every call, so screen
@@ -98,12 +122,20 @@ class GPSRLUMEModel(torch.nn.Module):
             (e.g. one per source in a multi-source batch) for a joint
             reconstruction against a shared sample; let it default per call for
             independent samples.
+        beamline_constants : dict[str, Tensor] | None, default=None
+            Parameters held fixed for the whole scan, applied alongside
+            ``settings``. Its keys must not appear in ``settings``.
+
+        Raises
+        ------
+        ValueError
+            If a key appears in both ``settings`` and ``beamline_constants``.
         """
         if beam is None:
             beam = self.beam_generator()
         self.lume_cheetah_model.simulator.beam_distribution = beam
         self._setup_observable_elements(observations_metadata)
-        self.lume_cheetah_model.set(settings)
+        self.lume_cheetah_model.set(_merge_settings(settings, beamline_constants))
         return self.lume_cheetah_model.get(list(observations_metadata.keys()))
 
     def predict_multi_source(
@@ -137,10 +169,10 @@ class GPSRLUMEModel(torch.nn.Module):
         beam = self.beam_generator()  # one sample shared across all sources
         return {
             source_name: self(
-                settings=dict(subbatch["beamline_settings"])
-                | source_info[source_name]["beamline_constants"],
+                settings=subbatch["beamline_settings"],
                 observations_metadata=source_info[source_name]["observations_metadata"],
                 beam=beam,
+                beamline_constants=source_info[source_name]["beamline_constants"],
             )
             for source_name, subbatch in batch.items()
         }
