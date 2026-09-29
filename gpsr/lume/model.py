@@ -11,11 +11,17 @@ from lume_cheetah import LUMECheetahModel
 def _merge_settings(
     beamline_settings: dict[str, Tensor] | TensorDict,
     beamline_constants: dict[str, Tensor] | None,
+    device: torch.device | None = None,
 ) -> dict[str, Tensor]:
     """Combine scanned settings with fixed constants, rejecting shared keys.
 
     A key in both would take its constant value, silently replacing the scanned
     one and leaving the scan looking flat.
+
+    Constants are moved to ``device``, and may be given on any device or as plain
+    numbers. They arrive from ``source_info`` rather than through the batch, so
+    Lightning never sees them and leaves them behind on the CPU. Settings are the
+    caller's to place.
     """
     settings = dict(beamline_settings)
     # Testing None rather than falsiness: bool() on a TensorDict raises.
@@ -28,6 +34,11 @@ def _merge_settings(
             f"{sorted(shared)}; a parameter is either scanned or held fixed, "
             f"not both."
         )
+    if device is not None:
+        # `as_tensor` first, so a plain number works as a constant.
+        constants = {
+            key: torch.as_tensor(value).to(device) for key, value in constants.items()
+        }
     return settings | constants
 
 
@@ -124,7 +135,9 @@ class GPSRLUMEModel(torch.nn.Module):
             independent samples.
         beamline_constants : dict[str, Tensor] | None, default=None
             Parameters held fixed for the whole scan, applied alongside
-            ``settings``. Its keys must not appear in ``settings``.
+            ``settings``. Its keys must not appear in ``settings``. Moved to the
+            lattice's device, so they may be given on any device; ``settings``
+            must already be there.
 
         Raises
         ------
@@ -135,8 +148,19 @@ class GPSRLUMEModel(torch.nn.Module):
             beam = self.beam_generator()
         self.lume_cheetah_model.simulator.beam_distribution = beam
         self._setup_observable_elements(observations_metadata)
-        self.lume_cheetah_model.set(_merge_settings(settings, beamline_constants))
+        self.lume_cheetah_model.set(
+            _merge_settings(settings, beamline_constants, self._lattice_device())
+        )
         return self.lume_cheetah_model.get(list(observations_metadata.keys()))
+
+    def _lattice_device(self) -> torch.device | None:
+        """The device the Cheetah lattice is on, or ``None`` if it holds no tensors.
+
+        Read from the lattice rather than from the beam, which may be supplied by
+        a caller and sit elsewhere.
+        """
+        segment = self.lume_cheetah_model.simulator.segment
+        return next((buffer.device for buffer in segment.buffers()), None)
 
     def predict_multi_source(
         self,

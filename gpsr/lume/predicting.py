@@ -96,7 +96,8 @@ def predict_images(
     never trained on work too (e.g. quad strengths between scan points).
 
     The model and setting tensors must already share a device; this bypasses the
-    Trainer, so nothing moves them.
+    Trainer, so nothing moves them. ``beamline_constants`` is the exception --
+    those are moved to the lattice for you.
 
         preds = predict_images(model, settings, metadata)
         plot_images(settings, preds, metadata)
@@ -115,7 +116,7 @@ def predict_images(
         ``predict_ensemble_images`` to inject a pre-built ensemble beam.
     beamline_constants : dict[str, Tensor] | None
         Fixed parameters applied alongside the settings. Its keys must not appear
-        in ``beamline_settings``.
+        in ``beamline_settings``. Moved to the lattice's device.
     normalize : bool, default=True
         Normalize each image to unit pixel sum.
 
@@ -172,7 +173,7 @@ def predict_ensemble_images(
         ``(n_draws, n_particles, 7)``.
     beamline_constants : dict[str, Tensor] | None
         Fixed parameters applied alongside the settings. Its keys must not appear
-        in ``beamline_settings``.
+        in ``beamline_settings``. Moved to the lattice's device.
     normalize : bool, default=True
         Normalize each image to unit pixel sum.
     chunk_size : int | None, default=None

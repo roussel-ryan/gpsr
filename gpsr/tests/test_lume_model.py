@@ -49,3 +49,37 @@ class TestMergeSettings:
                 {"Q1:BCTRL": torch.tensor([1.0, 2.0, 3.0])},
                 {"Q1:BCTRL": torch.tensor([5.0, 5.0, 5.0])},
             )
+
+
+class TestMergeSettingsDevice:
+    """The constants are moved; the settings are left where the caller put them.
+
+    ``meta`` stands in for a second device so these run without a GPU.
+    """
+
+    @pytest.mark.parametrize(
+        "constant", [torch.tensor(5.0), torch.tensor([5.0]), 5.0], ids=type
+    )
+    def test_constants_are_moved(self, constant):
+        merged = _merge_settings(
+            {"Q1:BCTRL": torch.tensor([1.0, 2.0])},
+            {"SOL:BCTRL": constant},
+            device=torch.device("meta"),
+        )
+
+        assert merged["SOL:BCTRL"].device.type == "meta"
+
+    def test_settings_are_left_alone(self):
+        settings = {"Q1:BCTRL": torch.tensor([1.0, 2.0])}
+
+        merged = _merge_settings(settings, None, device=torch.device("meta"))
+
+        assert merged["Q1:BCTRL"].device.type == "cpu"
+
+    def test_no_device_moves_nothing(self):
+        # A lattice holding no tensors has no device to move to.
+        constant = torch.tensor(5.0)
+
+        merged = _merge_settings({}, {"SOL:BCTRL": constant}, device=None)
+
+        assert merged["SOL:BCTRL"] is constant

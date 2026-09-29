@@ -120,16 +120,20 @@ OBSERVATIONS_METADATA = {
 
 @pytest.fixture
 def lattice_json(tmp_path):
-    """A quadrupole, a drift and a screen, as a JSON file path.
+    """Two quadrupoles, a drift and a screen, as a JSON file path.
 
     The screen is what makes this lattice representative: tracking through one
     leaves per-batch beam buffers on the element, which is the bulk of what
-    ``on_save_checkpoint`` strips.
+    ``on_save_checkpoint`` strips. The second quadrupole gives the device tests a
+    magnet to hold fixed while the first is scanned.
     """
     segment = cheetah.Segment(
         elements=[
             cheetah.Quadrupole(
                 length=torch.tensor(0.1), k1=torch.tensor(1.0), name="q1"
+            ),
+            cheetah.Quadrupole(
+                length=torch.tensor(0.1), k1=torch.tensor(1.0), name="q2"
             ),
             cheetah.Drift(length=torch.tensor(0.5), name="d1"),
             cheetah.Screen(
@@ -151,7 +155,7 @@ def lattice_json(tmp_path):
 def name_map_json(tmp_path):
     """Element-to-control name map for ``lattice_json``."""
     path = tmp_path / "name_map.json"
-    path.write_text(json.dumps({"q1": "Q1:BCTRL"}))
+    path.write_text(json.dumps({"q1": "Q1:BCTRL", "q2": "Q2:BCTRL"}))
     return path
 
 
@@ -193,7 +197,10 @@ class TestSpecRoundTrip:
         assert reserialized["accelerator"]["builder"] == BUILDER_PATH
         assert reserialized["generator"]["config"]["n_particles"] == 100
         assert reserialized["generator"]["config"]["energy"] == pytest.approx(ENERGY)
-        assert reserialized["accelerator"]["config"]["name_map"] == {"q1": "Q1:BCTRL"}
+        assert reserialized["accelerator"]["config"]["name_map"] == {
+            "q1": "Q1:BCTRL",
+            "q2": "Q2:BCTRL",
+        }
 
     def test_round_trip_is_idempotent(self, spec):
         # Not textually equal to the file-read spec: the first pass rewrites the
@@ -322,6 +329,52 @@ class TestCheckpointRoundTrip:
             for key in checkpoint["state_dict"]
             if key.startswith("gpsr_lume_model.beam_generator.")
         ]
+
+
+class TestConstantsDevice:
+    """Beamline constants reach the lattice wherever the caller left them.
+
+    They come from ``source_info``, not the batch, so Lightning does not move
+    them with everything else.
+    """
+
+    def test_lattice_device_reads_the_segment(self, spec):
+        model = build_gpsr_lume_model(spec)
+
+        assert model._lattice_device() == (
+            model.lume_cheetah_model.simulator.segment.q1.k1.device
+        )
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+    @pytest.mark.parametrize(
+        "constant", [torch.tensor(5.0), torch.tensor([5.0]), 5.0], ids=type
+    )
+    def test_a_cpu_constant_tracks_on_a_cuda_model(self, spec, constant):
+        model = build_gpsr_lume_model(spec).to("cuda")
+
+        images = model(
+            settings={"Q1:BCTRL": torch.tensor([1.0, 2.0], device="cuda")},
+            observations_metadata=OBSERVATIONS_METADATA,
+            beamline_constants={"Q2:BCTRL": constant},
+        )
+
+        assert images["SCR:IMAGE"].shape == (2, *SCREEN_SHAPE)
+
+    @pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA not available")
+    def test_the_constant_reaches_the_element(self, spec):
+        # The move has to land on the element, not just survive the arithmetic:
+        # this variable assigns k1 straight through with no unit conversion.
+        model = build_gpsr_lume_model(spec).to("cuda")
+
+        model(
+            settings={"Q1:BCTRL": torch.tensor([1.0, 2.0], device="cuda")},
+            observations_metadata=OBSERVATIONS_METADATA,
+            beamline_constants={"Q2:BCTRL": torch.tensor(5.0)},
+        )
+
+        q2 = model.lume_cheetah_model.simulator.segment.q2
+        assert q2.k1.device.type == "cuda"
+        assert float(q2.k1) == pytest.approx(5.0)
 
 
 class TestGeneratorConfig:
