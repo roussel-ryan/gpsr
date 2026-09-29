@@ -292,6 +292,12 @@ def compute_statistics_1d(
     if smoothing:
         histogram = vectorized_gaussian_filter_1d(histogram, sigma=smoothing)
 
+    if histogram.dim() == 1:
+        # A single set of samples gives back one histogram with no draw axis, and
+        # the statistics reduce over the leading axis -- without this it would
+        # reduce over the bins and return scalars.
+        histogram = histogram.unsqueeze(0)
+
     mean_hist, lower_bound, upper_bound = compute_mean_and_bounds(
         histogram, confidence_level=confidence_level, uncertainty_type=uncertainty_type
     )
