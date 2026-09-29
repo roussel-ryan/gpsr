@@ -21,7 +21,10 @@ lightning = pytest.importorskip("lightning")
 
 import cheetah
 from lume_cheetah import CheetahSimulator, LUMECheetahModel
-from lume_cheetah.actions import CheetahWritableScalarVariable
+from lume_cheetah.actions import (
+    CheetahReadOnlyNDVariable,
+    CheetahWritableScalarVariable,
+)
 
 from gpsr.beams import NNParticleBeamGenerator, Transform
 from gpsr.lume.builders import (
@@ -57,37 +60,85 @@ class QuadrupoleKVariable(CheetahWritableScalarVariable):
         setattr(element, self.element_attribute, torch.as_tensor(value))
 
 
+class ScreenImageVariable(CheetahReadOnlyNDVariable):
+    """A screen's image, transposed to the ``(x, y)`` order datasets use.
+
+    Mirrors a facility image variable, minus the camera full-scale factor these
+    tests do not need.
+    """
+
+    element_attribute: str = "reading"
+
+    def _get(self, simulator):
+        # `reading` is (..., y, x); `.mT` transposes only the last two axes.
+        return super()._get(simulator).mT
+
+
 def build_accelerator(lattice, name_map, energy: float) -> LUMECheetahModel:
     """Build the stand-in accelerator named by ``BUILDER_PATH``.
 
     Mirrors a facility builder's signature: ``lattice`` / ``name_map`` come from
     the spec's accelerator config, ``energy`` is passed separately by
-    ``build_accelerator_from_spec``.
+    ``build_accelerator_from_spec``. Every screen in the lattice gets an image
+    variable, keyed ``<ELEMENT>:IMAGE``.
     """
     segment = _lattice_json_to_segment(lattice)
     placeholder_beam = cheetah.ParticleBeam(
         torch.zeros(1, 7), energy=torch.tensor(energy)
     )
+    action_variables = [
+        QuadrupoleKVariable(name=control_name, element_name=element_name)
+        for element_name, control_name in name_map.items()
+    ]
+    action_variables += [
+        ScreenImageVariable(
+            name=f"{element.name.upper()}:IMAGE",
+            element_name=element.name,
+            shape=tuple(element.resolution),
+        )
+        for element in segment.elements
+        if isinstance(element, cheetah.Screen)
+    ]
     return LUMECheetahModel(
         simulator=CheetahSimulator(
             segment=segment, initial_beam_distribution=placeholder_beam
         ),
-        action_variables=[
-            QuadrupoleKVariable(name=control_name, element_name=element_name)
-            for element_name, control_name in name_map.items()
-        ],
+        action_variables=action_variables,
     )
+
+
+SCREEN_SHAPE = (16, 12)
+SCREEN_PIXEL_SIZE = 1e-4
+OBSERVATIONS_METADATA = {
+    "SCR:IMAGE": {
+        "type": "screen",
+        "shape": SCREEN_SHAPE,
+        "pixel_size": torch.tensor([SCREEN_PIXEL_SIZE, SCREEN_PIXEL_SIZE]),
+    }
+}
 
 
 @pytest.fixture
 def lattice_json(tmp_path):
-    """A two-element lattice (one quadrupole, one drift) as a JSON file path."""
+    """A quadrupole, a drift and a screen, as a JSON file path.
+
+    The screen is what makes this lattice representative: tracking through one
+    leaves per-batch beam buffers on the element, which is the bulk of what
+    ``on_save_checkpoint`` strips.
+    """
     segment = cheetah.Segment(
         elements=[
             cheetah.Quadrupole(
                 length=torch.tensor(0.1), k1=torch.tensor(1.0), name="q1"
             ),
             cheetah.Drift(length=torch.tensor(0.5), name="d1"),
+            cheetah.Screen(
+                resolution=SCREEN_SHAPE,
+                pixel_size=torch.tensor([SCREEN_PIXEL_SIZE, SCREEN_PIXEL_SIZE]),
+                is_active=True,
+                method="cloud-in-cell",
+                name="scr",
+            ),
         ],
         name="test_segment",
     )
@@ -199,8 +250,10 @@ class TestCheckpointRoundTrip:
         with torch.no_grad():
             for parameter in lit.gpsr_lume_model.beam_generator.parameters():
                 parameter.add_(0.1)
-        lit.gpsr_lume_model.lume_cheetah_model.simulator.segment.q1.k1 = torch.tensor(
-            2.5
+        # Calibrate the drift, not the quadrupole: the forward pass below writes
+        # Q1:BCTRL, so a quadrupole calibration would just be overwritten by it.
+        lit.gpsr_lume_model.lume_cheetah_model.simulator.segment.d1.length = (
+            torch.tensor(0.75)
         )
         expected = {
             key: value.clone()
@@ -210,6 +263,7 @@ class TestCheckpointRoundTrip:
         checkpoint_path = tmp_path / "model.ckpt"
         trainer = _trainer()
         trainer.strategy.connect(lit)
+        _forward_pass(lit)
         trainer.save_checkpoint(checkpoint_path)
 
         reloaded = LitGPSRLUME.load_self_contained(checkpoint_path, map_location="cpu")
@@ -219,16 +273,20 @@ class TestCheckpointRoundTrip:
         for key, value in expected.items():
             assert torch.equal(restored[key], value), key
         assert float(
-            reloaded.gpsr_lume_model.lume_cheetah_model.simulator.segment.q1.k1
-        ) == pytest.approx(2.5)
+            reloaded.gpsr_lume_model.lume_cheetah_model.simulator.segment.d1.length
+        ) == pytest.approx(0.75)
+        # The reloaded model runs, so the stripped subtree was restored intact.
+        _forward_pass(reloaded)
 
     def test_checkpoint_loads_with_weights_only(self, spec, tmp_path):
         # The JSON-purity constraint, end to end: no pickled class or function
-        # anywhere in the payload.
+        # anywhere in the payload. Saved after a forward pass, since that is when
+        # the accelerator holds tensors that are not plain parameters.
         lit = LitGPSRLUME(build_gpsr_lume_model(spec), lr=1e-3)
         checkpoint_path = tmp_path / "model.ckpt"
         trainer = _trainer()
         trainer.strategy.connect(lit)
+        _forward_pass(lit)
         trainer.save_checkpoint(checkpoint_path)
 
         checkpoint = torch.load(checkpoint_path, weights_only=True)
@@ -237,7 +295,16 @@ class TestCheckpointRoundTrip:
         assert json.loads(json.dumps(checkpoint[LitGPSRLUME._SPEC_KEY]))
 
     def test_frozen_accelerator_is_stripped_from_state_dict(self, spec, tmp_path):
+        # Saved after a forward pass, as training does: tracking leaves per-batch
+        # beam buffers on the screen that a freshly built model does not have, and
+        # those are the bulk of what the strip removes.
         lit = LitGPSRLUME(build_gpsr_lume_model(spec), lr=1e-3)
+        _forward_pass(lit)
+        assert [key for key in lit.state_dict() if "_read_beam" in key], (
+            "the forward pass left no per-batch buffers, so this test would pass "
+            "even without the strip"
+        )
+
         checkpoint_path = tmp_path / "model.ckpt"
         trainer = _trainer()
         trainer.strategy.connect(lit)
@@ -366,4 +433,12 @@ def _trainer():
     """A Trainer that neither logs nor checkpoints on its own."""
     return lightning.Trainer(
         accelerator="cpu", logger=False, enable_checkpointing=False, max_epochs=1
+    )
+
+
+def _forward_pass(lit: LitGPSRLUME) -> None:
+    """Track a two-step scan and read the screen, as training does every step."""
+    lit.gpsr_lume_model(
+        settings={"Q1:BCTRL": torch.tensor([1.0, 2.0])},
+        observations_metadata=OBSERVATIONS_METADATA,
     )
