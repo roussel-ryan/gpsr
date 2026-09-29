@@ -144,24 +144,6 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
             repr_str += f"\n  Beamline Constants: {self.beamline_constants}"
         return repr_str
 
-    def to_dict(self) -> dict[str, TensorDict | dict]:
-        """Return this dataset's contents as a flat dict.
-
-        The dict has three keys -- ``beamline_settings``, ``images`` and
-        ``observations_metadata``. Its keys match the first three (keyword)
-        arguments of ``plot_images`` (the dataset's
-        stored ``observations`` land under the plotter's role-neutral
-        ``images`` slot), so it can be splatted straight in:
-
-            from gpsr.lume.plotting import plot_images
-            plot_images(**dataset.to_dict())
-        """
-        return {
-            "beamline_settings": self.data["beamline_settings"],
-            "images": self.data["observations"],
-            "observations_metadata": self.observations_metadata,
-        }
-
     def save(self, path) -> None:
         """Write this dataset to ``path``. See ``save_dataset``."""
         save_dataset(self, path)
@@ -403,9 +385,7 @@ def _dataset_to_dict(dataset: GPSRLUMEDataset) -> dict:
     """Return ``dataset``'s contents as ``GPSRLUMEDataset`` constructor kwargs.
 
     Every key is a constructor parameter, so
-    ``GPSRLUMEDataset(**_dataset_to_dict(ds))`` reconstructs it. Unlike
-    ``GPSRLUMEDataset.to_dict``, which is shaped for the plotters and cannot
-    round-trip.
+    ``GPSRLUMEDataset(**_dataset_to_dict(ds))`` reconstructs it.
 
     ``TensorDict.to_dict`` unwraps the stored batched TensorDicts into plain dicts
     of tensors, which is what makes the result loadable under

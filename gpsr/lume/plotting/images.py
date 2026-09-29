@@ -384,10 +384,15 @@ def plot_images(
 ):
     """Plot the images of a 'screen' observation, optionally with contour overlays.
 
-    The three positional arguments are the triple ``GPSRLUMEDataset.to_dict``
-    holds, so a dataset splats straight in and a measured-vs-predicted comparison
-    reads ``plot_images(**dataset.to_dict(), overlay_images=preds)``. Measured and
-    predicted images fill the same ``images`` slot.
+    Measured and predicted images fill the same ``images`` slot, so a
+    measured-vs-predicted comparison reads::
+
+        plot_images(
+            dataset.data["beamline_settings"],
+            dataset.data["observations"],
+            dataset.observations_metadata,
+            overlay_images=preds,
+        )
 
     Three drawing modes, all over a ``pcolormesh`` fill of the ``images`` set:
 
