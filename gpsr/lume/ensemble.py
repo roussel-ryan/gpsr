@@ -171,7 +171,8 @@ def vectorized_histogram_1d(
     bins : int
         Number of histogram bins.
     bin_range : tuple[float, float] | None
-        Optional ``(min, max)`` bin-edge range; inferred if None.
+        Optional ``(min, max)`` bin-edge range; inferred if None. Values outside
+        the range are left out of the histogram, as ``numpy.histogram`` does.
 
     Returns
     -------
@@ -194,10 +195,14 @@ def vectorized_histogram_1d(
     )
 
     idx = torch.bucketize(x, bin_edges) - 1
+    # The clamp puts values sitting exactly on either outer edge in the first or
+    # last bin; the mask then drops values outside the range entirely, so they are
+    # not counted as edge mass.
     idx = idx.clamp(0, bins - 1).long()  # (n, m)
+    in_range = (x >= bin_edges[0]) & (x <= bin_edges[-1])  # (n, m)
 
     offset = torch.arange(n, device=device) * bins  # (n,)
-    idx_flat = (idx + offset.unsqueeze(1)).flatten()  # (n*m,)
+    idx_flat = (idx + offset.unsqueeze(1))[in_range]  # (n_in_range,)
 
     hist_flat = torch.bincount(idx_flat, minlength=n * bins).to(dtype)
     hist = hist_flat.view(n, bins)  # (n, bins)
@@ -311,7 +316,8 @@ def vectorized_histogram_2d(
     bins : tuple[int, int]
         ``(bins_x, bins_y)``.
     bin_ranges : tuple[tuple[float, float], tuple[float, float]] | None
-        ``((x_min, x_max), (y_min, y_max))``; inferred if None.
+        ``((x_min, x_max), (y_min, y_max))``; inferred if None. Points outside
+        either range are left out of the histogram, as ``numpy.histogram2d`` does.
 
     Returns
     -------
@@ -351,13 +357,19 @@ def vectorized_histogram_2d(
         range_y[0], range_y[1], bins_y + 1, device=device, dtype=dtype
     )
 
+    # The clamp puts values sitting exactly on an outer edge in the first or last
+    # bin; the mask then drops points outside either range entirely, so they are not
+    # counted as edge mass.
     ix = (torch.bucketize(x, x_edges) - 1).clamp(0, bins_x - 1).long()  # (B, N)
     iy = (torch.bucketize(y, y_edges) - 1).clamp(0, bins_y - 1).long()  # (B, N)
+    in_range = (
+        (x >= x_edges[0]) & (x <= x_edges[-1]) & (y >= y_edges[0]) & (y <= y_edges[-1])
+    )  # (B, N)
 
     idx_flat = ix * bins_y + iy  # (B, N)
 
     offset = torch.arange(B, device=device, dtype=idx_flat.dtype) * (bins_x * bins_y)
-    idx_flat_offset = (idx_flat + offset.unsqueeze(1)).view(-1)
+    idx_flat_offset = (idx_flat + offset.unsqueeze(1))[in_range]
 
     hist_flat = torch.bincount(idx_flat_offset, minlength=B * bins_x * bins_y).to(dtype)
     hist = hist_flat.view(B, bins_x, bins_y)
