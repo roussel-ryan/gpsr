@@ -114,26 +114,16 @@ def _resolve_bin_ranges(
     """Normalize a ``bin_ranges`` arg to one ``(min, max)`` per dimension.
 
     ``None`` infers per-dim from ``full_tensor`` (the stacked per-dim data);
-    ``"unit_same"`` shares one range across spatial dims and another across
-    unitless ones; a single ``(min, max)`` broadcasts; a list passes through.
-    Raises ``ValueError`` if the result doesn't match ``dimensions``.
+    ``"unit_same"`` infers one range covering every dimension, so all the panels
+    can be read against each other; a single ``(min, max)`` broadcasts; a list
+    passes through. Raises ``ValueError`` if the result doesn't match
+    ``dimensions``.
     """
     if bin_ranges is None:
         bin_ranges = [_padded_range(full_tensor[i]) for i in range(len(dimensions))]
     # `isinstance` first: a numpy `bin_ranges` would raise on `== "unit_same"`.
     elif isinstance(bin_ranges, str) and bin_ranges == "unit_same":
-        spatial_idxs = [
-            i for i, dim in enumerate(dimensions) if dim in SPATIAL_DIMENSIONS
-        ]
-        unitless_idxs = [
-            i for i, dim in enumerate(dimensions) if dim in SCALED_DIMENSIONS
-        ]
-        spatial_bin_range = _padded_range(full_tensor[spatial_idxs])
-        unitless_bin_range = _padded_range(full_tensor[unitless_idxs])
-        bin_ranges = [
-            spatial_bin_range if dim in SPATIAL_DIMENSIONS else unitless_bin_range
-            for dim in dimensions
-        ]
+        bin_ranges = [_padded_range(full_tensor)] * len(dimensions)
     elif np.asarray(bin_ranges).shape == (2,):
         bin_ranges = [bin_ranges] * len(dimensions)
 
@@ -501,9 +491,10 @@ def plot_ensemble_distribution(
     bins : int
         Number of bins for both 1D and 2D histograms.
     bin_ranges : "unit_same" | tuple[float, float] | list[tuple[float, float]] | None
-        Bin-range spec. ``None`` infers per-dimension; ``"unit_same"`` shares a
-        range across spatial dims and another across unitless dims; a single
-        ``(min, max)`` applies to all; a list gives one pair per dimension.
+        Bin-range spec. ``None`` infers a range per dimension; ``"unit_same"``
+        infers one range covering every dimension, so the panels can be read
+        against each other; a single ``(min, max)`` applies to all; a list gives
+        one pair per dimension.
     uncertainty_type : "percentile" | "std_error"
         Passed to ``compute_statistics_1d`` /
         ``compute_statistics_2d``.
