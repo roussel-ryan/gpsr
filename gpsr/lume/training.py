@@ -7,10 +7,7 @@ import torch
 from gpsr._imports import import_from_path, to_import_path
 from gpsr.losses import normalize_images
 
-from gpsr.lume.builders import (
-    build_gpsr_lume_model,
-    serialize_gpsr_lume_model,
-)
+from gpsr.lume.builders import build_gpsr_lume_model
 from gpsr.lume.model import GPSRLUMEModel
 
 
@@ -161,7 +158,7 @@ class LitGPSRLUME(L.LightningModule):
         }
 
         try:
-            checkpoint[self._SPEC_KEY] = serialize_gpsr_lume_model(self.gpsr_lume_model)
+            checkpoint[self._SPEC_KEY] = self.gpsr_lume_model.get_config()
         except NotImplementedError as err:
             warnings.warn(
                 f"Could not embed a self-contained spec: {err} "

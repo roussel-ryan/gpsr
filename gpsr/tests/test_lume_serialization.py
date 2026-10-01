@@ -232,7 +232,13 @@ class TestSpecRoundTrip:
             rebuilt.lume_cheetah_model.simulator.segment.q1.k1
         ) == pytest.approx(7.5)
 
-    def test_hand_assembled_model_cannot_be_serialized(self, spec):
+    def test_get_config_describes_the_model(self, spec):
+        # The model describes itself the same way a beam generator does.
+        model = build_gpsr_lume_model(spec)
+
+        assert model.get_config() == serialize_gpsr_lume_model(model)
+
+    def test_hand_assembled_model_cannot_describe_itself(self, spec):
         # No accelerator_spec means no record of how the accelerator was built,
         # and a built LUMECheetahModel does not say how it was built.
         built = build_gpsr_lume_model(spec)
@@ -242,7 +248,7 @@ class TestSpecRoundTrip:
         )
 
         with pytest.raises(NotImplementedError, match="accelerator_spec"):
-            serialize_gpsr_lume_model(hand_assembled)
+            hand_assembled.get_config()
 
     def test_spec_without_an_accelerator_is_rejected(self, spec):
         with pytest.raises(KeyError, match="accelerator"):

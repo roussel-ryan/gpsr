@@ -61,11 +61,10 @@ class GPSRLUMEModel(torch.nn.Module):
         energy (checked below).
     accelerator_spec : dict, optional
         ``{"builder": <import path>, "config": {...}}`` -- the recipe that produced
-        ``lume_cheetah_model``, which ``serialize_gpsr_lume_model`` needs for a
-        self-contained checkpoint. Set by ``build_gpsr_lume_model``; ``None`` for a
-        hand-assembled accelerator, which then cannot be serialized, since a
-        ``LUMECheetahModel`` is a flat collection of per-PV action variables with
-        no mapping object to invert.
+        ``lume_cheetah_model``, which ``get_config`` needs. Set by
+        ``build_gpsr_lume_model``; ``None`` for a hand-assembled accelerator, which
+        then cannot describe itself, since a built ``LUMECheetahModel`` does not say
+        how it was built.
     """
 
     def __init__(
@@ -104,9 +103,29 @@ class GPSRLUMEModel(torch.nn.Module):
 
         self.lume_cheetah_model = lume_cheetah_model
         self.beam_generator = beam_generator
-        # A plain dict, not a buffer/parameter: JSON-pure build provenance for the
-        # checkpoint spec, not model state.
+        # A plain dict, not a buffer or parameter: it records how the accelerator was
+        # built, which is not part of the model's state.
         self.accelerator_spec = accelerator_spec
+
+    def get_config(self) -> dict:
+        """Return JSON-serializable kwargs that rebuild this model.
+
+        Same contract as ``BeamGenerator.get_config``: pass the result to
+        ``build_gpsr_lume_model`` to get an equivalent but *untrained* model.
+        Trained weights are not included -- they are saved and restored separately
+        through the ``state_dict``.
+
+        Raises
+        ------
+        NotImplementedError
+            If the beam generator cannot describe itself, or if the accelerator was
+            assembled by hand and so carries no recipe. Such a model must be rebuilt
+            and re-supplied explicitly rather than loaded from a checkpoint alone.
+        """
+        # Imported here because `builders` imports this module.
+        from gpsr.lume.builders import serialize_gpsr_lume_model
+
+        return serialize_gpsr_lume_model(self)
 
     def forward(
         self,

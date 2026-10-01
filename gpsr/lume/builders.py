@@ -312,6 +312,8 @@ def model_spec_from_files(
 def serialize_gpsr_lume_model(model: GPSRLUMEModel) -> dict:
     """Capture a ``GPSRLUMEModel``'s construction artifacts as a JSON-able dict.
 
+    Backs ``GPSRLUMEModel.get_config``, which is the usual way to call this.
+
     The accelerator's recorded build recipe is re-emitted with
     ``LATTICE_CONFIG_KEY`` refreshed from the live segment, so element parameters
     adjusted after the build are captured. Trained generator weights are NOT
@@ -346,8 +348,8 @@ def serialize_gpsr_lume_model(model: GPSRLUMEModel) -> dict:
     accelerator_spec = model.accelerator_spec
     if accelerator_spec is None:
         raise NotImplementedError(
-            "The model carries no 'accelerator_spec', so the recipe that built its "
-            "virtual accelerator is unknown and cannot be serialized. Build it with "
+            "The model carries no 'accelerator_spec', so how its virtual accelerator "
+            "was built is unknown and cannot be recorded. Build the model with "
             "build_gpsr_lume_model, or pass accelerator_spec= to GPSRLUMEModel."
         )
 
