@@ -17,7 +17,7 @@ classifiers = [
   "Topic :: Scientific/Engineering",
 ]
 dependencies = [
-  "lightning>=2,<=2.6.1",
+  "lightning>=2",
   "matplotlib>=3.3.0",
   "cheetah-accelerator>=0.8.0",
   "tensorboard",
@@ -39,6 +39,10 @@ dev = [
   "jupyter",
   "pre-commit"
 ]
+lume = [
+  "lume-cheetah>=0.1.0",
+  "tensordict",
+]
 doc = [
   "mkdocs",
   "mkdocs-jupyter",
@@ -57,7 +61,7 @@ include_package_data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = [ "gpsr", ]
+include = [ "gpsr", "gpsr.lume*", ]
 namespaces = false
 
 [project.license]
@@ -66,6 +70,12 @@ file = "LICENSE"
 [tool.ruff]
 # select = []
 # ignore = []
+
+[tool.ruff.lint]
+extend-select = ["E402"]
+
+[tool.ruff.lint.per-file-ignores]
+"gpsr/tests/test_lume_*.py" = ["E402"]
 
 [tool.pytest.ini_options]
 log_cli_level = "info"

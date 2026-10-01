@@ -1,8 +1,10 @@
 import torch
 from torch import nn
 
+from gpsr.beams import Transform
 
-class VariationalNNTransform(torch.nn.Module):
+
+class VariationalNNTransform(Transform):
     def __init__(
         self,
         n_hidden,

@@ -9,27 +9,155 @@ from torch.distributions import MultivariateNormal, Distribution
 
 from cheetah.particles import ParticleBeam
 
+from gpsr._imports import import_from_path, to_import_path
+
 
 class BeamGenerator(torch.nn.Module, ABC):
+    energy: Tensor
+    """Reference particle energy [eV] of the generated beam.
+
+    A single scalar that defines the phase-space coordinate system. Consumers
+    that pair the beam with an external model (e.g. a tracking simulation) read
+    it here without sampling a beam. Only an annotation, so a subclass is free to
+    supply it as a buffer, a plain attribute or a property -- a concrete property
+    here would break the first two.
+    """
+
     @abstractmethod
     def forward(self) -> ParticleBeam:
         pass
 
+    def get_config(self) -> dict:
+        """Return JSON-serializable kwargs that reconstruct this generator.
 
-class NNTransform(torch.nn.Module):
+        The returned dict, passed to ``from_config``, must rebuild an
+        architecturally-equivalent (but *untrained*) generator. Trained weights
+        are not part of the config -- they are persisted and restored separately
+        via ``state_dict`` / ``load_state_dict``. This lets a generator be made
+        self-describing (e.g. embedded in a checkpoint) without pickling the
+        object or its class internals.
+
+        Optional: generators that cannot describe themselves leave this raising,
+        and callers that want a self-contained checkpoint catch the error.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement get_config(), so it cannot "
+            "be reconstructed from a config; rebuild it explicitly and restore "
+            "weights via load_state_dict."
+        )
+
+    @classmethod
+    def from_config(cls, config: dict) -> "BeamGenerator":
+        """Reconstruct an untrained generator from ``get_config`` output.
+
+        Defaults to ``cls(**config)``; override if construction does not map
+        directly onto keyword arguments.
+        """
+        return cls(**config)
+
+
+class Transform(Module, ABC):
+    """Maps base-distribution samples to phase-space coordinates.
+
+    The trainable part of a ``BeamGenerator``: it takes a batch of samples shaped
+    ``(n_particles, phase_space_dim)`` and returns coordinates of the same shape.
+    """
+
+    @abstractmethod
+    def forward(self, X: Tensor) -> Tensor:
+        pass
+
+    def get_config(self) -> dict:
+        """Return JSON-serializable kwargs that reconstruct this transform.
+
+        Same contract as ``BeamGenerator.get_config``: the returned dict, passed
+        to ``from_config``, rebuilds an architecturally-equivalent but *untrained*
+        transform, and weights are restored separately via ``load_state_dict``.
+
+        Optional: transforms that cannot describe themselves leave this raising.
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement get_config(), so it cannot "
+            "be reconstructed from a config; rebuild it explicitly and restore "
+            "weights via load_state_dict."
+        )
+
+    @classmethod
+    def from_config(cls, config: dict) -> "Transform":
+        """Reconstruct an untrained transform from ``get_config`` output.
+
+        Defaults to ``cls(**config)``; override if construction does not map
+        directly onto keyword arguments.
+        """
+        return cls(**config)
+
+
+def build_transform(transform: dict) -> Transform:
+    """Construct a fresh (untrained) ``Transform`` from a config dict.
+
+    Parameters
+    ----------
+    transform : dict
+        ``{"cls": <class or import path>, "config": <get_config kwargs>}``, as
+        stored by ``NNParticleBeamGenerator.get_config``.
+
+    Returns
+    -------
+    Transform
+        Untrained transform of the named class/config.
+    """
+    transform_cls: type[Transform] = import_from_path(to_import_path(transform["cls"]))
+    return transform_cls.from_config(transform.get("config") or {})
+
+
+def _activation_config(activation: Module) -> str:
+    """Return an activation's import path, raising if its class alone is not enough.
+
+    Only the class is recorded, so the activation must be rebuildable by calling it
+    with no arguments. Non-default constructor arguments (``LeakyReLU(0.2)``) and
+    learnable parameters (``PReLU``) both raise.
+    """
+    name = type(activation).__name__
+    if any(True for _ in activation.parameters()):
+        raise NotImplementedError(
+            f"Activation {name} has learnable parameters, which a config cannot "
+            "describe. Use a parameter-free activation, or rebuild the transform "
+            "explicitly and restore weights via load_state_dict."
+        )
+    try:
+        defaults_match = activation.extra_repr() == type(activation)().extra_repr()
+    except TypeError:
+        defaults_match = False
+    if not defaults_match:
+        raise NotImplementedError(
+            f"Activation {activation!r} is not reconstructible from its class "
+            "alone, so a config cannot describe it. Use an activation with "
+            "default arguments, or rebuild the transform explicitly and restore "
+            "weights via load_state_dict."
+        )
+    return to_import_path(type(activation))
+
+
+class NNTransform(Transform):
     def __init__(
         self,
         n_hidden: int,
         width: int,
         dropout: float = 0.0,
-        activation: Module = torch.nn.Tanh(),
+        activation: Module | str = torch.nn.Tanh(),
         output_scale: float = 1e-2,
         phase_space_dim: int = 6,
     ):
-        """
-        Nonparametric transformation - NN
+        """Nonparametric transformation - NN.
+
+        ``activation`` may be a module or the dotted import path of one (which is
+        instantiated with no arguments), so a config can name it. The same
+        instance is reused at every layer.
         """
         super(NNTransform, self).__init__()
+
+        if isinstance(activation, str):
+            activation = import_from_path(activation)()
 
         layer_sequence = [torch.nn.Linear(phase_space_dim, width), activation]
 
@@ -43,8 +171,39 @@ class NNTransform(torch.nn.Module):
         self.stack = torch.nn.Sequential(*layer_sequence)
         self.register_buffer("output_scale", torch.tensor(output_scale))
 
+    def get_config(self) -> dict:
+        """Reconstruction kwargs, read back off the built layer stack.
+
+        Raises ``NotImplementedError`` for an activation that cannot be rebuilt
+        from its class alone -- see ``_activation_config``.
+        """
+        first_linear = self.stack[0]
+        # One Dropout per hidden layer, so counting them recovers n_hidden.
+        dropouts = [
+            layer for layer in self.stack if isinstance(layer, torch.nn.Dropout)
+        ]
+        return {
+            "n_hidden": len(dropouts),
+            "width": first_linear.out_features,
+            "dropout": dropouts[0].p if dropouts else 0.0,
+            "activation": _activation_config(self.stack[1]),
+            "output_scale": float(self.output_scale),
+            "phase_space_dim": first_linear.in_features,
+        }
+
     def forward(self, X: Tensor) -> Tensor:
         return self.stack(X) * self.output_scale
+
+
+def _is_standard_normal(distribution: Distribution, n_dim: int) -> bool:
+    """Whether ``distribution`` is the default: standard normal over ``n_dim``."""
+    if not isinstance(distribution, MultivariateNormal):
+        return False
+    return bool(
+        distribution.mean.shape == (n_dim,)
+        and torch.equal(distribution.mean, torch.zeros(n_dim))
+        and torch.equal(distribution.covariance_matrix, torch.eye(n_dim))
+    )
 
 
 class NNParticleBeamGenerator(BeamGenerator):
@@ -53,22 +212,63 @@ class NNParticleBeamGenerator(BeamGenerator):
         n_particles: int,
         energy: float,
         base_dist: Distribution = None,
-        transformer: NNTransform = None,
-        output_scale: float = 1e-2,
+        transformer: Transform | dict = None,
         n_dim: int = 6,
     ):
+        """Samples a beam by pushing standard-normal samples through ``transformer``.
+
+        ``transformer`` may be a ``Transform`` or a
+        ``{"cls": ..., "config": ...}`` dict (as ``get_config`` records it);
+        it defaults to ``NNTransform(2, 20, phase_space_dim=n_dim)``. Set its
+        ``output_scale`` on the transform itself.
+        """
         super(NNParticleBeamGenerator, self).__init__()
+        # Retained so get_config() can reconstruct an equivalent generator.
+        self.n_particles = n_particles
+        self.n_dim = n_dim
+
         self.base_dist = base_dist or MultivariateNormal(
             torch.zeros(n_dim), torch.eye(n_dim)
         )
-        self.transformer = transformer or NNTransform(
-            2, 20, output_scale=output_scale, phase_space_dim=n_dim
-        )
+        if isinstance(transformer, dict):
+            transformer = build_transform(transformer)
+        self.transformer = transformer or NNTransform(2, 20, phase_space_dim=n_dim)
         self.register_buffer("beam_energy", torch.tensor(energy))
         self.register_buffer("particle_charges", torch.tensor(1.0))
         self.register_buffer("survival_probabilities", torch.ones(n_particles))
 
         self.set_base_particles(n_particles)
+
+    @property
+    def energy(self) -> Tensor:
+        return self.beam_energy
+
+    def get_config(self) -> dict:
+        """Reconstruction kwargs: see ``BeamGenerator.get_config``.
+
+        The transformer is recorded as ``{"cls", "config"}``, so a custom one is
+        rebuilt with the right architecture and its weights load back. Propagates
+        ``NotImplementedError`` from a transform that cannot describe itself.
+
+        ``base_dist`` is not recorded: the samples drawn from it are restored as the
+        ``base_particles`` buffer, so only a later ``set_base_particles`` call would
+        need it. A custom one raises rather than being silently replaced.
+        """
+        if not _is_standard_normal(self.base_dist, self.n_dim):
+            raise NotImplementedError(
+                f"{type(self).__name__} was built with a custom base_dist, which a "
+                "config cannot describe. Rebuild the generator explicitly and "
+                "restore weights via load_state_dict."
+            )
+        return {
+            "n_particles": self.n_particles,
+            "energy": float(self.beam_energy),
+            "n_dim": self.n_dim,
+            "transformer": {
+                "cls": to_import_path(type(self.transformer)),
+                "config": self.transformer.get_config(),
+            },
+        }
 
     def set_base_particles(self, n_particles: int):
         self.register_buffer(
