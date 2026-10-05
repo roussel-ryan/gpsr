@@ -51,9 +51,9 @@ class LitGPSRLUME(L.LightningModule):
         self.loss_func = import_from_path(loss_func) if loss_func is not None else None
         self.source_info = None  # `setup` pulls this from the datamodule
 
-        # The frozen accelerator's keys are stripped at save, so tolerate their
-        # absence; `on_load_checkpoint` backfills them on the everyday path.
-        self.strict_loading = False
+        # `on_load_checkpoint` restores the stripped accelerator keys before
+        # Lightning loads the state dict, so generator mismatches remain strict.
+        self.strict_loading = True
 
     @classmethod
     def from_spec(cls, spec: dict, **kwargs) -> "LitGPSRLUME":
