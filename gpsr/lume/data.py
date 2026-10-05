@@ -110,6 +110,10 @@ class GPSRLUMEDataset(torch.utils.data.Dataset):
                     raise ValueError(
                         f"Screen observation '{key}' is missing 'shape' in its metadata."
                     )
+                if "pixel_size" not in meta:
+                    raise ValueError(
+                        f"Screen observation '{key}' is missing 'pixel_size' in its metadata."
+                    )
                 expected = tuple(meta["shape"])
                 actual = tuple(tensor.shape[-2:])
                 if actual != expected:
