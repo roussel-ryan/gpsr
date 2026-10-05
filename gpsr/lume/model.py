@@ -92,7 +92,12 @@ class GPSRLUMEModel(torch.nn.Module):
         accelerator_energy = (
             lume_cheetah_model.simulator.initial_beam_distribution.energy
         )
-        if not torch.allclose(generator_energy, accelerator_energy):
+        generator_energy_tensor = torch.as_tensor(
+            generator_energy,
+            dtype=accelerator_energy.dtype,
+            device=accelerator_energy.device,
+        )
+        if not torch.allclose(generator_energy_tensor, accelerator_energy):
             raise ValueError(
                 f"Beam-generator energy ({float(generator_energy):.6g} eV) does not "
                 f"match the LUME-Cheetah accelerator energy "
