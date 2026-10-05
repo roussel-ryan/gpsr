@@ -187,6 +187,9 @@ def predict_ensemble_images(
         Predicted images keyed by observation PV, shape
         ``(n_draws, n_samples, W, H)``.
     """
+    if chunk_size is not None and chunk_size <= 0:
+        raise ValueError("chunk_size must be a positive integer or None.")
+
     beam = _add_scan_broadcast_axis(beam)
 
     if chunk_size is None:
