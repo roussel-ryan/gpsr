@@ -271,9 +271,11 @@ class NNParticleBeamGenerator(BeamGenerator):
         }
 
     def set_base_particles(self, n_particles: int):
+        self.n_particles = n_particles
         self.register_buffer(
             "base_particles", self.base_dist.sample(Size([n_particles]))
         )
+        self.register_buffer("survival_probabilities", torch.ones(n_particles))
 
     def forward(self) -> ParticleBeam:
         transformed_beam = self.transformer(self.base_particles)
