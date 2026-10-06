@@ -106,6 +106,10 @@ class GPSRLUMEModel(torch.nn.Module):
                 f"energy while tracking the generator's beam."
             )
 
+        # Actually enforce "frozen": nothing upstream guarantees a facility builder
+        # never hands cheetah an nn.Parameter (cheetah accepts either a buffer or a
+        # parameter for any element attribute), and Adam would otherwise train it.
+        lume_cheetah_model.requires_grad_(False)
         self.lume_cheetah_model = lume_cheetah_model
         self.beam_generator = beam_generator
         # A plain dict, not a buffer or parameter: it records how the accelerator was
