@@ -280,7 +280,7 @@ def model_spec_from_files(
         decision in a spec, so the package supplies no default.
     generator : dict, optional
         ``{"cls": <class or import path>, "config": <kwargs>}``. Defaults to
-        ``NNParticleBeamGenerator`` with an empty config.
+        ``NNParticleBeamGenerator`` with ``n_particles=10_000``.
 
     Returns
     -------
@@ -298,6 +298,7 @@ def model_spec_from_files(
     generator["cls"] = to_import_path(generator["cls"])
     config = dict(generator.get("config") or {})
     config.setdefault("energy", energy)
+    config.setdefault("n_particles", 10_000)
     generator["config"] = config
 
     return {
