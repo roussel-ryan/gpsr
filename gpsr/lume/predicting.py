@@ -21,6 +21,16 @@ from cheetah.particles import ParticleBeam
 from gpsr.losses import normalize_images
 
 
+def _run_in_eval_mode(model, fn):
+    """Run ``fn()`` with ``model`` in eval mode, then restore its prior mode."""
+    was_training = model.training
+    model.eval()
+    try:
+        return fn()
+    finally:
+        model.train(was_training)
+
+
 def _add_scan_broadcast_axis(beam: ParticleBeam) -> ParticleBeam:
     """Return a copy of ``beam`` with a size-1 scan-step axis inserted.
 
@@ -131,11 +141,14 @@ def predict_images(
     ValueError
         If a key appears in both ``beamline_settings`` and ``beamline_constants``.
     """
-    predictions = model.gpsr_lume_model(
-        settings=beamline_settings,
-        observations_metadata=observations_metadata,
-        beam=beam,
-        beamline_constants=beamline_constants,
+    predictions = _run_in_eval_mode(
+        model,
+        lambda: model.gpsr_lume_model(
+            settings=beamline_settings,
+            observations_metadata=observations_metadata,
+            beam=beam,
+            beamline_constants=beamline_constants,
+        ),
     )
     if normalize:
         predictions = {pv: normalize_images(image) for pv, image in predictions.items()}
@@ -282,7 +295,8 @@ def predict_multi_source_images(
         ``(n_samples, W, H)``.
     """
     if beam is None:
-        beam = model.gpsr_lume_model.beam_generator()  # one sample, shared below
+        # one sample, shared below
+        beam = _run_in_eval_mode(model, model.gpsr_lume_model.beam_generator)
     predictions = {}
     for source_name, source in sources_spec.items():
         settings, metadata, constants = _unpack_source(source_name, source)
