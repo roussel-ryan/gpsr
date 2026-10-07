@@ -130,9 +130,6 @@ class LitGPSRLUME(L.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        # Filtered by requires_grad, not by module, so a future trainable lattice
-        # parameter (model calibration) is picked up automatically -- nothing here
-        # has to change when that boundary moves.
         trainable = filter(lambda p: p.requires_grad, self.parameters())
         optimizer = torch.optim.Adam(trainable, lr=self.lr)
         return optimizer

@@ -301,6 +301,11 @@ def model_spec_from_files(
     config.setdefault("n_particles", 10_000)
     generator["config"] = config
 
+    # A nested value (e.g. transformer=<a Transform instance>) is not JSON-pure;
+    # get_config() replaces it with its serialized form.
+    built_generator = build_generator(generator)
+    generator = {"cls": generator["cls"], "config": built_generator.get_config()}
+
     return {
         "accelerator": {
             "builder": to_import_path(accelerator_builder),
