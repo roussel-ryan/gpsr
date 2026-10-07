@@ -307,6 +307,26 @@ class TestCheckpointRoundTrip:
         assert LitGPSRLUME._SPEC_KEY in checkpoint
         assert json.loads(json.dumps(checkpoint[LitGPSRLUME._SPEC_KEY]))
 
+    def test_missing_generator_key_raises(self, spec, tmp_path):
+        # strict_loading=True must still catch a genuinely mismatched generator
+        # (a missing/unexpected beam_generator key), even though on_load_checkpoint
+        # backfills the frozen accelerator subtree before this check runs.
+        lit = LitGPSRLUME(build_gpsr_lume_model(spec), lr=1e-3)
+        checkpoint_path = tmp_path / "model.ckpt"
+        trainer = _trainer()
+        trainer.strategy.connect(lit)
+        trainer.save_checkpoint(checkpoint_path)
+
+        checkpoint = torch.load(checkpoint_path, weights_only=False)
+        del checkpoint["state_dict"]["gpsr_lume_model.beam_generator.particle_charges"]
+        torch.save(checkpoint, checkpoint_path)
+
+        fresh_model = build_gpsr_lume_model(spec)
+        with pytest.raises(RuntimeError, match="Missing key"):
+            LitGPSRLUME.load_from_checkpoint(
+                checkpoint_path, gpsr_lume_model=fresh_model, map_location="cpu"
+            )
+
     def test_frozen_accelerator_is_stripped_from_state_dict(self, spec, tmp_path):
         # Saved after a forward pass, as training does: tracking leaves per-batch
         # beam buffers on the screen that a freshly built model does not have, and
