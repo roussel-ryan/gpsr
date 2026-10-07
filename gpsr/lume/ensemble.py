@@ -448,8 +448,8 @@ def compute_statistics_2d(
     bin_ranges : tuple[tuple[float, float], tuple[float, float]] | None
         ``((x_min, x_max), (y_min, y_max))``; inferred if None.
     smoothing : float
-        Sigma of an optional Gaussian applied to the mean histogram; 0.0 disables
-        it.
+        If > 0, sigma (in bins) of a Gaussian applied to each histogram before
+        computing mean/bounds.
     uncertainty_type : "percentile" | "std_error"
         Passed to ``compute_mean_and_bounds``.
     confidence_level : float
@@ -467,11 +467,11 @@ def compute_statistics_2d(
     x_centers = (x_edges[:-1] + x_edges[1:]) / 2
     y_centers = (y_edges[:-1] + y_edges[1:]) / 2
 
+    if smoothing:
+        hist = vectorized_gaussian_filter_2d(hist, sigma=smoothing)
+
     mean_hist, lower_bound, upper_bound = compute_mean_and_bounds(
         hist, confidence_level=confidence_level, uncertainty_type=uncertainty_type
     )
-
-    if smoothing:
-        mean_hist = vectorized_gaussian_filter_2d(mean_hist, sigma=smoothing)
 
     return x_centers, y_centers, mean_hist, lower_bound, upper_bound
