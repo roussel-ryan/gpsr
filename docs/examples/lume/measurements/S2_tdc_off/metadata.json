@@ -1,0 +1,26 @@
+{
+  "quad_pv_name": "Q2:BCTRL",
+  "tdc_pv_name": "TDC:AREQ",
+  "tdc_amplitude": 0.0,
+  "image_pv_name": "S2:Image:ArrayData",
+  "screen_pv_name": "S2",
+  "screen_shape": [
+    200,
+    400
+  ],
+  "pixel_size": [
+    5e-05,
+    5e-05
+  ],
+  "beamline_constants": {
+    "Q1:BCTRL": 5.4663997,
+    "Q3:BCTRL": 5.1083612,
+    "Q4:BCTRL": -5.184688
+  },
+  "units": {
+    "quad_strengths": "kG",
+    "tdc_amplitude": "MV",
+    "pixel_size": "m",
+    "beamline_constants": "kG"
+  }
+}
