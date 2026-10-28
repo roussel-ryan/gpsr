@@ -1,0 +1,7 @@
+# Written by data_module.ipynb from the raw scans in measurements/, and read by
+# gpsr_lume_training.ipynb. Derived data: regenerate by running that notebook rather
+# than committing ~18 MB that duplicates measurements/ and can go stale against it.
+datasets/
+
+# Written by gpsr_lume_training.ipynb.
+example_reconstruction.ckpt

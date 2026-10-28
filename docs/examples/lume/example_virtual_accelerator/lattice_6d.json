@@ -1,0 +1,175 @@
+{
+    "version": "cheetah-0.8",
+    "title": "lattice_6d",
+    "info": "Example diagnostics lattice for 6D GPSR with a transverse deflecting cavity and a dipole magnet.",
+    "root": "lattice_6d",
+    "elements": {
+        "d1": [
+            "Drift",
+            {
+                "tracking_method": "linear",
+                "length": 0.12290070205926895
+            }
+        ],
+        "tdc": [
+            "TransverseDeflectingCavity",
+            {
+                "tracking_method": "linear",
+                "length": 0.6680236,
+                "voltage": 0.0,
+                "phase": 0.0,
+                "frequency": 2856000000.0,
+                "tilt": 1.5707963267948966
+            }
+        ],
+        "d2": [
+            "Drift",
+            {
+                "tracking_method": "linear",
+                "length": 0.052173301577568054
+            }
+        ],
+        "q1": [
+            "Quadrupole",
+            {
+                "tracking_method": "linear",
+                "length": 0.1080000028014183,
+                "k1": 12.139300346374512
+            }
+        ],
+        "d3": [
+            "Drift",
+            {
+                "tracking_method": "linear",
+                "length": 0.2819662094116211
+            }
+        ],
+        "q2": [
+            "Quadrupole",
+            {
+                "tracking_method": "linear",
+                "length": 0.1080000028014183,
+                "k1": -10.913399696350098
+            }
+        ],
+        "d4": [
+            "Drift",
+            {
+                "tracking_method": "linear",
+                "length": 2.647586278617382
+            }
+        ],
+        "s1": [
+            "Screen",
+            {
+                "resolution": [
+                    200,
+                    400
+                ],
+                "pixel_size": [
+                    5e-05,
+                    5e-05
+                ],
+                "method": "cloud-in-cell",
+                "is_active": true
+            }
+        ],
+        "d5": [
+            "Drift",
+            {
+                "tracking_method": "linear",
+                "length": 1.6263334453105927
+            }
+        ],
+        "q3": [
+            "Quadrupole",
+            {
+                "tracking_method": "linear",
+                "length": 0.1080000028014183,
+                "k1": 11.344200134277344
+            }
+        ],
+        "d6": [
+            "Drift",
+            {
+                "tracking_method": "linear",
+                "length": 0.44782210886478424
+            }
+        ],
+        "q4": [
+            "Quadrupole",
+            {
+                "tracking_method": "linear",
+                "length": 0.1080000028014183,
+                "k1": -11.513699531555176
+            }
+        ],
+        "d7": [
+            "Drift",
+            {
+                "tracking_method": "linear",
+                "length": 0.22345000505447388
+            }
+        ],
+        "dipole": [
+            "Dipole",
+            {
+                "tracking_method": "linear",
+                "length": 0.20399200916290283,
+                "angle": -0.30543261766433716,
+                "k1": 0.0,
+                "dipole_e1": -0.15271630883216858,
+                "dipole_e2": -0.15271630883216858,
+                "tilt": 0.0,
+                "gap": 0.029999999329447746,
+                "gap_exit": 0.029999999329447746,
+                "fringe_integral": 0.44999998807907104,
+                "fringe_integral_exit": 0.44999998807907104,
+                "fringe_at": "both",
+                "fringe_type": "linear_edge"
+            }
+        ],
+        "d8": [
+            "Drift",
+            {
+                "tracking_method": "linear",
+                "length": 0.39969998598098755
+            }
+        ],
+        "s2": [
+            "Screen",
+            {
+                "resolution": [
+                    200,
+                    400
+                ],
+                "pixel_size": [
+                    5e-05,
+                    5e-05
+                ],
+                "method": "cloud-in-cell",
+                "is_active": true
+            }
+        ]
+    },
+    "lattices": {
+        "lattice_6d": [
+            "d1",
+            "tdc",
+            "d2",
+            "q1",
+            "d3",
+            "q2",
+            "d4",
+            "s1",
+            "d5",
+            "q3",
+            "d6",
+            "q4",
+            "d7",
+            "dipole",
+            "d8",
+            "s2"
+        ]
+    }
+}
