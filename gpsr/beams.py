@@ -339,6 +339,7 @@ class ResNNTransform(torch.nn.Module):
 
         return output * self.output_scale
 
+
 def _is_standard_normal(distribution: Distribution, n_dim: int) -> bool:
     """Whether ``distribution`` is the default: standard normal over ``n_dim``."""
     if not isinstance(distribution, MultivariateNormal):
