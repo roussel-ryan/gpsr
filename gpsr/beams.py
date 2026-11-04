@@ -286,7 +286,9 @@ class ResNNTransform(torch.nn.Module):
 
     @property
     def resnet_parameters(self):
-        return list(self.resnet.parameters()) + ([self.alpha] if hasattr(self, "alpha") else [])
+        return list(self.resnet.parameters()) + (
+            [self.alpha] if hasattr(self, "alpha") else []
+        )
 
     def freeze_and_zero_resnet(self):
         # freeze all parameters in the resnet and set alpha to zero if it exists

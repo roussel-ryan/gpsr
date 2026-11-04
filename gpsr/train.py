@@ -128,11 +128,12 @@ def train_gpsr(
 
 
 class ResNNTransformFinetuning(BaseFinetuning):
-    """ Finetuning module for ResNNTransform within a GPSR model.
+    """Finetuning module for ResNNTransform within a GPSR model.
 
     This module allows freezing and unfreezing of the ResNNTransform's residual network
     and skip-connection scale (`alpha`) during different stages of training.
     """
+
     def __init__(self, freeze_at_start: bool = True, unfreeze_epoch: int = 100):
         super().__init__()
         self.freeze_at_start = freeze_at_start
@@ -140,22 +141,35 @@ class ResNNTransformFinetuning(BaseFinetuning):
 
     def freeze_before_training(self, pl_module: L.LightningModule):
         # check to make sure it is the right class
-        if not isinstance(pl_module.gpsr_lume_model.beam_generator.transformer, ResNNTransform):
-            raise ValueError("Expected the transformer to be an instance of ResNNTransform.")
+        if not isinstance(
+            pl_module.gpsr_lume_model.beam_generator.transformer, ResNNTransform
+        ):
+            raise ValueError(
+                "Expected the transformer to be an instance of ResNNTransform."
+            )
 
         if self.freeze_at_start:
             pl_module.gpsr_lume_model.beam_generator.transformer.freeze_and_zero_resnet()
 
-    def finetune_function(self, pl_module: L.LightningModule, current_epoch: int, optimizer: torch.optim.Optimizer):
+    def finetune_function(
+        self,
+        pl_module: L.LightningModule,
+        current_epoch: int,
+        optimizer: torch.optim.Optimizer,
+    ):
         # check to make sure it is the right class
-        if not isinstance(pl_module.gpsr_lume_model.beam_generator.transformer, ResNNTransform):
-            raise ValueError("Expected the transformer to be an instance of ResNNTransform.")
+        if not isinstance(
+            pl_module.gpsr_lume_model.beam_generator.transformer, ResNNTransform
+        ):
+            raise ValueError(
+                "Expected the transformer to be an instance of ResNNTransform."
+            )
 
         if current_epoch == self.unfreeze_epoch:
             print(f"Unfreezing ResNNTransform at epoch {current_epoch}")
             # Unfreeze the residual network and add its parameters to the optimizer at the specified epoch.
             self.unfreeze_and_add_param_group(
-                modules = pl_module.gpsr_lume_model.beam_generator.transformer.resnet,
+                modules=pl_module.gpsr_lume_model.beam_generator.transformer.resnet,
                 optimizer=optimizer,
                 train_bn=True,  # If using batch normalization, also train its parameters
             )
