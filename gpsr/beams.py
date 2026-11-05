@@ -253,14 +253,14 @@ class ResNNTransform(torch.nn.Module):
         for _ in range(n_hidden - 1):
             layers += [torch.nn.Linear(width, width), activation]
         layers.append(torch.nn.Linear(width, phase_space_dim))
-        self.res_net = torch.nn.Sequential(*layers)
+        self.resnet = torch.nn.Sequential(*layers)
 
         self.log_output_scale = torch.nn.Parameter(torch.tensor(log_output_scale))
 
         self.use_skip_connection = use_skip_connection
 
-        # alpha scales the res_net's contribution; only trainable when the
-        # skip connection is used, otherwise it's fixed at 1 (full res_net output)
+        # alpha scales the resnet's contribution; only trainable when the
+        # skip connection is used, otherwise it's fixed at 1 (full resnet output)
         if use_skip_connection:
             self.alpha = torch.nn.Parameter(torch.tensor(0.0))
         else:
@@ -282,20 +282,25 @@ class ResNNTransform(torch.nn.Module):
         return [
             *self.first_layer.parameters(),
             *self.first_layer_activation.parameters(),
-        ]
+        ] + [self.log_output_scale]
 
     @property
-    def res_net_parameters(self):
-        return list(self.res_net.parameters())
+    def resnet_parameters(self):
+        return list(self.resnet.parameters()) + (
+            [self.alpha] if hasattr(self, "alpha") else []
+        )
 
-    @property
-    def other_parameters(self):
-        other_params = []
+    def freeze_and_zero_resnet(self):
+        # freeze all parameters in the resnet and set alpha to zero if it exists
+        for param in self.resnet_parameters:
+            param.requires_grad = False
         if hasattr(self, "alpha"):
-            other_params.append(self.alpha)
-        if hasattr(self, "log_output_scale"):
-            other_params.append(self.log_output_scale)
-        return other_params
+            self.alpha.zero_()
+
+    def unfreeze_resnet(self):
+        # unfreeze all parameters in the resnet and set alpha to trainable if it exists
+        for param in self.resnet_parameters:
+            param.requires_grad = True
 
     def linear_forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -320,7 +325,7 @@ class ResNNTransform(torch.nn.Module):
         x = self.linear_forward(x)
 
         # send the output of the first layer through the residual network
-        residual = self.res_net(x) * self.alpha
+        residual = self.resnet(x) * self.alpha
 
         if self.track_metrics:
             # compute the residual ratio and norms for tracking purposes

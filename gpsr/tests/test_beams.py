@@ -54,7 +54,7 @@ class TestBeams:
         transformer = ResNNTransform(n_hidden=2, width=10, phase_space_dim=dim)
         X = torch.rand(5, dim)
 
-        for layer in transformer.res_net:
+        for layer in transformer.resnet:
             if isinstance(layer, torch.nn.Linear):
                 torch.nn.init.zeros_(layer.weight)
                 torch.nn.init.zeros_(layer.bias)

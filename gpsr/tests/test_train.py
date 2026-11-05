@@ -5,7 +5,7 @@ import pytest
 import torch
 
 from gpsr.beams import ResNNTransform
-from gpsr.train import train_gpsr, train_gpsr_multistep
+from gpsr.train import ResNNTransformFinetuning, train_gpsr
 
 
 class DummyBeamGenerator(torch.nn.Module):
@@ -52,79 +52,108 @@ class TestTrainGPSR:
         assert mock_checkpoint.call_args.kwargs["dirpath"] == ""
 
 
-class TestTrainGPSRMultistep:
-    def test_requires_skip_connection(self):
-        model = DummyGPSR(ResNNTransform(n_hidden=2, width=10, phase_space_dim=2))
+class TestResNNTransformFinetuning:
+    @pytest.fixture
+    def pl_module(self):
+        transformer = ResNNTransform(
+            n_hidden=2,
+            width=10,
+            phase_space_dim=2,
+            use_skip_connection=True,
+        )
+        with torch.no_grad():
+            transformer.alpha.fill_(0.5)
+        return SimpleNamespace(gpsr_lume_model=DummyGPSR(transformer))
+
+    @pytest.mark.parametrize("hook", ["freeze_before_training", "finetune_function"])
+    def test_requires_resnn_transform(self, hook):
+        pl_module = SimpleNamespace(gpsr_lume_model=DummyGPSR(torch.nn.Linear(2, 2)))
+        callback = ResNNTransformFinetuning()
 
         with pytest.raises(
             ValueError,
-            match="train_gpsr_multistep requires a ResNNTransform with use_skip_connection=True",
+            match="Expected the transformer to be an instance of ResNNTransform",
         ):
-            train_gpsr_multistep(model, Mock())
+            if hook == "freeze_before_training":
+                callback.freeze_before_training(pl_module)
+            else:
+                callback.finetune_function(pl_module, 0, Mock())
 
-    @patch("gpsr.train.train_gpsr")
-    def test_stage_two_trains_full_model(self, mock_train_gpsr):
-        transformer = ResNNTransform(
-            n_hidden=2,
-            width=10,
-            phase_space_dim=2,
-            use_skip_connection=True,
-        )
-        with torch.no_grad():
-            transformer.alpha.fill_(0.5)
-        model = DummyGPSR(transformer)
-        recorded_requires_grad = []
-        recorded_alpha_values = []
-        stage_one_trainable_ids = {
-            id(param) for param in transformer.linear_parameters
-        } | {id(transformer.log_output_scale)}
+    def test_freezes_and_zeros_only_residual_branch(self, pl_module):
+        model = pl_module.gpsr_lume_model
+        transformer = model.beam_generator.transformer
+        original_state = {
+            name: value.clone() for name, value in model.state_dict().items()
+        }
 
-        def capture_call(gpsr_model, *args, **kwargs):
-            recorded_alpha_values.append(transformer.alpha.item())
-            recorded_requires_grad.append(
-                {
-                    "linear": [p.requires_grad for p in transformer.linear_parameters],
-                    "output_scale": transformer.log_output_scale.requires_grad,
-                    "alpha": transformer.alpha.requires_grad,
-                    "non_linear": [
-                        p.requires_grad
-                        for p in gpsr_model.parameters()
-                        if id(p) not in stage_one_trainable_ids
-                    ],
-                }
-            )
-            return SimpleNamespace(gpsr_model=gpsr_model)
+        ResNNTransformFinetuning().freeze_before_training(pl_module)
 
-        mock_train_gpsr.side_effect = capture_call
+        assert not any(p.requires_grad for p in transformer.resnet.parameters())
+        assert not transformer.alpha.requires_grad
+        assert transformer.alpha.item() == 0.0
+        assert all(p.requires_grad for p in transformer.linear_parameters)
+        assert all(p.requires_grad for p in model.readout.parameters())
+        for name, value in model.state_dict().items():
+            if name != "beam_generator.transformer.alpha":
+                torch.testing.assert_close(value, original_state[name])
 
-        train_gpsr_multistep(model, Mock())
-
-        assert len(recorded_requires_grad) == 2
-        assert recorded_alpha_values == [0.0, 0.5]
-        assert all(recorded_requires_grad[0]["linear"])
-        assert recorded_requires_grad[0]["output_scale"]
-        assert not recorded_requires_grad[0]["alpha"]
-        assert not any(recorded_requires_grad[0]["non_linear"])
-        assert all(recorded_requires_grad[1]["linear"])
-        assert recorded_requires_grad[1]["output_scale"]
-        assert recorded_requires_grad[1]["alpha"]
-        assert all(recorded_requires_grad[1]["non_linear"])
-
-    @patch("gpsr.train.train_gpsr", side_effect=RuntimeError("stage failure"))
-    def test_stage_one_failure_restores_state(self, mock_train_gpsr):
-        transformer = ResNNTransform(
-            n_hidden=2,
-            width=10,
-            phase_space_dim=2,
-            use_skip_connection=True,
-        )
-        with torch.no_grad():
-            transformer.alpha.fill_(0.5)
-        model = DummyGPSR(transformer)
+    def test_can_disable_initial_freezing(self, pl_module):
+        model = pl_module.gpsr_lume_model
+        next(model.beam_generator.transformer.resnet.parameters()).requires_grad_(False)
         original_requires_grad = [p.requires_grad for p in model.parameters()]
+        original_state = {
+            name: value.clone() for name, value in model.state_dict().items()
+        }
 
-        with pytest.raises(RuntimeError, match="stage failure"):
-            train_gpsr_multistep(model, Mock())
+        ResNNTransformFinetuning(freeze_at_start=False).freeze_before_training(
+            pl_module
+        )
 
         assert [p.requires_grad for p in model.parameters()] == original_requires_grad
-        assert transformer.alpha.item() == pytest.approx(0.5)
+        for name, value in model.state_dict().items():
+            torch.testing.assert_close(value, original_state[name])
+
+    @pytest.mark.parametrize("unfreeze_epoch", [0, 2])
+    def test_unfreezes_and_adds_parameters_at_scheduled_epoch(
+        self, pl_module, unfreeze_epoch
+    ):
+        model = pl_module.gpsr_lume_model
+        transformer = model.beam_generator.transformer
+        callback = ResNNTransformFinetuning(unfreeze_epoch=unfreeze_epoch)
+        callback.freeze_before_training(pl_module)
+        optimizer = torch.optim.Adam(
+            [p for p in model.parameters() if p.requires_grad], lr=1e-3
+        )
+        initial_ids = {id(p) for p in optimizer.param_groups[0]["params"]}
+        assert initial_ids == {
+            id(p) for p in [*transformer.linear_parameters, *model.readout.parameters()]
+        }
+
+        for epoch in range(unfreeze_epoch):
+            callback.finetune_function(pl_module, epoch, optimizer)
+            assert not any(p.requires_grad for p in transformer.resnet_parameters)
+            assert transformer.alpha.item() == 0.0
+            assert len(optimizer.param_groups) == 1
+            assert {id(p) for p in optimizer.param_groups[0]["params"]} == initial_ids
+
+        callback.finetune_function(pl_module, unfreeze_epoch, optimizer)
+
+        assert all(p.requires_grad for p in model.parameters())
+        assert transformer.alpha.item() == 0.0
+        assert len(optimizer.param_groups) == 3
+        assert {id(p) for p in optimizer.param_groups[0]["params"]} == initial_ids
+        assert {id(p) for p in optimizer.param_groups[1]["params"]} == {
+            id(p) for p in transformer.resnet.parameters()
+        }
+        assert [id(p) for p in optimizer.param_groups[2]["params"]] == [
+            id(transformer.alpha)
+        ]
+
+        callback.finetune_function(pl_module, unfreeze_epoch + 1, optimizer)
+
+        assert len(optimizer.param_groups) == 3
+        optimizer_ids = [
+            id(p) for group in optimizer.param_groups for p in group["params"]
+        ]
+        assert len(optimizer_ids) == len(set(optimizer_ids))
+        assert set(optimizer_ids) == {id(p) for p in model.parameters()}
