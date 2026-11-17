@@ -57,6 +57,9 @@ def list_to_beam(beam_list: list[ParticleBeam]) -> ParticleBeam:
     The beams must agree on the values one ensemble beam can hold only once --
     ``energy``, ``s`` and ``species`` -- which are taken from the first beam.
 
+    The result is detached from autograd, so gradients do not flow back through it
+    to the input beams.
+
     Parameters
     ----------
     beam_list : list[ParticleBeam]
@@ -81,22 +84,23 @@ def list_to_beam(beam_list: list[ParticleBeam]) -> ParticleBeam:
     _check_shared(beam_list, "s [m]", lambda beam: float(beam.s))
     _check_shared(beam_list, "species", lambda beam: beam.species.name)
 
+    # detach drops each beam's graph; only unstacked energy / s need a clone.
     first = beam_list[0]
     return ParticleBeam(
-        particles=torch.stack([beam.particles for beam in beam_list], dim=0),
-        energy=first.energy,
+        particles=torch.stack([beam.particles.detach() for beam in beam_list], dim=0),
+        energy=first.energy.detach().clone(),
         # charges are often one scalar for the whole beam; expand so they stack.
         particle_charges=torch.stack(
             [
-                beam.particle_charges.expand(beam.particles.shape[-2])
+                beam.particle_charges.detach().expand(beam.particles.shape[-2])
                 for beam in beam_list
             ],
             dim=0,
         ),
         survival_probabilities=torch.stack(
-            [beam.survival_probabilities for beam in beam_list], dim=0
+            [beam.survival_probabilities.detach() for beam in beam_list], dim=0
         ),
-        s=first.s,
+        s=first.s.detach().clone(),
         species=first.species,
     )
 
