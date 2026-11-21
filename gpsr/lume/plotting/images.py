@@ -3,8 +3,9 @@
 ``plot_images`` draws one grid of screen images, optionally overlaid with
 peak-normalized contours -- of the same images (``contours=True``) or of a second
 set passed as ``overlay_images``, for a measured-vs-predicted comparison.
-``plot_ensemble_images`` draws the mean of an ensemble, optionally with
-lower/mean/upper confidence-band contours. The two ``plot_multi_source_*``
+``plot_ensemble_images`` draws an ensemble's lower/mean/upper confidence-band
+contours over a fill of the ``overlay_images`` (e.g. measured) set, or of the
+ensemble mean when there is no overlay. The two ``plot_multi_source_*``
 wrappers fan those over a sources spec, one figure per source.
 """
 
@@ -560,7 +561,7 @@ def plot_ensemble_images(
     contour_kwargs: dict | None = None,
     overlay_contour_kwargs: dict | None = None,
 ) -> plt.Figure | None:
-    """Plot ensemble predicted screen images: mean fill + confidence-band contours.
+    """Plot ensemble predicted screen images: confidence-band contours over a fill.
 
     Takes an already-predicted ensemble rather than a model and beam:
 
@@ -569,11 +570,11 @@ def plot_ensemble_images(
                              overlay_images=dataset.data["observations"])
 
     Each per-PV stack ``(n_draws, n_samples, W, H)`` is reduced over the draw dim
-    with ``compute_mean_and_bounds``, then one column per scan step is drawn: the
-    mean image filled, and -- when ``band=True`` (default) -- the lower, mean and
-    upper histograms each overlaid as a dashed contour, self-normalized to its own
-    peak. ``band=False`` draws only the mean fill. ``overlay_images`` is drawn as
-    solid contours either way.
+    with ``compute_mean_and_bounds``, then one column per scan step is drawn. The
+    fill is the ``overlay_images`` image when given (so the model is read against
+    the data), else the ensemble mean. When ``band=True`` (default) the lower, mean
+    and upper histograms are each overlaid as a dashed contour, self-normalized to
+    its own peak. ``overlay_images`` is also drawn as solid contours either way.
 
     Axes are in physical mm (from ``pixel_size``).
 
@@ -591,8 +592,8 @@ def plot_ensemble_images(
         and a ``pixel_size``.
     overlay_images : dict[str, Tensor] | None
         Optional single-sample-per-step images (e.g. measured) under the same
-        ``observation_key`` and per-sample (scan-step) count, overlaid as solid
-        contours.
+        ``observation_key`` and per-sample (scan-step) count. Used as the fill
+        (instead of the ensemble mean) and also drawn as solid contours.
     observation_key : str | None
         Which observation (PV) to plot. If None and there is exactly one entry in
         ``ensemble_images``, that key is used.
@@ -605,7 +606,7 @@ def plot_ensemble_images(
         samples in a single row.
     band : bool
         If True (default), overlay the ensemble band (lower / mean / upper) as
-        dashed peak-normalized contours on the mean fill; if False, draw only the
+        dashed peak-normalized contours on the fill; if False, draw only the
         fill. ``overlay_images`` is drawn as solid contours either way.
     uncertainty_type : "percentile" | "std_error"
         Passed to ``compute_mean_and_bounds``.
@@ -627,10 +628,9 @@ def plot_ensemble_images(
         Figure size ``(width, height)`` in inches. If None (default), auto-sized
         as ``(2.5 * n_cols, 4 * n_rows)``.
     pcolormesh_kwargs : dict | None
-        Extra kwargs for ``Axes.pcolormesh``, merged over the mean-image fill
-        defaults (``cmap="Greys"``, ``vmin=0``, ``vmax`` the max over all mean
-        images), so user keys win. Pass ``vmax=None`` to scale each mean image to
-        its own peak instead of a common scale; the band and overlay contours are
+        Extra kwargs for ``Axes.pcolormesh``, merged over the fill defaults
+        (``cmap="Greys"``, ``vmin=0``, ``vmax`` the max over all fill images), so
+        user keys win. Pass ``vmax=None`` to scale each fill image to its own peak instead of a common scale; the band and overlay contours are
         self-normalized either way. The extra key ``white_background`` (default
         False) masks zero pixels white instead of using the colormap's low end; a
         ``cmap`` in the same dict gets that white masked colour too.
@@ -673,7 +673,8 @@ def plot_ensemble_images(
     overlay = _load_overlay_images(
         overlay_images, observation_key, mean.shape[0], "ensemble_images"
     )
-    vmax = np.max(mean)
+    fill = overlay if overlay is not None else mean
+    vmax = np.max(fill)
 
     def draw_overlays(ax, col):
         band_kws = contour_kwargs or {}
@@ -701,7 +702,7 @@ def plot_ensemble_images(
             )
 
     return _plot_screen_grid(
-        mean,
+        fill,
         x_edges,
         y_edges,
         observation_key=observation_key,
@@ -775,8 +776,8 @@ def plot_multi_source_ensemble_images(
 ) -> dict[str, plt.Figure | None]:
     """Plot ensemble predicted screen images for every source, one figure per source.
 
-    Draws each source with ``plot_ensemble_images`` (mean fill + confidence-band
-    contours):
+    Draws each source with ``plot_ensemble_images`` (confidence-band contours over
+    the overlay fill, or the ensemble-mean fill without an overlay):
 
         spec = dm.to_sources_spec()
         preds = predict_multi_source_ensemble_images(model, spec, beam)
@@ -797,8 +798,8 @@ def plot_multi_source_ensemble_images(
         Per-source spec supplying each source's ``beamline_settings`` and
         ``observations_metadata``. Must cover every source in ``ensemble_images``.
     overlay_images : dict[str, dict[str, Tensor]] | None
-        Optional overlay images per source, drawn as solid contours. If given,
-        must cover every source in ``ensemble_images``.
+        Optional overlay images per source, used as the fill and drawn as solid
+        contours. If given, must cover every source in ``ensemble_images``.
     **kwargs
         Forwarded to ``plot_ensemble_images`` for every source. ``title_prefix``
         defaults to each source's own name.
